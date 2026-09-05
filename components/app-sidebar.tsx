@@ -15,7 +15,27 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, ChessQueen } from "lucide-react"
+import {
+  LayoutDashboardIcon,
+  ListIcon,
+  ChartBarIcon,
+  FolderIcon,
+  UsersIcon,
+  CameraIcon,
+  FileTextIcon,
+  Settings2Icon,
+  CircleHelpIcon,
+  SearchIcon,
+  DatabaseIcon,
+  FileChartColumnIcon,
+  FileIcon,
+  CommandIcon,
+  ChessQueen,
+  Users,
+  PlayingCardsFan,
+  RotateCcwClock,
+  Hash,
+} from "lucide-react"
 
 const data = {
   user: {
@@ -27,51 +47,38 @@ const data = {
     {
       title: "Dashboard",
       url: "#",
-      icon: (
-        <LayoutDashboardIcon
-        />
-      ),
+      icon: <LayoutDashboardIcon />,
     },
     {
-      title: "Lifecycle",
+      title: "Jornadas",
       url: "#",
-      icon: (
-        <ListIcon
-        />
-      ),
+      icon: <ListIcon />,
     },
     {
-      title: "Analytics",
+      title: "Jugadores",
       url: "#",
-      icon: (
-        <ChartBarIcon
-        />
-      ),
+      icon: <Users />,
     },
     {
-      title: "Projects",
+      title: "Cartones",
       url: "#",
-      icon: (
-        <FolderIcon
-        />
-      ),
+      icon: <PlayingCardsFan />,
     },
     {
-      title: "Team",
+      title: "Numeros",
       url: "#",
-      icon: (
-        <UsersIcon
-        />
-      ),
+      icon: <Hash />,
+    },
+    {
+      title: "Historial",
+      url: "#",
+      icon: <RotateCcwClock />,
     },
   ],
   navClouds: [
     {
       title: "Capture",
-      icon: (
-        <CameraIcon
-        />
-      ),
+      icon: <CameraIcon />,
       isActive: true,
       url: "#",
       items: [
@@ -87,10 +94,7 @@ const data = {
     },
     {
       title: "Proposal",
-      icon: (
-        <FileTextIcon
-        />
-      ),
+      icon: <FileTextIcon />,
       url: "#",
       items: [
         {
@@ -105,10 +109,7 @@ const data = {
     },
     {
       title: "Prompts",
-      icon: (
-        <FileTextIcon
-        />
-      ),
+      icon: <FileTextIcon />,
       url: "#",
       items: [
         {
@@ -126,52 +127,24 @@ const data = {
     {
       title: "Settings",
       url: "#",
-      icon: (
-        <Settings2Icon
-        />
-      ),
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: (
-        <CircleHelpIcon
-        />
-      ),
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: (
-        <SearchIcon
-        />
-      ),
+      icon: <Settings2Icon />,
     },
   ],
   documents: [
     {
       name: "Data Library",
       url: "#",
-      icon: (
-        <DatabaseIcon
-        />
-      ),
+      icon: <DatabaseIcon />,
     },
     {
       name: "Reports",
       url: "#",
-      icon: (
-        <FileChartColumnIcon
-        />
-      ),
+      icon: <FileChartColumnIcon />,
     },
     {
       name: "Word Assistant",
       url: "#",
-      icon: (
-        <FileIcon
-        />
-      ),
+      icon: <FileIcon />,
     },
   ],
 }
@@ -186,7 +159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               render={<a href="#" />}
             >
               {/* <CommandIcon className="size-5!" /> */}
-              <ChessQueen className="size-5!"/>
+              <ChessQueen className="size-5!" />
               <span className="text-base font-semibold">Admin Bingo.</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -194,7 +167,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
+        {/* <NavDocuments items={data.documents} /> */}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

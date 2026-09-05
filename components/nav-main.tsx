@@ -30,9 +30,9 @@ export function NavMain({
             >
               <CirclePlusIcon
               />
-              <span>Quick Create</span>
+              <span>Crear Jornada</span>
             </SidebarMenuButton>
-            <Button
+            {/* <Button
               size="icon"
               className="size-8 group-data-[collapsible=icon]:opacity-0"
               variant="outline"
@@ -40,7 +40,7 @@ export function NavMain({
               <MailIcon
               />
               <span className="sr-only">Inbox</span>
-            </Button>
+            </Button> */}
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>
