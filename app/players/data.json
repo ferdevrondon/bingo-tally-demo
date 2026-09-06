@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "Nombre": "Juan amor",
+    "usuario": "@amor_j",
+    "metodo de pago": "Paypal",
+    "saldo positivo": "130$",
+    "saldo negativo": "0"
+  },
+  {
+    "id": 2,
+    "Nombre": "Maria Fernanda",
+    "usuario": "@mafer",
+    "metodo de pago": "Tarjeta de crédito",
+    "saldo positivo": "85$",
+    "saldo negativo": "10$"
+  },
+  {
+    "id": 3,
+    "Nombre": "Carlos Ruiz",
+    "usuario": "@carlosr",
+    "metodo de pago": "Transferencia",
+    "saldo positivo": "0",
+    "saldo negativo": "45$"
+  },
+  {
+    "id": 4,
+    "Nombre": "Ana Torres",
+    "usuario": "@anatorres",
+    "metodo de pago": "Paypal",
+    "saldo positivo": "220$",
+    "saldo negativo": "0"
+  },
+  {
+    "id": 5,
+    "Nombre": "Luis Gómez",
+    "usuario": "@luisgomez",
+    "metodo de pago": "Efectivo",
+    "saldo positivo": "15$",
+    "saldo negativo": "5$"
+  },
+  {
+    "id": 6,
+    "Nombre": "Sofía Castro",
+    "usuario": "@sofiacastro",
+    "metodo de pago": "Tarjeta de débito",
+    "saldo positivo": "60$",
+    "saldo negativo": "0"
+  },
+  {
+    "id": 7,
+    "Nombre": "Pedro Sánchez",
+    "usuario": "@pedrosanchez",
+    "metodo de pago": "Paypal",
+    "saldo positivo": "0",
+    "saldo negativo": "70$"
+  },
+  {
+    "id": 8,
+    "Nombre": "Valentina Ríos",
+    "usuario": "@valerios",
+    "metodo de pago": "Transferencia",
+    "saldo positivo": "95$",
+    "saldo negativo": "0"
+  }
+]

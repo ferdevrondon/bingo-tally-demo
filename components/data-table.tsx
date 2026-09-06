@@ -38,19 +38,11 @@ import {
   type Row,
   type SortingState,
 } from "@tanstack/react-table"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { toast } from "sonner"
-import { z } from "zod"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Drawer,
@@ -64,7 +56,6 @@ import {
 } from "@/components/ui/drawer"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -90,15 +81,86 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import { GripVerticalIcon, CircleCheckIcon, LoaderIcon, EllipsisVerticalIcon, Columns3Icon, ChevronDownIcon, PlusIcon, ChevronsLeftIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsRightIcon, TrendingUpIcon } from "lucide-react"
+  GripVerticalIcon,
+  EllipsisVerticalIcon,
+  ChevronsLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsRightIcon,
+} from "lucide-react"
 
-// New in v9: declare the features this table uses — anything you don't
-// register is tree-shaken out of the bundle.
+// ------------------------------------------------------------------
+// TIPOS: la fila ya no tiene un shape fijo, es un registro genérico.
+// Solo exigimos que tenga un "id" único.
+// ------------------------------------------------------------------
+export type DataRow = Record<string, string | number> & { id: number | string }
+
+// Opción para columnas de tipo "select"
+export interface DataTableSelectOption {
+  label: string
+  value: string
+}
+
+// Definición de cada columna que el consumidor del componente pasa
+export interface DataTableColumnDef {
+  /** clave dentro del objeto de datos, ej: "Nombre", "saldo positivo" */
+  key: string
+  /** texto que se muestra en el header de la tabla */
+  header: string
+  /** si es true, esta columna se muestra como link que abre el Drawer de detalle */
+  isTitle?: boolean
+  /** alinea el contenido a la derecha (útil para números/montos) */
+  align?: "left" | "right"
+  /** si es true, permite editar el valor inline con un input */
+  editable?: boolean
+  /**
+   * tipo de celda a renderizar. "text" (default) muestra un Badge o Input,
+   * "select" muestra un dropdown de shadcn con las "options" dadas.
+   */
+  type?: "text" | "select"
+  /** opciones a mostrar cuando type === "select" */
+  options?: DataTableSelectOption[]
+  /** placeholder para el Select cuando el valor está vacío */
+  placeholder?: string
+  /** color del valor de esta columna (texto, y fondo/borde cuando se muestra como Badge), ej. saldo positivo/negativo */
+  color?: "green" | "red"
+  /** tamaño del texto del valor de esta columna */
+  textSize?: "sm" | "base" | "lg" | "xl" | "2xl"
+}
+
+const columnTextColorClasses: Record<"green" | "red", string> = {
+  green: "text-green-600 dark:text-green-500",
+  red: "text-red-600 dark:text-red-500",
+}
+
+const columnBadgeColorClasses: Record<"green" | "red", string> = {
+  green:
+    "border-green-600/30 bg-green-50 text-green-700 dark:border-green-500/30 dark:bg-green-950 dark:text-green-400",
+  red: "border-red-600/30 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-950 dark:text-red-400",
+}
+
+const columnTextSizeClasses: Record<NonNullable<DataTableColumnDef["textSize"]>, string> = {
+  sm: "text-sm",
+  base: "text-base",
+  lg: "text-lg",
+  xl: "text-xl",
+  "2xl": "text-2xl",
+}
+
+// Acción configurable para el menú de 3 puntos (por fila)
+export interface DataTableRowAction {
+  /** identificador único de la acción */
+  key: string
+  /** texto mostrado en el menú */
+  label: string
+  /** estilo visual, ej. "destructive" para acciones como eliminar */
+  variant?: "default" | "destructive"
+  /** si es true, agrega un separador visual antes de esta acción */
+  separatorBefore?: boolean
+  /** callback ejecutado con la fila completa al seleccionar la acción */
+  onSelect: (row: DataRow) => void
+}
+
 const features = tableFeatures({
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -110,26 +172,10 @@ const features = tableFeatures({
   sortedRowModel: createSortedRowModel(),
 })
 
-const columnHelper = createColumnHelper<
-  typeof features,
-  z.infer<typeof schema>
->()
+const columnHelper = createColumnHelper<typeof features, DataRow>()
 
-export const schema = z.object({
-  id: z.number(),
-  header: z.string(),
-  type: z.string(),
-  status: z.string(),
-  target: z.string(),
-  limit: z.string(),
-  reviewer: z.string(),
-})
-
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: number }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
+function DragHandle({ id }: { id: number | string }) {
+  const { attributes, listeners } = useSortable({ id })
   return (
     <Button
       {...attributes}
@@ -143,189 +189,8 @@ function DragHandle({ id }: { id: number }) {
     </Button>
   )
 }
-const columns = columnHelper.columns([
-  columnHelper.display({
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
-  }),
-  columnHelper.display({
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          indeterminate={
-            table.getIsSomePageRowsSelected() &&
-            !table.getIsAllPageRowsSelected()
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  }),
-  columnHelper.accessor("header", {
-    header: "Header",
-    cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />
-    },
-    enableHiding: false,
-  }),
-  columnHelper.accessor("type", {
-    header: "Section Type",
-    cell: ({ row }) => (
-      <div className="w-32">
-        <Badge variant="outline" className="px-1.5 text-muted-foreground">
-          {row.original.type}
-        </Badge>
-      </div>
-    ),
-  }),
-  columnHelper.accessor("status", {
-    header: "Status",
-    cell: ({ row }) => (
-      <Badge variant="outline" className="px-1.5 text-muted-foreground">
-        {row.original.status === "Done" ? (
-          <CircleCheckIcon className="fill-green-500 dark:fill-green-400" />
-        ) : (
-          <LoaderIcon
-          />
-        )}
-        {row.original.status}
-      </Badge>
-    ),
-  }),
-  columnHelper.accessor("target", {
-    header: () => <div className="w-full text-right">Target</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-target`} className="sr-only">
-          Target
-        </Label>
-        <Input
-          className="h-8 w-16 border-transparent bg-transparent text-right shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30"
-          defaultValue={row.original.target}
-          id={`${row.original.id}-target`}
-        />
-      </form>
-    ),
-  }),
-  columnHelper.accessor("limit", {
-    header: () => <div className="w-full text-right">Limit</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-          Limit
-        </Label>
-        <Input
-          className="h-8 w-16 border-transparent bg-transparent text-right shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30"
-          defaultValue={row.original.limit}
-          id={`${row.original.id}-limit`}
-        />
-      </form>
-    ),
-  }),
-  columnHelper.accessor("reviewer", {
-    header: "Reviewer",
-    cell: ({ row }) => {
-      const isAssigned = row.original.reviewer !== "Assign reviewer"
-      if (isAssigned) {
-        return row.original.reviewer
-      }
-      return (
-        <>
-          <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-            Reviewer
-          </Label>
-          <Select
-            items={[
-              { label: "Eddie Lake", value: "Eddie Lake" },
-              { label: "Jamik Tashpulatov", value: "Jamik Tashpulatov" },
-            ]}
-          >
-            <SelectTrigger
-              className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-              size="sm"
-              id={`${row.original.id}-reviewer`}
-            >
-              <SelectValue placeholder="Assign reviewer" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectGroup>
-                <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-                <SelectItem value="Jamik Tashpulatov">
-                  Jamik Tashpulatov
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </>
-      )
-    },
-  }),
-  columnHelper.display({
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              className="flex size-8 text-muted-foreground data-open:bg-muted"
-              size="icon"
-            />
-          }
-        >
-          <EllipsisVerticalIcon
-          />
-          <span className="sr-only">Open menu</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  }),
-])
-function DraggableRow({
-  row,
-}: {
-  row: Row<typeof features, z.infer<typeof schema>>
-}) {
+
+function DraggableRow({ row }: { row: Row<typeof features, DataRow> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
   })
@@ -348,24 +213,131 @@ function DraggableRow({
     </TableRow>
   )
 }
+
+// ------------------------------------------------------------------
+// Drawer de detalle genérico: recibe el registro y las columnas,
+// y renderiza un input editable por cada columna.
+// ------------------------------------------------------------------
+function RowDetailDrawer({
+  item,
+  columns,
+  titleKey,
+}: {
+  item: DataRow
+  columns: DataTableColumnDef[]
+  titleKey: string
+}) {
+  const isMobile = useIsMobile()
+  return (
+    <Drawer swipeDirection={isMobile ? "down" : "right"}>
+      <DrawerTrigger
+        render={
+          <Button variant="link" className="w-fit px-0 text-left text-foreground" />
+        }
+      >
+        {String(item[titleKey] ?? "")}
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="gap-1">
+          <DrawerTitle>{String(item[titleKey] ?? "")}</DrawerTitle>
+          <DrawerDescription>Detalle del registro</DrawerDescription>
+        </DrawerHeader>
+        <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
+          <form className="flex flex-col gap-4">
+            {columns.map((col) => (
+              <div key={col.key} className="flex flex-col gap-3">
+                <Label htmlFor={`${item.id}-${col.key}`}>{col.header}</Label>
+                <Input
+                  id={`${item.id}-${col.key}`}
+                  defaultValue={String(item[col.key] ?? "")}
+                />
+              </div>
+            ))}
+          </form>
+        </div>
+        <Separator />
+        <DrawerFooter>
+          <Button>Guardar</Button>
+          <DrawerClose render={<Button variant="outline" />}>Cerrar</DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  )
+}
+
+// ------------------------------------------------------------------
+// Componente principal
+// ------------------------------------------------------------------
+export interface DataTableProps {
+  /** filas a mostrar, cada una debe tener un "id" */
+  data: DataRow[]
+  /**
+   * definición de columnas. Si no se pasa, se infieren automáticamente
+   * a partir de las claves del primer registro (excluyendo "id").
+   */
+  columns?: DataTableColumnDef[]
+  /**
+   * clave que se usa como "título" clickeable (abre el drawer de detalle).
+   * Si no se especifica, se usa la primera columna.
+   */
+  titleKey?: string
+  /**
+   * muestra la columna de checkboxes (selección de filas) y el handle
+   * de arrastre. Default: true.
+   */
+  enableRowSelection?: boolean
+  /**
+   * acciones del menú de 3 puntos al final de cada fila. Si no se pasa
+   * (o se pasa un arreglo vacío), la columna de acciones no se renderiza.
+   */
+  rowActions?: DataTableRowAction[]
+  /**
+   * callback que se dispara cuando se edita una celda (input o select).
+   * Útil para persistir cambios fuera del componente.
+   */
+  onCellChange?: (rowId: DataRow["id"], key: string, value: string) => void
+}
+
+function inferColumns(data: DataRow[]): DataTableColumnDef[] {
+  if (!data.length) return []
+  return Object.keys(data[0])
+    .filter((key) => key !== "id")
+    .map((key) => ({ key, header: key }))
+}
+
 export function DataTable({
   data: initialData,
-}: {
-  data: z.infer<typeof schema>[]
-}) {
+  columns: columnsProp,
+  titleKey,
+  enableRowSelection = true,
+  rowActions,
+  onCellChange,
+}: DataTableProps) {
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<ColumnVisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
+  const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({})
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 10,
-  })
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const sortableId = React.useId()
+
+  const columnDefs = React.useMemo(
+    () => columnsProp ?? inferColumns(initialData),
+    [columnsProp, initialData]
+  )
+  const resolvedTitleKey = titleKey ?? columnDefs[0]?.key ?? "id"
+  const hasRowActions = !!rowActions && rowActions.length > 0
+
+  const handleCellChange = React.useCallback(
+    (rowId: DataRow["id"], key: string, value: string) => {
+      setData((prev) =>
+        prev.map((row) => (row.id === rowId ? { ...row, [key]: value } : row))
+      )
+      onCellChange?.(rowId, key, value)
+    },
+    [onCellChange]
+  )
+
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
@@ -375,25 +347,175 @@ export function DataTable({
     () => data?.map(({ id }) => id) || [],
     [data]
   )
+
+  // Construcción dinámica de columnas a partir de columnDefs
+  const columns = React.useMemo(() => {
+    return columnHelper.columns([
+      columnHelper.display({
+        id: "drag",
+        header: () => null,
+        cell: ({ row }) => <DragHandle id={row.original.id} />,
+      }),
+      ...(enableRowSelection
+        ? [
+            columnHelper.display({
+              id: "select",
+              header: ({ table }) => (
+                <div className="flex items-center justify-center">
+                  <Checkbox
+                    checked={table.getIsAllPageRowsSelected()}
+                    indeterminate={
+                      table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
+                    }
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                  />
+                </div>
+              ),
+              cell: ({ row }) => (
+                <div className="flex items-center justify-center">
+                  <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                  />
+                </div>
+              ),
+              enableSorting: false,
+              enableHiding: false,
+            }),
+          ]
+        : []),
+      ...columnDefs.map((col) =>
+        columnHelper.accessor((row) => row[col.key], {
+          id: col.key,
+          header: () =>
+            col.align === "right" ? (
+              <div className="w-full text-right">{col.header}</div>
+            ) : (
+              col.header
+            ),
+          cell: ({ row }) => {
+            const value = row.original[col.key]
+
+            // La columna "título" abre el drawer de detalle
+            if (col.key === resolvedTitleKey) {
+              return (
+                <RowDetailDrawer item={row.original} columns={columnDefs} titleKey={resolvedTitleKey} />
+              )
+            }
+
+            // Columna tipo "select": dropdown de shadcn con las opciones dadas
+            if (col.type === "select") {
+              const options = col.options ?? []
+              return (
+                <Select
+                  value={String(value ?? "")}
+                  onValueChange={(next) => handleCellChange(row.original.id, col.key, next)}
+                  items={options}
+                >
+                  <SelectTrigger
+                    className="w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
+                    size="sm"
+                  >
+                    <SelectValue placeholder={col.placeholder ?? "Seleccionar"} />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectGroup>
+                      {options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              )
+            }
+
+            if (col.editable) {
+              return (
+                <Input
+                  className={cn(
+                    "h-8 w-full border-transparent bg-transparent shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30",
+                    col.color && columnTextColorClasses[col.color],
+                    col.textSize && columnTextSizeClasses[col.textSize]
+                  )}
+                  defaultValue={String(value ?? "")}
+                  style={{ textAlign: col.align === "right" ? "right" : "left" }}
+                  onBlur={(e) => handleCellChange(row.original.id, col.key, e.target.value)}
+                />
+              )
+            }
+
+            return (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "px-1.5",
+                  col.color ? columnBadgeColorClasses[col.color] : "text-muted-foreground",
+                  col.textSize && columnTextSizeClasses[col.textSize]
+                )}
+              >
+                {String(value ?? "")}
+              </Badge>
+            )
+          },
+        })
+      ),
+      ...(hasRowActions
+        ? [
+            columnHelper.display({
+              id: "actions",
+              cell: ({ row }) => (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        className="flex size-8 text-muted-foreground data-open:bg-muted"
+                        size="icon"
+                      />
+                    }
+                  >
+                    <EllipsisVerticalIcon />
+                    <span className="sr-only">Open menu</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    {rowActions!.map((action) => (
+                      <React.Fragment key={action.key}>
+                        {action.separatorBefore && <DropdownMenuSeparator />}
+                        <DropdownMenuItem
+                          variant={action.variant}
+                          onClick={() => action.onSelect(row.original)}
+                        >
+                          {action.label}
+                        </DropdownMenuItem>
+                      </React.Fragment>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ),
+            }),
+          ]
+        : []),
+    ])
+  }, [columnDefs, resolvedTitleKey, enableRowSelection, hasRowActions, rowActions, handleCellChange])
+
   const table = useTable({
     features,
     data,
     columns,
-    state: {
-      sorting,
-      columnVisibility,
-      rowSelection,
-      columnFilters,
-      pagination,
-    },
+    state: { sorting, columnVisibility, rowSelection, columnFilters, pagination },
     getRowId: (row) => row.id.toString(),
-    enableRowSelection: true,
+    enableRowSelection,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
   })
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (active && over && active.id !== over.id) {
@@ -404,480 +526,160 @@ export function DataTable({
       })
     }
   }
+
   return (
-    <Tabs
-      defaultValue="outline"
-      className="w-full flex-col justify-start gap-6"
-    >
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <Label htmlFor="view-selector" className="sr-only">
-          View
-        </Label>
-        <Select
-          defaultValue="outline"
-          items={[
-            { label: "Outline", value: "outline" },
-            { label: "Past Performance", value: "past-performance" },
-            { label: "Key Personnel", value: "key-personnel" },
-            { label: "Focus Documents", value: "focus-documents" },
-          ]}
+    <div className="flex w-full flex-col gap-4">
+      <div className="overflow-hidden rounded-lg border">
+        <DndContext
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
+          onDragEnd={handleDragEnd}
+          sensors={sensors}
+          id={sortableId}
         >
-          <SelectTrigger
-            className="flex w-fit @4xl/main:hidden"
-            size="sm"
-            id="view-selector"
-          >
-            <SelectValue placeholder="Select a view" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="outline">Outline</SelectItem>
-              <SelectItem value="past-performance">Past Performance</SelectItem>
-              <SelectItem value="key-personnel">Key Personnel</SelectItem>
-              <SelectItem value="focus-documents">Focus Documents</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <TabsList className="hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:px-1 @4xl/main:flex">
-          <TabsTrigger value="outline">Outline</TabsTrigger>
-          <TabsTrigger value="past-performance">
-            Past Performance <Badge variant="secondary">3</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="key-personnel">
-            Key Personnel <Badge variant="secondary">2</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
-        </TabsList>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button variant="outline" size="sm" />}
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-muted">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder ? null : <FlexRender header={header} />}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody className="**:data-[slot=table-cell]:first:w-8">
+              {table.getRowModel().rows?.length ? (
+                <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
+                  {table.getRowModel().rows.map((row) => (
+                    <DraggableRow key={row.id} row={row} />
+                  ))}
+                </SortableContext>
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={
+                      columnDefs.length + 1 + (enableRowSelection ? 1 : 0) + (hasRowActions ? 1 : 0)
+                    }
+                    className="h-24 text-center"
+                  >
+                    Sin resultados.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </DndContext>
+      </div>
+      <div className="flex items-center justify-between px-4">
+        <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
+          {table.getFilteredSelectedRowModel().rows.length} de{" "}
+          {table.getFilteredRowModel().rows.length} fila(s) seleccionadas.
+        </div>
+        <div className="flex w-full items-center gap-8 lg:w-fit">
+          <div className="flex w-fit items-center justify-center text-sm font-medium">
+            Página {table.state.pagination.pageIndex + 1} de {table.getPageCount()}
+          </div>
+          <div className="ml-auto flex items-center gap-2 lg:ml-0">
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex"
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
             >
-              <Columns3Icon data-icon="inline-start" />
-              Columns
-              <ChevronDownIcon data-icon="inline-end" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" &&
-                    column.getCanHide()
-                )
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <PlusIcon
-            />
-            <span className="hidden lg:inline">Add Section</span>
-          </Button>
+              <ChevronsLeftIcon />
+            </Button>
+            <Button
+              variant="outline"
+              className="size-8"
+              size="icon"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <ChevronLeftIcon />
+            </Button>
+            <Button
+              variant="outline"
+              className="size-8"
+              size="icon"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              <ChevronRightIcon />
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden size-8 lg:flex"
+              size="icon"
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+            >
+              <ChevronsRightIcon />
+            </Button>
+          </div>
         </div>
       </div>
-      <TabsContent
-        value="outline"
-        className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
-      >
-        <div className="overflow-hidden rounded-lg border">
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
-            id={sortableId}
-          >
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id} colSpan={header.colSpan}>
-                          {header.isPlaceholder ? null : (
-                            <FlexRender header={header} />
-                          )}
-                        </TableHead>
-                      )
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                {table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {table.getRowModel().rows.map((row) => (
-                      <DraggableRow key={row.id} row={row} />
-                    ))}
-                  </SortableContext>
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      No results.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </DndContext>
-        </div>
-        <div className="flex items-center justify-between px-4">
-          <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
-          </div>
-          <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="rows-per-page" className="text-sm font-medium">
-                Rows per page
-              </Label>
-              <Select
-                value={`${table.state.pagination.pageSize}`}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value))
-                }}
-                items={[10, 20, 30, 40, 50].map((pageSize) => ({
-                  label: `${pageSize}`,
-                  value: `${pageSize}`,
-                }))}
-              >
-                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                  <SelectValue placeholder={table.state.pagination.pageSize} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  <SelectGroup>
-                    {[10, 20, 30, 40, 50].map((pageSize) => (
-                      <SelectItem key={pageSize} value={`${pageSize}`}>
-                        {pageSize}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.state.pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
-            </div>
-            <div className="ml-auto flex items-center gap-2 lg:ml-0">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to first page</span>
-                <ChevronsLeftIcon
-                />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to previous page</span>
-                <ChevronLeftIcon
-                />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to next page</span>
-                <ChevronRightIcon
-                />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden size-8 lg:flex"
-                size="icon"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to last page</span>
-                <ChevronsRightIcon
-                />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </TabsContent>
-      <TabsContent
-        value="past-performance"
-        className="flex flex-col px-4 lg:px-6"
-      >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent
-        value="focus-documents"
-        className="flex flex-col px-4 lg:px-6"
-      >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-    </Tabs>
+    </div>
   )
 }
-const chartData = [
-  {
-    month: "January",
-    desktop: 186,
-    mobile: 80,
-  },
-  {
-    month: "February",
-    desktop: 305,
-    mobile: 200,
-  },
-  {
-    month: "March",
-    desktop: 237,
-    mobile: 120,
-  },
-  {
-    month: "April",
-    desktop: 73,
-    mobile: 190,
-  },
-  {
-    month: "May",
-    desktop: 209,
-    mobile: 130,
-  },
-  {
-    month: "June",
-    desktop: 214,
-    mobile: 140,
-  },
-]
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--primary)",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig
-function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
-  const isMobile = useIsMobile()
-  return (
-    <Drawer swipeDirection={isMobile ? "down" : "right"}>
-      <DrawerTrigger
-        render={
-          <Button
-            variant="link"
-            className="w-fit px-0 text-left text-foreground"
-          />
-        }
-      >
-        {item.header}
-      </DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader className="gap-1">
-          <DrawerTitle>{item.header}</DrawerTitle>
-          <DrawerDescription>
-            Showing total visitors for the last 6 months
-          </DrawerDescription>
-        </DrawerHeader>
-        <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-          {!isMobile && (
-            <>
-              <ChartContainer config={chartConfig}>
-                <AreaChart
-                  accessibilityLayer
-                  data={chartData}
-                  margin={{
-                    left: 0,
-                    right: 10,
-                  }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                    hide
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="dot" />}
-                  />
-                  <Area
-                    dataKey="mobile"
-                    type="natural"
-                    fill="var(--color-mobile)"
-                    fillOpacity={0.6}
-                    stroke="var(--color-mobile)"
-                    stackId="a"
-                  />
-                  <Area
-                    dataKey="desktop"
-                    type="natural"
-                    fill="var(--color-desktop)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-desktop)"
-                    stackId="a"
-                  />
-                </AreaChart>
-              </ChartContainer>
-              <Separator />
-              <div className="grid gap-2">
-                <div className="flex gap-2 leading-none font-medium">
-                  Trending up by 5.2% this month{" "}
-                  <TrendingUpIcon className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  Showing total visitors for the last 6 months. This is just
-                  some random text to test the layout. It spans multiple lines
-                  and should wrap around.
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
-          <form className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="header">Header</Label>
-              <Input id="header" defaultValue={item.header} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="type">Type</Label>
-                <Select
-                  defaultValue={item.type}
-                  items={[
-                    { label: "Table of Contents", value: "Table of Contents" },
-                    { label: "Executive Summary", value: "Executive Summary" },
-                    {
-                      label: "Technical Approach",
-                      value: "Technical Approach",
-                    },
-                    { label: "Design", value: "Design" },
-                    { label: "Capabilities", value: "Capabilities" },
-                    { label: "Focus Documents", value: "Focus Documents" },
-                    { label: "Narrative", value: "Narrative" },
-                    { label: "Cover Page", value: "Cover Page" },
-                  ]}
-                >
-                  <SelectTrigger id="type" className="w-full">
-                    <SelectValue placeholder="Select a type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="Table of Contents">
-                        Table of Contents
-                      </SelectItem>
-                      <SelectItem value="Executive Summary">
-                        Executive Summary
-                      </SelectItem>
-                      <SelectItem value="Technical Approach">
-                        Technical Approach
-                      </SelectItem>
-                      <SelectItem value="Design">Design</SelectItem>
-                      <SelectItem value="Capabilities">Capabilities</SelectItem>
-                      <SelectItem value="Focus Documents">
-                        Focus Documents
-                      </SelectItem>
-                      <SelectItem value="Narrative">Narrative</SelectItem>
-                      <SelectItem value="Cover Page">Cover Page</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  defaultValue={item.status}
-                  items={[
-                    { label: "Done", value: "Done" },
-                    { label: "In Progress", value: "In Progress" },
-                    { label: "Not Started", value: "Not Started" },
-                  ]}
-                >
-                  <SelectTrigger id="status" className="w-full">
-                    <SelectValue placeholder="Select a status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="Done">Done</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Not Started">Not Started</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="target">Target</Label>
-                <Input id="target" defaultValue={item.target} />
-              </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="limit">Limit</Label>
-                <Input id="limit" defaultValue={item.limit} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="reviewer">Reviewer</Label>
-              <Select
-                defaultValue={item.reviewer}
-                items={[
-                  { label: "Eddie Lake", value: "Eddie Lake" },
-                  { label: "Jamik Tashpulatov", value: "Jamik Tashpulatov" },
-                  { label: "Emily Whalen", value: "Emily Whalen" },
-                ]}
-              >
-                <SelectTrigger id="reviewer" className="w-full">
-                  <SelectValue placeholder="Select a reviewer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-                    <SelectItem value="Jamik Tashpulatov">
-                      Jamik Tashpulatov
-                    </SelectItem>
-                    <SelectItem value="Emily Whalen">Emily Whalen</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </form>
-        </div>
-        <DrawerFooter>
-          <Button>Submit</Button>
-          <DrawerClose render={<Button variant="outline" />}>Done</DrawerClose>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
-  )
-}
+
+// ------------------------------------------------------------------
+// EJEMPLO DE USO
+// ------------------------------------------------------------------
+//
+// const data = [
+//   {
+//     id: 1,
+//     Nombre: "Juan amor",
+//     usuario: "@amor_j",
+//     "metodo de pago": "Paypal",
+//     "saldo positivo": "130$",
+//     "saldo negativo": "0",
+//   },
+// ]
+//
+// <DataTable
+//   data={data}
+//   titleKey="Nombre"
+//   // checkbox opcional: si se omite o es false, no se renderiza esa columna
+//   enableRowSelection={true}
+//   columns={[
+//     { key: "Nombre", header: "Nombre" },
+//     { key: "usuario", header: "Usuario" },
+//     {
+//       key: "metodo de pago",
+//       header: "Método de pago",
+//       type: "select", // <- columna tipo selector
+//       options: [
+//         { label: "Paypal", value: "Paypal" },
+//         { label: "Tarjeta de crédito", value: "Tarjeta de crédito" },
+//         { label: "Transferencia", value: "Transferencia" },
+//         { label: "Efectivo", value: "Efectivo" },
+//       ],
+//     },
+//     { key: "saldo positivo", header: "Saldo positivo", align: "right", editable: true, color: "green", textSize: "lg" },
+//     { key: "saldo negativo", header: "Saldo negativo", align: "right", editable: true, color: "red", textSize: "lg" },
+//   ]}
+//   // el callback recibe (rowId, key, nuevoValor) cada vez que se edita
+//   // un input o se cambia un select
+//   onCellChange={(rowId, key, value) => {
+//     console.log("cambio en fila", rowId, key, value)
+//   }}
+//   // menú de 3 puntos: opcional. Si no se pasa "rowActions" (o va vacío),
+//   // la columna de acciones no se renderiza en absoluto.
+//   rowActions={[
+//     { key: "edit", label: "Editar", onSelect: (row) => console.log("editar", row) },
+//     { key: "duplicate", label: "Duplicar", onSelect: (row) => console.log("duplicar", row) },
+//     {
+//       key: "delete",
+//       label: "Eliminar",
+//       variant: "destructive",
+//       separatorBefore: true,
+//       onSelect: (row) => console.log("eliminar", row),
+//     },
+//   ]}
+// />
+//
+// O, si no pasas "columns", el componente las infiere automáticamente
+// a partir de las claves del primer objeto (usando la clave como header).

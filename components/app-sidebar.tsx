@@ -35,6 +35,8 @@ import {
   PlayingCardsFan,
   RotateCcwClock,
   Hash,
+  KeyRoundIcon,
+  Target,
 } from "lucide-react"
 
 const data = {
@@ -44,11 +46,17 @@ const data = {
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
+     {
+      title: "Rondas",
+      url: "/rounds",
+      icon: <Target />,
+    },
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: <LayoutDashboardIcon />,
     },
+
     {
       title: "Jornadas",
       url: "#",
@@ -56,7 +64,7 @@ const data = {
     },
     {
       title: "Jugadores",
-      url: "#",
+      url: "/players",
       icon: <Users />,
     },
     {
@@ -66,12 +74,12 @@ const data = {
     },
     {
       title: "Numeros",
-      url: "#",
+      url: "/numbers",
       icon: <Hash />,
     },
     {
       title: "Historial",
-      url: "#",
+      url: "reports",
       icon: <RotateCcwClock />,
     },
   ],
@@ -149,6 +157,7 @@ const data = {
   ],
 }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  console.log(props)
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
