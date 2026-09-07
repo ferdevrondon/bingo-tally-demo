@@ -143,7 +143,7 @@ export function CartonesAssignmentPage() {
         <Button
           size="lg"
           className="gap-2"
-          onClick={() => router.push("/cartones/resumen")}
+          onClick={() => router.push("/nueva-jornada/resumen")}
         >
           Empezar ronda
           <ArrowRightIcon className="size-4" />

@@ -183,7 +183,7 @@ export default function MainPageSplit() {
         <Button
           size="lg"
           className="w-fit gap-2 rounded-4xl bg-gradient-to-r from-primary to-chart-5 px-8 text-base text-primary-foreground hover:opacity-90"
-          onClick={() => router.push("/cartones")}
+          onClick={() => router.push("/nueva-jornada")}
         >
           <PlayIcon className="size-5" />
           Iniciar jornada

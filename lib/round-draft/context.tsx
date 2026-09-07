@@ -28,6 +28,7 @@ function createInitialState(): RoundDraftState {
 
 type Action =
   | { type: "HYDRATE"; payload: RoundDraftState }
+  | { type: "RESET" }
   | { type: "ADD_CARTON" }
   | { type: "ADD_PLAYER"; payload: Omit<DraftPlayer, "id"> }
   | { type: "SET_ACTIVE_PLAYER"; payload: number | null }
@@ -38,6 +39,8 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
   switch (action.type) {
     case "HYDRATE":
       return action.payload
+    case "RESET":
+      return createInitialState()
     case "ADD_CARTON": {
       const nextIndex = state.cartones.length + 1
       return { ...state, cartones: [...state.cartones, createEmptyCarton(nextIndex)] }
@@ -100,6 +103,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
 
 interface RoundDraftContextValue {
   state: RoundDraftState
+  resetDraft: () => void
   addCarton: () => void
   addPlayer: (player: Omit<DraftPlayer, "id">) => void
   setActivePlayer: (playerId: number | null) => void
@@ -135,6 +139,7 @@ export function RoundDraftProvider({
   const value = React.useMemo<RoundDraftContextValue>(
     () => ({
       state,
+      resetDraft: () => dispatch({ type: "RESET" }),
       addCarton: () => dispatch({ type: "ADD_CARTON" }),
       addPlayer: (player) => dispatch({ type: "ADD_PLAYER", payload: player }),
       setActivePlayer: (playerId) => dispatch({ type: "SET_ACTIVE_PLAYER", payload: playerId }),

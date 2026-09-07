@@ -46,7 +46,7 @@ export function RoundSummaryPage() {
     <div className="@container/main flex flex-1 flex-col gap-6 p-4 lg:p-6">
       <div>
         <Link
-          href="/cartones"
+          href="/nueva-jornada"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="size-3.5" />

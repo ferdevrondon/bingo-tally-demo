@@ -69,7 +69,7 @@ const data = {
     },
     {
       title: "Cartones",
-      url: "/cartones",
+      url: "#",
       icon: <PlayingCardsFan />,
     },
     {
