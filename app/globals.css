@@ -179,3 +179,20 @@
     letter-spacing: var(--tracking-normal);
   }
 }
+
+.animated-gradient {
+  position: relative;
+  background: linear-gradient(45deg, #f0e0e4 0%, #a38ad0 50%, #fcfcfc 100%);
+  background-size: 200% 200%;
+  animation: gradient-wave 8s ease alternate infinite;
+  overflow: hidden;
+}
+
+
+
+@keyframes gradient-wave {
+  0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 100% 100%; }
+  75% { background-position: 0% 100%; }
+}

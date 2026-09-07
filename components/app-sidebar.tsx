@@ -59,7 +59,7 @@ const data = {
 
     {
       title: "Jornadas",
-      url: "#",
+      url: "/sessions",
       icon: <ListIcon />,
     },
     {
@@ -69,7 +69,7 @@ const data = {
     },
     {
       title: "Cartones",
-      url: "#",
+      url: "/cartones",
       icon: <PlayingCardsFan />,
     },
     {

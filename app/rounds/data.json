@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "Nombre": "Regular",
+    "Numeros ganadores": 2,
+    "Premios": "100$, 50$"
+  },
+  {
+    "id": 2,
+    "Nombre": "Especial",
+    "Numeros ganadores": 1,
+    "Premios": "100$"
+  }
+]
