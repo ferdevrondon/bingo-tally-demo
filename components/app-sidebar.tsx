@@ -37,6 +37,7 @@ import {
   Hash,
   KeyRoundIcon,
   Target,
+  ActivityIcon,
 } from "lucide-react"
 
 const data = {
@@ -47,6 +48,11 @@ const data = {
   },
   navMain: [
      {
+      title: "Ronda activa",
+      url: "/ronda-activa",
+      icon: <ActivityIcon />,
+    },
+    {
       title: "Rondas",
       url: "/rounds",
       icon: <Target />,

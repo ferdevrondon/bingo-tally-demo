@@ -1,0 +1,14 @@
+{
+  "projectId": "5885611f-9435-4e8d-b7c7-664627fd066b",
+  "pkg": "next-appyy",
+  "globalName": "AdminBingoUI",
+  "shape": "package",
+  "srcDir": "components/ui",
+  "cssEntry": ".ds-sync/compiled-tailwind.css",
+  "tsconfig": "tsconfig.json",
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "Select": { "cardMode": "single", "viewport": "360x420" },
+    "Dialog": { "cardMode": "single", "viewport": "420x360" }
+  }
+}

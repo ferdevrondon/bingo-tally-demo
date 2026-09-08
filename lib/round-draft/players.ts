@@ -13,6 +13,7 @@ export function normalizePlayers(rows: typeof playersData): DraftPlayer[] {
     name: row.Nombre,
     positiveBalance: parseMoney(row["saldo positivo"]),
     negativeBalance: parseMoney(row["saldo negativo"]),
+    checkedIn: false,
   }))
 }
 

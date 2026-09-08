@@ -7,7 +7,8 @@ import { ArrowRightIcon, PlusIcon } from "lucide-react"
 import { CartonCard } from "@/components/carton-card"
 import { PlayerForm, type NewPlayer } from "@/components/player-form"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -24,7 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { getActivePlayers } from "@/lib/round-draft/selectors"
+import { getBaseRounds } from "@/lib/rounds"
 
 function parseMoney(value: string): number {
   const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""))
@@ -33,22 +43,27 @@ function parseMoney(value: string): number {
 
 export function CartonesAssignmentPage() {
   const router = useRouter()
-  const { state, addCarton, addPlayer, setActivePlayer, assignNumber, toggleGift } =
-    useRoundDraft()
+  const {
+    state,
+    addCarton,
+    addPlayer,
+    setActivePlayer,
+    assignNumber,
+    toggleGift,
+    toggleCheckIn,
+    setRound,
+  } = useRoundDraft()
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
+  const rounds = React.useMemo(() => getBaseRounds(), [])
 
-  const activePlayersCount = new Set(
-    state.cartones
-      .flatMap((c) => c.numbers)
-      .filter((n) => n.playerId !== null)
-      .map((n) => n.playerId)
-  ).size
+  const activePlayers = getActivePlayers(state)
 
   function handleAddPlayer(player: NewPlayer) {
     addPlayer({
       name: player.name,
       positiveBalance: parseMoney(player.positiveBalance),
       negativeBalance: parseMoney(player.negativeBalance),
+      checkedIn: false,
     })
     setIsAddPlayerOpen(false)
   }
@@ -69,6 +84,28 @@ export function CartonesAssignmentPage() {
               {state.players.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={state.round ? String(state.round.id) : ""}
+          onValueChange={(value) => {
+            const round = rounds.find((r) => r.id === Number(value))
+            if (round) setRound(round)
+          }}
+          items={rounds.map((r) => ({ label: r.name, value: String(r.id) }))}
+        >
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Selecciona una ronda" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {rounds.map((r) => (
+                <SelectItem key={r.id} value={String(r.id)}>
+                  {r.name}
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -112,10 +149,63 @@ export function CartonesAssignmentPage() {
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Jugadores activos
             </span>
-            <span className="text-2xl font-bold">{activePlayersCount}</span>
+            <span className="text-2xl font-bold">{activePlayers.length}</span>
           </CardContent>
         </Card>
       </div>
+
+      {activePlayers.length > 0 && (
+        <TooltipProvider>
+          <Card>
+            <CardHeader>
+              <CardTitle>Jugadores</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {activePlayers.map((player) => {
+                const isBlocked = !player.checkedIn && player.negativeBalance > 0
+                const checkbox = (
+                  <Checkbox
+                    id={`checkin-${player.id}`}
+                    checked={player.checkedIn}
+                    disabled={isBlocked}
+                    onCheckedChange={() => toggleCheckIn(player.id)}
+                  />
+                )
+                return (
+                  <div
+                    key={player.id}
+                    className="flex flex-wrap items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{player.name}</span>
+                      {player.negativeBalance > 0 && (
+                        <span className="text-xs font-medium text-destructive">
+                          Debe ${player.negativeBalance}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isBlocked ? (
+                        <Tooltip>
+                          <TooltipTrigger render={<span className="inline-flex" />}>
+                            {checkbox}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Debe saldar su saldo negativo antes de hacer check-in.
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        checkbox
+                      )}
+                      <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
+                    </div>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        </TooltipProvider>
+      )}
 
       <div className="flex flex-wrap gap-4">
         {state.cartones.map((carton) => (
@@ -143,7 +233,7 @@ export function CartonesAssignmentPage() {
         <Button
           size="lg"
           className="gap-2"
-          onClick={() => router.push("/nueva-jornada/resumen")}
+          onClick={() => router.push("/ronda-activa")}
         >
           Empezar ronda
           <ArrowRightIcon className="size-4" />

@@ -31,6 +31,7 @@ import {
 export interface Round {
   id: number
   name: string
+  linePrice:number
   winnerCount: number
   prizes: string[]
 }
@@ -60,6 +61,7 @@ function prizeLabel(index: number) {
 const emptyRound: NewRound = {
   name: "",
   winnerCount: 1,
+  linePrice:10,
   prizes: [""],
 }
 
@@ -113,6 +115,16 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
               value={round.name}
               onChange={(e) => setRound((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Ronda 1"
+              required
+            />
+          </Field>
+            <Field>
+            <FieldLabel htmlFor="line-price">Precio de linea</FieldLabel>
+            <Input
+              id="line-price"
+              value={round.linePrice}
+              onChange={(e) => setRound((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="10$"
               required
             />
           </Field>

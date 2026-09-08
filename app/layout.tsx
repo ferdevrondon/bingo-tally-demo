@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
+import { RoundDraftProvider } from "@/lib/round-draft/context";
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
 const fontMono = Geist_Mono({
@@ -27,7 +28,9 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
-        <ThemeProvider> <SidebarProvider
+        <ThemeProvider>
+    <RoundDraftProvider>
+     <SidebarProvider
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -41,6 +44,7 @@ export default function RootLayout({
        {children}
       </SidebarInset>
     </SidebarProvider>
+    </RoundDraftProvider>
     <Toaster />
   </ThemeProvider>
       </body>

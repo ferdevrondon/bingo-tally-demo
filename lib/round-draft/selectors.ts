@@ -1,0 +1,44 @@
+import { getBasePlayers } from "./players"
+import type { ActivityEntry, DraftPlayer, RoundDraftState } from "./types"
+
+export function hasDraftProgress(state: RoundDraftState): boolean {
+  return (
+    state.cartones.some((c) => c.numbers.some((n) => n.playerId !== null)) ||
+    state.players.length > getBasePlayers().length
+  )
+}
+
+export function getActivePlayers(state: RoundDraftState): DraftPlayer[] {
+  const activeIds = new Set(
+    state.cartones
+      .flatMap((c) => c.numbers)
+      .filter((n) => n.playerId !== null)
+      .map((n) => n.playerId as number)
+  )
+  return state.players.filter((p) => activeIds.has(p.id))
+}
+
+export function getRecentActivity(state: RoundDraftState, limit = 20): ActivityEntry[] {
+  return state.activity.slice(0, limit)
+}
+
+export interface NumberWinner {
+  playerId: number
+  playerName: string
+  cartonIds: string[]
+}
+
+export function getWinnersForNumber(state: RoundDraftState, number: number): NumberWinner[] {
+  const cartonIdsByPlayer = new Map<number, string[]>()
+  state.cartones.forEach((carton) => {
+    const entry = carton.numbers.find((n) => n.number === number)
+    if (entry?.playerId == null) return
+    const cartonIds = cartonIdsByPlayer.get(entry.playerId) ?? []
+    cartonIds.push(carton.id)
+    cartonIdsByPlayer.set(entry.playerId, cartonIds)
+  })
+  return [...cartonIdsByPlayer.entries()].map(([playerId, cartonIds]) => {
+    const player = state.players.find((p) => p.id === playerId)
+    return { playerId, playerName: player?.name ?? "Jugador desconocido", cartonIds }
+  })
+}

@@ -72,9 +72,9 @@ export function CartonCard({
                           !isOwnedByActive && "cursor-default"
                         )
                       : cn(
-                          "bg-muted/40 text-foreground border-border",
+                          "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
                           canAssign
-                            ? "cursor-pointer hover:bg-muted"
+                            ? "cursor-pointer hover:bg-amber-500/20"
                             : "cursor-not-allowed opacity-60"
                         )
                   )}
