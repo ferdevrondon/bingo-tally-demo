@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalculatorIcon, ChevronRightIcon } from "lucide-react"
+import { CalculatorIcon, CheckIcon, ChevronRightIcon } from "lucide-react"
 
 import { BingoBall } from "@/components/bingo-ball"
 import {
@@ -17,8 +17,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Toggle } from "@/components/ui/toggle"
 import { PlayerEditNumbersDialog } from "@/components/player-edit-numbers-dialog"
 import { PlayerRechargeDialog } from "@/components/player-recharge-dialog"
+import { PlayerReleaseNumbersDialog } from "@/components/player-release-numbers-dialog"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { NUMBER_PRICE } from "@/lib/round-draft/types"
@@ -32,11 +34,12 @@ export function PlayerActiveCard({
   player: DraftPlayer
   className?: string
 }) {
-  const { state, removePlayer } = useRoundDraft()
+  const { state, removePlayer, toggleCheckIn, resolveCarryOver } = useRoundDraft()
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [isRechargeOpen, setIsRechargeOpen] = React.useState(false)
   const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = React.useState(false)
+  const [isReleaseOpen, setIsReleaseOpen] = React.useState(false)
 
   const netBalance = player.positiveBalance - player.negativeBalance
 
@@ -67,6 +70,25 @@ export function PlayerActiveCard({
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Check-in
+            {player.negativeBalance > 0 && !player.checkedIn && (
+              <span className="ml-2 text-xs font-medium text-destructive">
+                Debe ${player.negativeBalance}
+              </span>
+            )}
+          </span>
+          <Toggle
+            pressed={player.checkedIn}
+            onPressedChange={() => toggleCheckIn(player.id)}
+            size="sm"
+            aria-label="Check-in"
+          >
+            <CheckIcon />
+          </Toggle>
+        </div>
+
         {numbers.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin números asignados.</p>
         ) : (
@@ -109,6 +131,21 @@ export function PlayerActiveCard({
           <ChevronRightIcon className="size-4" />
         </button>
 
+        {player.pendingCarryOverDecision && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => resolveCarryOver(player.id, [])}
+            >
+              Mantener jugada
+            </Button>
+            <Button variant="outline" className="flex-1" onClick={() => setIsReleaseOpen(true)}>
+              Liberar
+            </Button>
+          </div>
+        )}
+
         <Button variant="destructive" onClick={() => setIsRemoveConfirmOpen(true)}>
           Retirar jugador
         </Button>
@@ -121,6 +158,11 @@ export function PlayerActiveCard({
         onOpenChange={setIsRechargeOpen}
       />
       <PlayerRoundsDialog player={player} open={isRoundsOpen} onOpenChange={setIsRoundsOpen} />
+      <PlayerReleaseNumbersDialog
+        player={player}
+        open={isReleaseOpen}
+        onOpenChange={setIsReleaseOpen}
+      />
 
       <AlertDialog open={isRemoveConfirmOpen} onOpenChange={setIsRemoveConfirmOpen}>
         <AlertDialogContent>

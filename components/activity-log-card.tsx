@@ -23,6 +23,9 @@ const ACTIVITY_LABELS: Record<ActivityEntryType, string> = {
   round_started: "Ronda",
   jornada_closed: "Jornada",
   prize_won: "Premio",
+  round_closed: "Cierre de ronda",
+  jugada_kept: "Jugada mantenida",
+  numbers_released: "Liberación",
 }
 
 function initials(name: string) {

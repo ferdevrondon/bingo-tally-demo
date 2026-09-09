@@ -4,6 +4,7 @@ export interface DraftPlayer {
   positiveBalance: number
   negativeBalance: number
   checkedIn: boolean
+  pendingCarryOverDecision: boolean
 }
 
 export interface NumberAssignment {
@@ -29,6 +30,9 @@ export type ActivityEntryType =
   | "round_started"
   | "jornada_closed"
   | "prize_won"
+  | "round_closed"
+  | "jugada_kept"
+  | "numbers_released"
 
 export interface ActivityEntry {
   id: string

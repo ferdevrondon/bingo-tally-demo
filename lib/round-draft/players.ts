@@ -14,6 +14,7 @@ export function normalizePlayers(rows: typeof playersData): DraftPlayer[] {
     positiveBalance: parseMoney(row["saldo positivo"]),
     negativeBalance: parseMoney(row["saldo negativo"]),
     checkedIn: false,
+    pendingCarryOverDecision: false,
   }))
 }
 

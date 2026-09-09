@@ -26,12 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 import { getBaseRounds } from "@/lib/rounds"
@@ -64,6 +58,7 @@ export function CartonesAssignmentPage() {
       positiveBalance: parseMoney(player.positiveBalance),
       negativeBalance: parseMoney(player.negativeBalance),
       checkedIn: false,
+      pendingCarryOverDecision: false,
     })
     setIsAddPlayerOpen(false)
   }
@@ -155,56 +150,33 @@ export function CartonesAssignmentPage() {
       </div>
 
       {activePlayers.length > 0 && (
-        <TooltipProvider>
-          <Card>
-            <CardHeader>
-              <CardTitle>Jugadores</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {activePlayers.map((player) => {
-                const isBlocked = !player.checkedIn && player.negativeBalance > 0
-                const checkbox = (
+        <Card>
+          <CardHeader>
+            <CardTitle>Jugadores</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {activePlayers.map((player) => (
+              <div key={player.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{player.name}</span>
+                  {player.negativeBalance > 0 && (
+                    <span className="text-xs font-medium text-destructive">
+                      Debe ${player.negativeBalance}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id={`checkin-${player.id}`}
                     checked={player.checkedIn}
-                    disabled={isBlocked}
                     onCheckedChange={() => toggleCheckIn(player.id)}
                   />
-                )
-                return (
-                  <div
-                    key={player.id}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{player.name}</span>
-                      {player.negativeBalance > 0 && (
-                        <span className="text-xs font-medium text-destructive">
-                          Debe ${player.negativeBalance}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isBlocked ? (
-                        <Tooltip>
-                          <TooltipTrigger render={<span className="inline-flex" />}>
-                            {checkbox}
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Debe saldar su saldo negativo antes de hacer check-in.
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        checkbox
-                      )}
-                      <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
-                    </div>
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
-        </TooltipProvider>
+                  <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <div className="flex flex-wrap gap-4">

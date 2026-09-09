@@ -3,10 +3,11 @@
 import * as React from "react"
 
 import { getBasePlayers } from "./players"
-import { getWinnersForNumber } from "./selectors"
+import { getActivePlayers, getWinnersForNumber } from "./selectors"
 import { localRoundDraftRepository, type RoundDraftRepository } from "./storage"
 import {
   MAX_ACTIVITY_ENTRIES,
+  NUMBER_PRICE,
   type ActivityEntry,
   type Carton,
   type DraftPlayer,
@@ -157,16 +158,22 @@ type Action =
   | { type: "LOG_ACTIVITY"; payload: Omit<ActivityEntry, "id" | "timestamp"> }
   | { type: "SET_ROUND"; payload: DraftRoundConfig }
   | { type: "AWARD_PRIZE"; payload: { slotIndex: number; number: number } }
+  | { type: "CLOSE_ROUND"; payload: { nextRound: DraftRoundConfig } }
+  | {
+      type: "RESOLVE_CARRYOVER"
+      payload: { playerId: number; releaseNumbers: { cartonId: string; number: number }[] }
+    }
 
 function reducer(state: RoundDraftState, action: Action): RoundDraftState {
   switch (action.type) {
     case "HYDRATE":
-      // Older saved drafts predate `checkedIn`/`activity`/`round`/`winningNumbers` and won't have them set.
+      // Older saved drafts predate `checkedIn`/`pendingCarryOverDecision`/`activity`/`round`/`winningNumbers` and won't have them set.
       return {
         ...action.payload,
         players: action.payload.players.map((p) => ({
           ...p,
           checkedIn: p.checkedIn ?? false,
+          pendingCarryOverDecision: p.pendingCarryOverDecision ?? false,
         })),
         activity: action.payload.activity ?? [],
         round: action.payload.round ?? null,
@@ -263,15 +270,21 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       const { playerId } = action.payload
       const player = state.players.find((p) => p.id === playerId)
       let checkedInNow = false
+      let clearedDebt = 0
       const nextState: RoundDraftState = {
         ...state,
         players: state.players.map((p) => {
           if (p.id !== playerId) return p
-          // Can't check in while still owing money; always allowed to un-check.
-          if (!p.checkedIn && p.negativeBalance > 0) return p
           const nextCheckedIn = !p.checkedIn
-          if (nextCheckedIn) checkedInNow = true
-          return { ...p, checkedIn: nextCheckedIn }
+          if (nextCheckedIn) {
+            checkedInNow = true
+            clearedDebt = p.negativeBalance
+          }
+          return {
+            ...p,
+            checkedIn: nextCheckedIn,
+            negativeBalance: nextCheckedIn ? 0 : p.negativeBalance,
+          }
         }),
       }
       if (checkedInNow && player) {
@@ -279,7 +292,10 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
           type: "check_in",
           playerId: player.id,
           playerName: player.name,
-          description: `${player.name} hizo check-in`,
+          description:
+            clearedDebt > 0
+              ? `${player.name} hizo check-in (saldó $${clearedDebt})`
+              : `${player.name} hizo check-in`,
         })
       }
       return nextState
@@ -407,6 +423,85 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       }
       return nextState
     }
+    case "CLOSE_ROUND": {
+      const { nextRound } = action.payload
+      const activeIds = new Set(getActivePlayers(state).map((p) => p.id))
+      let nextState: RoundDraftState = {
+        ...state,
+        round: nextRound,
+        winningNumbers: Array.from({ length: nextRound.winnerCount }, () => null),
+        players: state.players.map((p) =>
+          activeIds.has(p.id) ? { ...p, checkedIn: false, pendingCarryOverDecision: true } : p
+        ),
+      }
+      nextState = appendActivity(nextState, {
+        type: "round_closed",
+        playerId: null,
+        playerName: null,
+        description: `Cierre de ronda: ${state.round?.name ?? "ronda actual"}`,
+      })
+      return appendActivity(nextState, {
+        type: "round_started",
+        playerId: null,
+        playerName: null,
+        description: `Comenzó ronda: ${nextRound.name}`,
+      })
+    }
+    case "RESOLVE_CARRYOVER": {
+      const { playerId, releaseNumbers } = action.payload
+      const player = state.players.find((p) => p.id === playerId)
+      if (!player) return state
+
+      let nextState: RoundDraftState = {
+        ...state,
+        cartones: state.cartones.map((carton) => ({
+          ...carton,
+          numbers: carton.numbers.map((entry) => {
+            const release = releaseNumbers.some(
+              (r) =>
+                r.cartonId === carton.id && r.number === entry.number && entry.playerId === playerId
+            )
+            return release ? { ...entry, playerId: null, isGift: false } : entry
+          }),
+        })),
+      }
+
+      const remainingCount = nextState.cartones
+        .flatMap((c) => c.numbers)
+        .filter((n) => n.playerId === playerId).length
+      const charge = remainingCount * NUMBER_PRICE
+
+      nextState = {
+        ...nextState,
+        players: nextState.players.map((p) =>
+          p.id === playerId
+            ? {
+                ...p,
+                pendingCarryOverDecision: false,
+                negativeBalance: p.negativeBalance + charge,
+              }
+            : p
+        ),
+      }
+
+      if (releaseNumbers.length > 0) {
+        nextState = appendActivity(nextState, {
+          type: "numbers_released",
+          playerId: player.id,
+          playerName: player.name,
+          description: `${player.name} liberó número${releaseNumbers.length > 1 ? "s" : ""} ${releaseNumbers.map((r) => r.number).join(", ")}`,
+        })
+      }
+      if (charge > 0) {
+        nextState = appendActivity(nextState, {
+          type: "jugada_kept",
+          playerId: player.id,
+          playerName: player.name,
+          description: `${player.name} mantiene su jugada, debe $${charge}`,
+        })
+      }
+      return nextState
+    }
     default:
       return state
   }
@@ -427,6 +522,11 @@ interface RoundDraftContextValue {
   logActivity: (entry: Omit<ActivityEntry, "id" | "timestamp">) => void
   setRound: (round: DraftRoundConfig) => void
   awardPrize: (slotIndex: number, number: number) => void
+  closeRound: (nextRound: DraftRoundConfig) => void
+  resolveCarryOver: (
+    playerId: number,
+    releaseNumbers: { cartonId: string; number: number }[]
+  ) => void
 }
 
 const RoundDraftContext = React.createContext<RoundDraftContextValue | null>(null)
@@ -475,6 +575,9 @@ export function RoundDraftProvider({
       setRound: (round) => dispatch({ type: "SET_ROUND", payload: round }),
       awardPrize: (slotIndex, number) =>
         dispatch({ type: "AWARD_PRIZE", payload: { slotIndex, number } }),
+      closeRound: (nextRound) => dispatch({ type: "CLOSE_ROUND", payload: { nextRound } }),
+      resolveCarryOver: (playerId, releaseNumbers) =>
+        dispatch({ type: "RESOLVE_CARRYOVER", payload: { playerId, releaseNumbers } }),
     }),
     [state]
   )

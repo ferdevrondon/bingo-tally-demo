@@ -28,6 +28,20 @@ export interface NumberWinner {
   cartonIds: string[]
 }
 
+export interface OwnedNumber {
+  cartonId: string
+  cartonIndex: number
+  number: number
+}
+
+export function getPlayerNumbers(state: RoundDraftState, playerId: number): OwnedNumber[] {
+  return state.cartones.flatMap((carton) =>
+    carton.numbers
+      .filter((n) => n.playerId === playerId)
+      .map((n) => ({ cartonId: carton.id, cartonIndex: carton.index, number: n.number }))
+  )
+}
+
 export function getWinnersForNumber(state: RoundDraftState, number: number): NumberWinner[] {
   const cartonIdsByPlayer = new Map<number, string[]>()
   state.cartones.forEach((carton) => {
