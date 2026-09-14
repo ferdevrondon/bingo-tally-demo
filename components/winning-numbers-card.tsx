@@ -52,21 +52,15 @@ export function WinningNumbersCard() {
     state.winningNumbers.length > 0 && state.winningNumbers.every((n) => n !== null)
 
   return (
-    <Card className="w-fit self-start">
-      <CardHeader className="block" style={{ containerType: "normal" }}>
-        <CardTitle className="whitespace-nowrap">Números ganadores — {state.round.name}</CardTitle>
-      </CardHeader>
+    <Card className="w-fit  p-4 flex-row self-start bg-gradient-to-br from-primary/25 via-primary/5 to-background dark:from-primary/30 dark:via-background dark:to-background">
+      {/* <CardHeader className="flex justify-center items-center" style={{ containerType: "normal" }}>
+        <CardTitle className="whitespace-nowrap text-center"> Ronda {state.round.name}</CardTitle>
+      </CardHeader> */}
       <CardContent className="flex flex-col gap-4">
-        {blocked && (
-          <p className="text-sm text-muted-foreground">
-            {pendingCarryOver.length > 0
-              ? "Algunos jugadores deben confirmar si mantienen o liberan su jugada de la ronda anterior."
-              : "No puedes registrar números ganadores hasta que todos confirmen su check-in."}
-          </p>
-        )}
+       
         <div
           className={cn(
-            "flex flex-wrap gap-x-6 gap-y-4 pt-2",
+            "flex flex-wrap gap-x-6 gap-y-4 pt-2 justify-center-safe",
             blocked && "pointer-events-none opacity-50"
           )}
         >
@@ -80,7 +74,9 @@ export function WinningNumbersCard() {
               onSubmit={(number) => awardPrize(i, number)}
             />
           ))}
+         
         </div>
+
         {allSlotsFilled && (
           <Button onClick={() => setIsCloseOpen(true)}>
             Cerrar ronda y comenzar la siguiente

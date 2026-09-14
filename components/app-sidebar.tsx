@@ -85,7 +85,7 @@ const data = {
     },
     {
       title: "Historial",
-      url: "reports",
+      url: "/reports",
       icon: <RotateCcwClock />,
     },
   ],

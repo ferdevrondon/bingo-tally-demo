@@ -147,7 +147,7 @@ export function PlayerEditNumbersDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 px-6">
+          <div className="flex flex-col gap-3 p-6">
             {draft.length > 1 && (
               <div className="flex items-center justify-between">
                 <Button
@@ -205,7 +205,7 @@ export function PlayerEditNumbersDialog({
             </div>
           </div>
 
-          <DialogFooter className="flex-row justify-end gap-2">
+          <DialogFooter className="flex-row justify-end gap-2 p-5 bg-gray-300">
             <Button variant="outline" onClick={handleCancel}>
               Cancelar
             </Button>

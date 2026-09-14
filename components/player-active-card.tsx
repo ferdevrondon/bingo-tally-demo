@@ -34,7 +34,8 @@ export function PlayerActiveCard({
   player: DraftPlayer
   className?: string
 }) {
-  const { state, removePlayer, toggleCheckIn, resolveCarryOver } = useRoundDraft()
+  const { state, removePlayer, toggleCheckIn, resolveCarryOver } =
+    useRoundDraft()
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [isRechargeOpen, setIsRechargeOpen] = React.useState(false)
   const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
@@ -47,7 +48,10 @@ export function PlayerActiveCard({
   state.cartones.forEach((carton) => {
     carton.numbers.forEach((entry) => {
       if (entry.playerId === player.id) {
-        countsByNumber.set(entry.number, (countsByNumber.get(entry.number) ?? 0) + 1)
+        countsByNumber.set(
+          entry.number,
+          (countsByNumber.get(entry.number) ?? 0) + 1
+        )
       }
     })
   })
@@ -59,7 +63,9 @@ export function PlayerActiveCard({
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
-        <span className="font-heading text-base font-medium">{player.name}</span>
+        <span className="font-heading text-base font-medium">
+          {player.name}
+        </span>
         <span
           className={cn(
             "text-lg font-bold",
@@ -70,11 +76,48 @@ export function PlayerActiveCard({
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Check-in
+        {numbers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Sin números asignados.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
+            {numbers.map(({ number, amount }) => (
+              <BingoBall
+                key={number}
+                number={number}
+                amount={amount}
+                variant="taken"
+              />
+            ))}
+          </div>
+        )}
+
+        <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+          Editar jugada
+        </Button>
+        <div
+          className={cn(
+            "flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors",
+            player.checkedIn
+              ? "border-green-500/40 bg-green-500/10"
+              : cn(
+                  "border-amber-500/40 bg-amber-500/10",
+                  player.negativeBalance > 0 && "animate-pulse"
+                )
+          )}
+        >
+          <span
+            className={cn(
+              "font-medium",
+              player.checkedIn
+                ? "text-green-700 dark:text-green-400"
+                : "text-amber-700 dark:text-amber-400"
+            )}
+          >
+            {player.checkedIn ? "Check-in confirmado" : "Check-in pendiente"}
             {player.negativeBalance > 0 && !player.checkedIn && (
-              <span className="ml-2 text-xs font-medium text-destructive">
+              <span className="ml-2 text-xs font-semibold text-destructive">
                 Debe ${player.negativeBalance}
               </span>
             )}
@@ -84,25 +127,16 @@ export function PlayerActiveCard({
             onPressedChange={() => toggleCheckIn(player.id)}
             size="sm"
             aria-label="Check-in"
+            className={cn(
+              "border transition-all duration-300",
+              player.checkedIn
+                ? "animate-in zoom-in-50 border-green-600 bg-green-600 text-white hover:bg-green-600/90 aria-pressed:bg-green-600 aria-pressed:text-white"
+                : "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+            )}
           >
             <CheckIcon />
           </Toggle>
         </div>
-
-        {numbers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin números asignados.</p>
-        ) : (
-          <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
-            {numbers.map(({ number, amount }) => (
-              <BingoBall key={number} number={number} amount={amount} variant="taken" />
-            ))}
-          </div>
-        )}
-
-        <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-          Editar jugada
-        </Button>
-
         <Separator />
 
         <div className="flex items-center justify-between text-sm">
@@ -140,37 +174,57 @@ export function PlayerActiveCard({
             >
               Mantener jugada
             </Button>
-            <Button variant="outline" className="flex-1" onClick={() => setIsReleaseOpen(true)}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setIsReleaseOpen(true)}
+            >
               Liberar
             </Button>
           </div>
         )}
 
-        <Button variant="destructive" onClick={() => setIsRemoveConfirmOpen(true)}>
+        <Button
+          variant="destructive"
+          onClick={() => setIsRemoveConfirmOpen(true)}
+        >
           Retirar jugador
         </Button>
       </CardContent>
 
-      <PlayerEditNumbersDialog player={player} open={isEditOpen} onOpenChange={setIsEditOpen} />
+      <PlayerEditNumbersDialog
+        player={player}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+      />
       <PlayerRechargeDialog
         player={player}
         open={isRechargeOpen}
         onOpenChange={setIsRechargeOpen}
       />
-      <PlayerRoundsDialog player={player} open={isRoundsOpen} onOpenChange={setIsRoundsOpen} />
+      <PlayerRoundsDialog
+        player={player}
+        open={isRoundsOpen}
+        onOpenChange={setIsRoundsOpen}
+      />
       <PlayerReleaseNumbersDialog
         player={player}
         open={isReleaseOpen}
         onOpenChange={setIsReleaseOpen}
       />
 
-      <AlertDialog open={isRemoveConfirmOpen} onOpenChange={setIsRemoveConfirmOpen}>
+      <AlertDialog
+        open={isRemoveConfirmOpen}
+        onOpenChange={setIsRemoveConfirmOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Retirar a {player.name} de la ronda?</AlertDialogTitle>
+            <AlertDialogTitle>
+              ¿Retirar a {player.name} de la ronda?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Sus números quedarán disponibles de nuevo en los cartones y dejará de aparecer en
-              esta ronda.
+              Sus números quedarán disponibles de nuevo en los cartones y dejará
+              de aparecer en esta ronda.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -58,6 +58,10 @@ export interface RoundDraftState {
   activity: ActivityEntry[]
   round: DraftRoundConfig | null
   winningNumbers: (number | null)[]
+  roundsPlayed: number
+  jornadaPlayerIds: number[]
+  houseBalance: number
+  jornadaStartedAt: number
 }
 
 export const NUMBER_PRICE = 10

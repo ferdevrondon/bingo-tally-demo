@@ -6,12 +6,18 @@ import { BingoBall } from "@/components/bingo-ball"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { NUMBER_PRICE } from "@/lib/round-draft/types"
+import { NUMBER_PRICE, type RoundDraftState } from "@/lib/round-draft/types"
+import { cn } from "@/lib/utils"
 
 const ALL_NUMBERS = Array.from({ length: 15 }, (_, i) => i + 1)
 
+function firstOpenCartonId(state: RoundDraftState, number: number): string | undefined {
+  return state.cartones.find((c) => c.numbers.find((n) => n.number === number)?.playerId === null)
+    ?.id
+}
+
 export function OpenNumbersCard() {
-  const { state } = useRoundDraft()
+  const { state, assignNumber } = useRoundDraft()
 
   const openNumbers = ALL_NUMBERS.map((number) => {
     const openCount = state.cartones.filter(
@@ -20,8 +26,10 @@ export function OpenNumbersCard() {
     return { number, openCount, amount: openCount * NUMBER_PRICE }
   }).filter((n) => n.openCount > 0)
 
+  const canAssign = state.activePlayerId !== null
+
   return (
-    <Card>
+    <Card className="gap-3">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Números disponibles</CardTitle>
         {openNumbers.length > 0 && (
@@ -42,7 +50,19 @@ export function OpenNumbersCard() {
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
             {openNumbers.map(({ number, amount }) => (
-              <BingoBall key={number} number={number} amount={amount} variant="pending" />
+              <button
+                key={number}
+                type="button"
+                disabled={!canAssign}
+                title={canAssign ? undefined : "Selecciona un jugador primero"}
+                onClick={() => {
+                  const cartonId = firstOpenCartonId(state, number)
+                  if (cartonId) assignNumber(cartonId, number)
+                }}
+                className={cn(canAssign ? "cursor-pointer" : "cursor-not-allowed opacity-60")}
+              >
+                <BingoBall number={number} amount={amount} variant="pending" />
+              </button>
             ))}
           </div>
         )}

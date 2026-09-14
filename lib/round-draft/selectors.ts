@@ -56,3 +56,28 @@ export function getWinnersForNumber(state: RoundDraftState, number: number): Num
     return { playerId, playerName: player?.name ?? "Jugador desconocido", cartonIds }
   })
 }
+
+export interface JornadaSummary {
+  roundsPlayed: number
+  houseBalance: number
+  playersCount: number
+  negativeBalanceTotal: number
+  durationMs: number
+}
+
+export function getJornadaSummary(state: RoundDraftState): JornadaSummary {
+  return {
+    roundsPlayed: state.roundsPlayed,
+    houseBalance: state.houseBalance,
+    playersCount: state.jornadaPlayerIds.length,
+    negativeBalanceTotal: state.players.reduce((sum, p) => sum + p.negativeBalance, 0),
+    durationMs: Date.now() - state.jornadaStartedAt,
+  }
+}
+
+export function getLastRechargeActivity(
+  state: RoundDraftState,
+  playerId: number
+): ActivityEntry | null {
+  return state.activity.find((a) => a.type === "recharge" && a.playerId === playerId) ?? null
+}

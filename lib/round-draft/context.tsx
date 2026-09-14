@@ -125,7 +125,33 @@ function createInitialState(): RoundDraftState {
     activity: createSeedActivity(),
     round: null,
     winningNumbers: [],
+    roundsPlayed: 0,
+    jornadaPlayerIds: [],
+    houseBalance: 0,
+    jornadaStartedAt: Date.now(),
   }
+}
+
+function chargePlayer(players: DraftPlayer[], playerId: number, amount: number): DraftPlayer[] {
+  return players.map((p) =>
+    p.id === playerId ? { ...p, negativeBalance: p.negativeBalance + amount } : p
+  )
+}
+
+function refundPlayer(players: DraftPlayer[], playerId: number, amount: number): DraftPlayer[] {
+  return players.map((p) => {
+    if (p.id !== playerId) return p
+    const debtCleared = Math.min(p.negativeBalance, amount)
+    return {
+      ...p,
+      negativeBalance: p.negativeBalance - debtCleared,
+      positiveBalance: p.positiveBalance + (amount - debtCleared),
+    }
+  })
+}
+
+function trackJornadaPlayers(state: RoundDraftState): number[] {
+  return [...new Set([...state.jornadaPlayerIds, ...getActivePlayers(state).map((p) => p.id)])]
 }
 
 function appendActivity(
@@ -178,6 +204,10 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         activity: action.payload.activity ?? [],
         round: action.payload.round ?? null,
         winningNumbers: action.payload.winningNumbers ?? [],
+        roundsPlayed: action.payload.roundsPlayed ?? 0,
+        jornadaPlayerIds: action.payload.jornadaPlayerIds ?? [],
+        houseBalance: action.payload.houseBalance ?? 0,
+        jornadaStartedAt: action.payload.jornadaStartedAt ?? Date.now(),
       }
     case "RESET":
       return createInitialState()
@@ -201,7 +231,8 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       if (state.activePlayerId == null) return state
       const player = state.players.find((p) => p.id === state.activePlayerId)
       let claimed = false
-      const nextState: RoundDraftState = {
+      let released = false
+      let nextState: RoundDraftState = {
         ...state,
         cartones: state.cartones.map((carton) => {
           if (carton.id !== cartonId) return carton
@@ -214,6 +245,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
                 return { ...entry, playerId: state.activePlayerId, isGift: false }
               }
               if (entry.playerId === state.activePlayerId) {
+                released = true
                 return { ...entry, playerId: null, isGift: false }
               }
               return entry
@@ -222,12 +254,23 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         }),
       }
       if (claimed && player) {
+        nextState = {
+          ...nextState,
+          players: chargePlayer(nextState.players, player.id, NUMBER_PRICE),
+        }
+        nextState = { ...nextState, jornadaPlayerIds: trackJornadaPlayers(nextState) }
         return appendActivity(nextState, {
           type: "number_purchased",
           playerId: player.id,
           playerName: player.name,
           description: `${player.name} compró número ${number}`,
         })
+      }
+      if (released && player) {
+        return {
+          ...nextState,
+          players: refundPlayer(nextState.players, player.id, NUMBER_PRICE),
+        }
       }
       return nextState
     }
@@ -269,17 +312,14 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
     case "TOGGLE_CHECK_IN": {
       const { playerId } = action.payload
       const player = state.players.find((p) => p.id === playerId)
-      let checkedInNow = false
-      let clearedDebt = 0
+      const checkedInNow = !!player && !player.checkedIn
+      const clearedDebt = checkedInNow ? player!.negativeBalance : 0
       const nextState: RoundDraftState = {
         ...state,
+        houseBalance: state.houseBalance + clearedDebt,
         players: state.players.map((p) => {
           if (p.id !== playerId) return p
           const nextCheckedIn = !p.checkedIn
-          if (nextCheckedIn) {
-            checkedInNow = true
-            clearedDebt = p.negativeBalance
-          }
           return {
             ...p,
             checkedIn: nextCheckedIn,
@@ -302,18 +342,27 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
     }
     case "SET_NUMBER_OWNER": {
       const { cartonId, number, playerId } = action.payload
-      return {
+      const carton = state.cartones.find((c) => c.id === cartonId)
+      const previousOwnerId = carton?.numbers.find((n) => n.number === number)?.playerId ?? null
+
+      let nextState: RoundDraftState = {
         ...state,
-        cartones: state.cartones.map((carton) => {
-          if (carton.id !== cartonId) return carton
+        cartones: state.cartones.map((c) => {
+          if (c.id !== cartonId) return c
           return {
-            ...carton,
-            numbers: carton.numbers.map((entry) =>
+            ...c,
+            numbers: c.numbers.map((entry) =>
               entry.number === number ? { ...entry, playerId, isGift: false } : entry
             ),
           }
         }),
       }
+
+      let players = nextState.players
+      if (previousOwnerId !== null) players = refundPlayer(players, previousOwnerId, NUMBER_PRICE)
+      if (playerId !== null) players = chargePlayer(players, playerId, NUMBER_PRICE)
+      nextState = { ...nextState, players }
+      return { ...nextState, jornadaPlayerIds: trackJornadaPlayers(nextState) }
     }
     case "RECHARGE_BALANCE": {
       const { playerId, amount } = action.payload
@@ -321,6 +370,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       const player = state.players.find((p) => p.id === playerId)
       const nextState: RoundDraftState = {
         ...state,
+        houseBalance: state.houseBalance + amount,
         players: state.players.map((p) => {
           if (p.id !== playerId) return p
           const debtPaid = Math.min(p.negativeBalance, amount)
@@ -396,6 +446,8 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         })
       }
 
+      nextState = { ...nextState, houseBalance: nextState.houseBalance - prizeTotal }
+
       const share = prizeTotal / winners.length
       for (const winner of winners) {
         nextState = {
@@ -430,6 +482,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         ...state,
         round: nextRound,
         winningNumbers: Array.from({ length: nextRound.winnerCount }, () => null),
+        roundsPlayed: state.roundsPlayed + 1,
         players: state.players.map((p) =>
           activeIds.has(p.id) ? { ...p, checkedIn: false, pendingCarryOverDecision: true } : p
         ),
