@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import data from "@/app/players/data.json"
+import data from "@/app/(app)/players/data.json"
 
 export default function PlayerPage() {
   const [players, setPlayers] = React.useState(data)

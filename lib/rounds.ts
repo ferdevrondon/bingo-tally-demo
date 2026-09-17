@@ -1,4 +1,4 @@
-import roundsData from "@/app/rounds/data.json"
+import roundsData from "@/app/(app)/rounds/data.json"
 
 export interface Round {
   id: number

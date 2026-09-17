@@ -45,6 +45,7 @@ export function PlayerActiveCard({
   const netBalance = player.positiveBalance - player.negativeBalance
 
   const countsByNumber = new Map<number, number>()
+  const giftByNumber = new Map<number, boolean>()
   state.cartones.forEach((carton) => {
     carton.numbers.forEach((entry) => {
       if (entry.playerId === player.id) {
@@ -52,11 +53,16 @@ export function PlayerActiveCard({
           entry.number,
           (countsByNumber.get(entry.number) ?? 0) + 1
         )
+        if (entry.isGift) giftByNumber.set(entry.number, true)
       }
     })
   })
   const numbers = [...countsByNumber.entries()]
-    .map(([number, count]) => ({ number, amount: count * NUMBER_PRICE }))
+    .map(([number, count]) => ({
+      number,
+      amount: count * NUMBER_PRICE,
+      isGift: giftByNumber.get(number) ?? false,
+    }))
     .sort((a, b) => a.number - b.number)
   const totalJugada = numbers.reduce((sum, n) => sum + n.amount, 0)
 
@@ -82,12 +88,13 @@ export function PlayerActiveCard({
           </p>
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
-            {numbers.map(({ number, amount }) => (
+            {numbers.map(({ number, amount, isGift }) => (
               <BingoBall
                 key={number}
                 number={number}
                 amount={amount}
                 variant="taken"
+                isGift={isGift}
               />
             ))}
           </div>

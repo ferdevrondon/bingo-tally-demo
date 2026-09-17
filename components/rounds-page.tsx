@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import data from "@/app/rounds/data.json"
+import data from "@/app/(app)/rounds/data.json"
 
 export default function Rounds() {
   const [rounds, setRounds] = React.useState(data)

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { ChevronLeftIcon, ChevronRightIcon, GiftIcon } from "lucide-react"
 
 import {
   AlertDialog,
@@ -44,10 +44,11 @@ export function PlayerEditNumbersDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { state, setNumberOwner, logActivity } = useRoundDraft()
+  const { state, setNumberOwner, toggleGift, logActivity } = useRoundDraft()
   const [draft, setDraft] = React.useState<Carton[]>(() => cloneCartones(state.cartones))
   const [pageIndex, setPageIndex] = React.useState(0)
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
+  const [pendingSteal, setPendingSteal] = React.useState<number | null>(null)
 
   React.useEffect(() => {
     if (open) {
@@ -62,8 +63,16 @@ export function PlayerEditNumbersDialog({
   const playerIndexById = new Map(state.players.map((p, i) => [p.id, i]))
   const playerById = new Map(state.players.map((p) => [p.id, p]))
   const currentCarton = draft[pageIndex]
+  const pendingStealOwnerId =
+    pendingSteal !== null
+      ? (currentCarton?.numbers.find((n) => n.number === pendingSteal)?.playerId ?? null)
+      : null
+  const pendingStealOwnerName =
+    pendingStealOwnerId !== null
+      ? (playerById.get(pendingStealOwnerId)?.name ?? "otro jugador")
+      : null
 
-  function handleCellClick(number: number) {
+  function applyCellToggle(number: number) {
     setDraft((prev) =>
       prev.map((carton) => {
         if (carton.id !== currentCarton.id) return carton
@@ -77,6 +86,29 @@ export function PlayerEditNumbersDialog({
                   isGift: false,
                 }
               : entry
+          ),
+        }
+      })
+    )
+  }
+
+  function handleCellClick(number: number) {
+    const entry = currentCarton.numbers.find((n) => n.number === number)
+    if (entry && entry.playerId !== null && entry.playerId !== player.id) {
+      setPendingSteal(number)
+      return
+    }
+    applyCellToggle(number)
+  }
+
+  function handleToggleGift(number: number) {
+    setDraft((prev) =>
+      prev.map((carton) => {
+        if (carton.id !== currentCarton.id) return carton
+        return {
+          ...carton,
+          numbers: carton.numbers.map((entry) =>
+            entry.number === number ? { ...entry, isGift: !entry.isGift } : entry
           ),
         }
       })
@@ -99,16 +131,26 @@ export function PlayerEditNumbersDialog({
   function handleAccept() {
     const added: number[] = []
     const removed: number[] = []
+    const giftToggles: { cartonId: string; number: number }[] = []
 
     draft.forEach((carton) => {
       const original = state.cartones.find((c) => c.id === carton.id)
       if (!original) return
       carton.numbers.forEach((entry) => {
         const originalEntry = original.numbers.find((n) => n.number === entry.number)
-        if (!originalEntry || originalEntry.playerId === entry.playerId) return
-        setNumberOwner(carton.id, entry.number, entry.playerId)
-        if (entry.playerId === player.id) added.push(entry.number)
-        else if (originalEntry.playerId === player.id) removed.push(entry.number)
+        if (!originalEntry) return
+
+        const ownershipChanged = originalEntry.playerId !== entry.playerId
+        if (ownershipChanged) {
+          setNumberOwner(carton.id, entry.number, entry.playerId)
+          if (entry.playerId === player.id) added.push(entry.number)
+          else if (originalEntry.playerId === player.id) removed.push(entry.number)
+          if (entry.playerId === player.id && entry.isGift) {
+            giftToggles.push({ cartonId: carton.id, number: entry.number })
+          }
+        } else if (entry.playerId === player.id && entry.isGift !== originalEntry.isGift) {
+          giftToggles.push({ cartonId: carton.id, number: entry.number })
+        }
       })
     })
 
@@ -130,6 +172,8 @@ export function PlayerEditNumbersDialog({
         description: `${player.name} compró número${leftoverAdded.length > 1 ? "s" : ""} ${leftoverAdded.join(", ")}`,
       })
     }
+
+    giftToggles.forEach(({ cartonId, number }) => toggleGift(cartonId, number))
 
     onOpenChange(false)
   }
@@ -178,28 +222,48 @@ export function PlayerEditNumbersDialog({
                 const isThisPlayer = entry.playerId === player.id
 
                 return (
-                  <button
-                    key={entry.number}
-                    type="button"
-                    onClick={() => handleCellClick(entry.number)}
-                    className={cn(
-                      "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 text-sm font-medium transition-colors",
-                      entry.playerId !== null
-                        ? cn(
-                            getPlayerColorClass(playerIndexById.get(entry.playerId) ?? -1),
-                            "border-transparent text-white",
-                            isThisPlayer && "ring-2 ring-primary ring-offset-1"
-                          )
-                        : "cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+                  <div key={entry.number} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => handleCellClick(entry.number)}
+                      className={cn(
+                        "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 text-sm font-medium transition-colors",
+                        entry.playerId !== null
+                          ? cn(
+                              getPlayerColorClass(playerIndexById.get(entry.playerId) ?? -1),
+                              "border-transparent text-white",
+                              isThisPlayer && "ring-2 ring-primary ring-offset-1",
+                              entry.isGift && "border-2 border-dashed border-foreground/40"
+                            )
+                          : "cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+                      )}
+                    >
+                      <span>{entry.number}</span>
+                      {owner && (
+                        <span className="max-w-full truncate text-[10px] leading-none opacity-90">
+                          {owner.name.split(" ")[0]}
+                        </span>
+                      )}
+                    </button>
+                    {isThisPlayer && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleToggleGift(entry.number)
+                        }}
+                        title={entry.isGift ? "Quitar regalo" : "Marcar como regalo"}
+                        className={cn(
+                          "absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors",
+                          entry.isGift
+                            ? "border-amber-500/60 text-amber-500"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <GiftIcon className="size-3" />
+                      </button>
                     )}
-                  >
-                    <span>{entry.number}</span>
-                    {owner && (
-                      <span className="max-w-full truncate text-[10px] leading-none opacity-90">
-                        {owner.name.split(" ")[0]}
-                      </span>
-                    )}
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -213,6 +277,36 @@ export function PlayerEditNumbersDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={pendingSteal !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingSteal(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              ¿Quitar el número {pendingSteal} a {pendingStealOwnerName}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Este número ya está asignado a {pendingStealOwnerName}. Si continúas, pasará a ser de{" "}
+              {player.name}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingSteal !== null) applyCellToggle(pendingSteal)
+                setPendingSteal(null)
+              }}
+            >
+              Quitar y asignar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
         <AlertDialogContent>

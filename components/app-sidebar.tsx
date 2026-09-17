@@ -14,6 +14,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   LayoutDashboardIcon,
@@ -38,14 +39,11 @@ import {
   KeyRoundIcon,
   Target,
   ActivityIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "lucide-react"
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
      {
       title: "Ronda activa",
@@ -140,7 +138,7 @@ const data = {
   navSecondary: [
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: <Settings2Icon />,
     },
   ],
@@ -162,10 +160,34 @@ const data = {
     },
   ],
 }
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  console.log(props)
+function SidebarCollapseToggle() {
+  const { state, toggleSidebar } = useSidebar()
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <button
+      type="button"
+      onClick={toggleSidebar}
+      title={state === "collapsed" ? "Expandir sidebar" : "Colapsar sidebar"}
+      className="absolute -right-3 top-6 z-30 flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors hover:bg-accent"
+    >
+      {state === "collapsed" ? (
+        <ChevronRightIcon className="size-3.5" />
+      ) : (
+        <ChevronLeftIcon className="size-3.5" />
+      )}
+      <span className="sr-only">Alternar sidebar</span>
+    </button>
+  )
+}
+
+export function AppSidebar({
+  user,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  user: { name: string; email: string; avatar: string }
+}) {
+  return (
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarCollapseToggle />
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -186,7 +208,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   )

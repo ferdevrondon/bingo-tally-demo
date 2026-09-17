@@ -1,4 +1,4 @@
-import playersData from "@/app/players/data.json"
+import playersData from "@/app/(app)/players/data.json"
 
 import type { DraftPlayer } from "./types"
 

@@ -1,13 +1,17 @@
+import { GiftIcon } from "lucide-react"
+
 import { cn } from "@/lib/utils"
 
 export function BingoBall({
   number,
   amount,
   variant,
+  isGift = false,
 }: {
   number: number
   amount: number
   variant: "pending" | "taken"
+  isGift?: boolean
 }) {
   return (
     <div className="relative">
@@ -37,6 +41,14 @@ export function BingoBall({
           {number}
         </div>
       </div>
+      {isGift && (
+        <div
+          title="Número regalado"
+          className="absolute -bottom-1 -right-1 z-20 flex size-5 items-center justify-center rounded-full border border-red-600/60 bg-gradient-to-br from-yellow-400 to-amber-500 shadow-sm"
+        >
+          <GiftIcon className="size-3 text-red-700" strokeWidth={2.5} />
+        </div>
+      )}
     </div>
   )
 }
