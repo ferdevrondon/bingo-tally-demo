@@ -2,7 +2,6 @@
 
 import * as React from "react"
 
-import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -19,33 +18,30 @@ import {
 import {
   LayoutDashboardIcon,
   ListIcon,
-  ChartBarIcon,
-  FolderIcon,
-  UsersIcon,
   CameraIcon,
   FileTextIcon,
   Settings2Icon,
-  CircleHelpIcon,
-  SearchIcon,
   DatabaseIcon,
   FileChartColumnIcon,
   FileIcon,
-  CommandIcon,
   ChessQueen,
   Users,
   PlayingCardsFan,
   RotateCcwClock,
   Hash,
-  KeyRoundIcon,
   Target,
   ActivityIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  Crown,
+  Dice1,
+  Dice5,
 } from "lucide-react"
+import { Climate_Crisis } from "next/font/google"
 
 const data = {
   navMain: [
-     {
+    {
       title: "Ronda activa",
       url: "/ronda-activa",
       icon: <ActivityIcon />,
@@ -160,6 +156,12 @@ const data = {
     },
   ],
 }
+
+const titleFont = Climate_Crisis({
+  subsets: ["latin"],
+  variable: "--font-title",
+})
+
 function SidebarCollapseToggle() {
   const { state, toggleSidebar } = useSidebar()
   return (
@@ -167,7 +169,7 @@ function SidebarCollapseToggle() {
       type="button"
       onClick={toggleSidebar}
       title={state === "collapsed" ? "Expandir sidebar" : "Colapsar sidebar"}
-      className="absolute -right-3 top-6 z-30 flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors hover:bg-accent"
+      className="absolute top-6 -right-3 z-30 flex size-6 items-center justify-center rounded-full border bg-background bg-primary/25 text-foreground shadow-sm transition-colors hover:bg-accent"
     >
       {state === "collapsed" ? (
         <ChevronRightIcon className="size-3.5" />
@@ -195,9 +197,15 @@ export function AppSidebar({
               className="data-[slot=sidebar-menu-button]:p-1.5!"
               render={<a href="#" />}
             >
-              {/* <CommandIcon className="size-5!" /> */}
-              <ChessQueen className="size-5!" />
-              <span className="text-base font-semibold">Admin Bingo.</span>
+              <div className="flex size-5 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                <Dice5 className="size-5" />
+              </div>
+              <span
+                className={"text-xl  text font-semibold " + titleFont.className}
+              >
+                {" "}
+                Bingo Tally.
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
