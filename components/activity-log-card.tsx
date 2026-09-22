@@ -21,10 +21,10 @@ const ACTIVITY_LABELS: Record<ActivityEntryType, string> = {
   player_removed: "Retiro",
   special_round_won: "Ronda especial",
   round_started: "Ronda",
-  jornada_closed: "Jornada",
+  game_closed: "Jornada",
   prize_won: "Premio",
   round_closed: "Cierre de ronda",
-  jugada_kept: "Jugada mantenida",
+  numbers_kept: "Jugada mantenida",
   numbers_released: "Liberación",
 }
 
@@ -47,7 +47,7 @@ function ActivityLogRow({ entry, colorClass }: { entry: ActivityEntry; colorClas
           </AvatarFallback>
         ) : (
           <AvatarFallback>
-            {entry.type === "jornada_closed" ? (
+            {entry.type === "game_closed" ? (
               <DoorClosedIcon className="size-3" />
             ) : entry.type === "special_round_won" || entry.type === "prize_won" ? (
               <AwardIcon className="size-3" />

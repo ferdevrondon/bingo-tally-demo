@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { ArrowRightIcon, CheckIcon, PlayIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -8,26 +9,26 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 
-export interface Session {
+export interface Game {
   id: number
   number: number
   status: "active" | "finished"
   dateLabel: string
-  gamesCount: number
+  roundsCount: number
   playersCount: number
-  cardsCount: number
+  ticketsCount: number
   revenue: number
 }
 
-const sessions: Session[] = [
+export const games: Game[] = [
   {
     id: 42,
     number: 42,
     status: "active",
     dateLabel: "Hoy · 10:32 PM",
-    gamesCount: 3,
+    roundsCount: 3,
     playersCount: 18,
-    cardsCount: 54,
+    ticketsCount: 54,
     revenue: 540,
   },
   {
@@ -35,9 +36,9 @@ const sessions: Session[] = [
     number: 41,
     status: "finished",
     dateLabel: "4 septiembre · 5:40 PM",
-    gamesCount: 8,
+    roundsCount: 8,
     playersCount: 42,
-    cardsCount: 126,
+    ticketsCount: 126,
     revenue: 1260,
   },
   {
@@ -45,9 +46,9 @@ const sessions: Session[] = [
     number: 40,
     status: "finished",
     dateLabel: "3 septiembre · 6:10 PM",
-    gamesCount: 6,
+    roundsCount: 6,
     playersCount: 31,
-    cardsCount: 93,
+    ticketsCount: 93,
     revenue: 930,
   },
 ]
@@ -56,7 +57,7 @@ function formatAmount(amount: number) {
   return `$${amount.toLocaleString("en-US")}`
 }
 
-function SessionPill({
+function GamePill({
   isActive,
   value,
   label,
@@ -79,29 +80,29 @@ function SessionPill({
   )
 }
 
-function SessionRow({ session }: { session: Session }) {
-  const isActive = session.status === "active"
+function GameRow({ game }: { game: Game }) {
+  const isActive = game.status === "active"
 
   return (
     <Card className="flex-row items-center gap-3 rounded-full px-4 py-3">
       <div className="flex min-w-0 items-baseline gap-2">
         <span className="text-base font-bold text-foreground">
-          #{String(session.number).padStart(3, "0")}
+          #{String(game.number).padStart(3, "0")}
         </span>
         <span className="truncate text-sm text-muted-foreground">
-          {session.dateLabel}
+          {game.dateLabel}
         </span>
       </div>
 
       <div className="flex flex-1 flex-wrap items-center justify-center gap-1.5">
-        <SessionPill isActive={isActive} value={session.gamesCount} label="partidas" />
-        <SessionPill isActive={isActive} value={session.playersCount} label="jugadores" />
-        <SessionPill isActive={isActive} value={session.cardsCount} label="cartones" />
+        <GamePill isActive={isActive} value={game.roundsCount} label="partidas" />
+        <GamePill isActive={isActive} value={game.playersCount} label="jugadores" />
+        <GamePill isActive={isActive} value={game.ticketsCount} label="cartones" />
       </div>
 
       <div className="flex shrink-0 items-center gap-6">
         <span className="text-base font-bold text-foreground">
-          {formatAmount(session.revenue)}
+          {formatAmount(game.revenue)}
         </span>
         {isActive ? (
           <span className="flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-500">
@@ -117,8 +118,9 @@ function SessionRow({ session }: { session: Session }) {
         <Button
           size="icon-sm"
           className="bg-foreground text-background hover:bg-foreground/85"
-          onClick={() => console.log("ver jornada", session.id)}
-          aria-label={`Ver jornada #${String(session.number).padStart(3, "0")}`}
+          aria-label={`Ver jornada #${String(game.number).padStart(3, "0")}`}
+          nativeButton={false}
+          render={<Link href={`/games/${game.id}`} />}
         >
           <ArrowRightIcon />
         </Button>
@@ -127,10 +129,10 @@ function SessionRow({ session }: { session: Session }) {
   )
 }
 
-export default function SessionPage() {
-  const activeSession = sessions.find((session) => session.status === "active")
-  const previousSessions = sessions.filter(
-    (session) => session.status !== "active"
+export default function GamePage() {
+  const activeGame = games.find((game) => game.status === "active")
+  const previousGames = games.filter(
+    (game) => game.status !== "active"
   )
 
   return (
@@ -144,20 +146,20 @@ export default function SessionPage() {
             </Button>
           </div>
 
-          {activeSession && (
+          {activeGame && (
             <div className="px-4 lg:px-6">
-              <SessionRow session={activeSession} />
+              <GameRow game={activeGame} />
             </div>
           )}
 
-          {previousSessions.length > 0 && (
+          {previousGames.length > 0 && (
             <div className="flex flex-col gap-4">
               <h2 className="px-4 text-sm font-medium text-muted-foreground lg:px-6">
                 Jornadas anteriores
               </h2>
               <div className="flex flex-col gap-3 px-4 lg:px-6">
-                {previousSessions.map((session) => (
-                  <SessionRow key={session.id} session={session} />
+                {previousGames.map((game) => (
+                  <GameRow key={game.id} game={game} />
                 ))}
               </div>
             </div>

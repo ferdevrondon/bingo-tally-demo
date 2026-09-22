@@ -28,7 +28,7 @@ export function WinningNumbersCard() {
               variant="link"
               className="h-auto p-0"
               nativeButton={false}
-              render={<Link href="/nueva-jornada" />}
+              render={<Link href="/new-game" />}
             >
               Nueva jornada
             </Button>{" "}

@@ -26,7 +26,7 @@ export function ActiveRoundPage() {
         <p className="text-sm text-muted-foreground">
           Todavía no has empezado a asignar cartones.
         </p>
-        <Button nativeButton={false} render={<Link href="/nueva-jornada" />}>
+        <Button nativeButton={false} render={<Link href="/new-game" />}>
           Ir a cartones y jugadores
         </Button>
       </div>
@@ -59,7 +59,7 @@ export function ActiveRoundPage() {
           ))}
         </div>
       )}
-      <RoundHistoryCard />
+      <RoundHistoryCard selectedDate={new Date()} />
       <ActivityLogCard />
     </div>
   )

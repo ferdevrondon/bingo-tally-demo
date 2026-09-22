@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-const NEXT_SESSION_NUMBER = 42
+const NEXT_GAME_NUMBER = 42
 
 function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1)
@@ -68,7 +68,7 @@ export default function MainPage() {
               {dateLabel}
             </div>
             <div className="text-base font-medium">
-              Jornada #{String(NEXT_SESSION_NUMBER).padStart(3, "0")}
+              Jornada #{String(NEXT_GAME_NUMBER).padStart(3, "0")}
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Inicio</span>

@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getJornadaSummary } from "@/lib/round-draft/selectors"
+import { getGameSummary } from "@/lib/round-draft/selectors"
 import { FileChartColumn } from "lucide-react"
 
 function formatDuration(ms: number): string {
@@ -23,7 +23,7 @@ function formatDuration(ms: number): string {
   return hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`
 }
 
-export function EndJornadaDialog({
+export function EndGameDialog({
   open,
   onOpenChange,
 }: {
@@ -32,9 +32,9 @@ export function EndJornadaDialog({
 }) {
   const { state, resetDraft } = useRoundDraft()
   const router = useRouter()
-  const summary = getJornadaSummary(state)
+  const summary = getGameSummary(state)
 
-  function handleNewJornada() {
+  function handleNewGame() {
     resetDraft()
     onOpenChange(false)
     router.push("/")
@@ -102,7 +102,7 @@ export function EndJornadaDialog({
         </div>
 
         <DialogFooter className="flex-row justify-end gap-2 bg-muted/50 p-3">
-          <Button onClick={handleNewJornada}>Comenzar nueva jornada</Button>
+          <Button onClick={handleNewGame}>Comenzar nueva jornada</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

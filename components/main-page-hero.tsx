@@ -5,7 +5,7 @@ import { PlayIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
-const NEXT_SESSION_NUMBER = 42
+const NEXT_GAME_NUMBER = 42
 
 function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1)
@@ -94,7 +94,7 @@ export default function MainPageHero() {
       </div>
 
       <p className="relative mt-4 text-sm text-muted-foreground">
-        Jornada #{String(NEXT_SESSION_NUMBER).padStart(3, "0")} · lista para
+        Jornada #{String(NEXT_GAME_NUMBER).padStart(3, "0")} · lista para
         comenzar
       </p>
 

@@ -4,7 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRightIcon, PlusIcon } from "lucide-react"
 
-import { CartonCard } from "@/components/carton-card"
+import { TicketCard } from "@/components/ticket-card"
 import { PlayerForm, type NewPlayer } from "@/components/player-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,11 +35,11 @@ function parseMoney(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-export function CartonesAssignmentPage() {
+export function TicketsAssignmentPage() {
   const router = useRouter()
   const {
     state,
-    addCarton,
+    addTicket,
     addPlayer,
     setActivePlayer,
     assignNumber,
@@ -136,7 +136,7 @@ export function CartonesAssignmentPage() {
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Cartones abiertos
             </span>
-            <span className="text-2xl font-bold">{state.cartones.length}</span>
+            <span className="text-2xl font-bold">{state.tickets.length}</span>
           </CardContent>
         </Card>
         <Card>
@@ -180,20 +180,20 @@ export function CartonesAssignmentPage() {
       )}
 
       <div className="flex flex-wrap gap-4">
-        {state.cartones.map((carton) => (
-          <CartonCard
-            key={carton.id}
-            carton={carton}
+        {state.tickets.map((ticket) => (
+          <TicketCard
+            key={ticket.id}
+            ticket={ticket}
             players={state.players}
             activePlayerId={state.activePlayerId}
-            onAssign={(number) => assignNumber(carton.id, number)}
-            onToggleGift={(number) => toggleGift(carton.id, number)}
+            onAssign={(number) => assignNumber(ticket.id, number)}
+            onToggleGift={(number) => toggleGift(ticket.id, number)}
           />
         ))}
 
         <button
           type="button"
-          onClick={addCarton}
+          onClick={addTicket}
           className="flex w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
         >
           <PlusIcon className="size-5" />
@@ -205,7 +205,7 @@ export function CartonesAssignmentPage() {
         <Button
           size="lg"
           className="gap-2"
-          onClick={() => router.push("/ronda-activa")}
+          onClick={() => router.push("/active-round")}
         >
           Empezar ronda
           <ArrowRightIcon className="size-4" />

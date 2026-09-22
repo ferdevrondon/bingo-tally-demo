@@ -9,15 +9,15 @@ import {
   MAX_ACTIVITY_ENTRIES,
   NUMBER_PRICE,
   type ActivityEntry,
-  type Carton,
+  type Ticket,
   type DraftPlayer,
   type DraftRoundConfig,
   type RoundDraftState,
 } from "./types"
 
-function createEmptyCarton(index: number): Carton {
+function createEmptyTicket(index: number): Ticket {
   return {
-    id: `carton-${index}-${Date.now()}`,
+    id: `ticket-${index}-${Date.now()}`,
     index,
     numbers: Array.from({ length: 15 }, (_, i) => ({
       number: i + 1,
@@ -106,9 +106,9 @@ function createSeedActivity(): ActivityEntry[] {
       synthetic: true,
     },
     {
-      id: "seed-jornada-closed",
+      id: "seed-game-closed",
       timestamp: now - 90 * 60_000,
-      type: "jornada_closed",
+      type: "game_closed",
       playerId: null,
       playerName: null,
       description: "Cierre de jornada",
@@ -119,16 +119,16 @@ function createSeedActivity(): ActivityEntry[] {
 
 function createInitialState(): RoundDraftState {
   return {
-    cartones: [createEmptyCarton(1)],
+    tickets: [createEmptyTicket(1)],
     players: getBasePlayers(),
     activePlayerId: null,
     activity: createSeedActivity(),
     round: null,
     winningNumbers: [],
     roundsPlayed: 0,
-    jornadaPlayerIds: [],
+    gamePlayerIds: [],
     houseBalance: 0,
-    jornadaStartedAt: Date.now(),
+    gameStartedAt: Date.now(),
   }
 }
 
@@ -150,8 +150,8 @@ function refundPlayer(players: DraftPlayer[], playerId: number, amount: number):
   })
 }
 
-function trackJornadaPlayers(state: RoundDraftState): number[] {
-  return [...new Set([...state.jornadaPlayerIds, ...getActivePlayers(state).map((p) => p.id)])]
+function trackGamePlayers(state: RoundDraftState): number[] {
+  return [...new Set([...state.gamePlayerIds, ...getActivePlayers(state).map((p) => p.id)])]
 }
 
 function appendActivity(
@@ -169,15 +169,15 @@ function appendActivity(
 type Action =
   | { type: "HYDRATE"; payload: RoundDraftState }
   | { type: "RESET" }
-  | { type: "ADD_CARTON" }
+  | { type: "ADD_TICKET" }
   | { type: "ADD_PLAYER"; payload: Omit<DraftPlayer, "id"> }
   | { type: "SET_ACTIVE_PLAYER"; payload: number | null }
-  | { type: "ASSIGN_NUMBER"; payload: { cartonId: string; number: number } }
-  | { type: "TOGGLE_GIFT"; payload: { cartonId: string; number: number } }
+  | { type: "ASSIGN_NUMBER"; payload: { ticketId: string; number: number } }
+  | { type: "TOGGLE_GIFT"; payload: { ticketId: string; number: number } }
   | { type: "TOGGLE_CHECK_IN"; payload: { playerId: number } }
   | {
       type: "SET_NUMBER_OWNER"
-      payload: { cartonId: string; number: number; playerId: number | null }
+      payload: { ticketId: string; number: number; playerId: number | null }
     }
   | { type: "RECHARGE_BALANCE"; payload: { playerId: number; amount: number } }
   | { type: "REMOVE_PLAYER"; payload: { playerId: number } }
@@ -187,7 +187,7 @@ type Action =
   | { type: "CLOSE_ROUND"; payload: { nextRound: DraftRoundConfig } }
   | {
       type: "RESOLVE_CARRYOVER"
-      payload: { playerId: number; releaseNumbers: { cartonId: string; number: number }[] }
+      payload: { playerId: number; releaseNumbers: { ticketId: string; number: number }[] }
     }
 
 function reducer(state: RoundDraftState, action: Action): RoundDraftState {
@@ -201,19 +201,20 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
           checkedIn: p.checkedIn ?? false,
           pendingCarryOverDecision: p.pendingCarryOverDecision ?? false,
         })),
+        tickets: action.payload.tickets ?? [createEmptyTicket(1)],
         activity: action.payload.activity ?? [],
         round: action.payload.round ?? null,
         winningNumbers: action.payload.winningNumbers ?? [],
         roundsPlayed: action.payload.roundsPlayed ?? 0,
-        jornadaPlayerIds: action.payload.jornadaPlayerIds ?? [],
+        gamePlayerIds: action.payload.gamePlayerIds ?? [],
         houseBalance: action.payload.houseBalance ?? 0,
-        jornadaStartedAt: action.payload.jornadaStartedAt ?? Date.now(),
+        gameStartedAt: action.payload.gameStartedAt ?? Date.now(),
       }
     case "RESET":
       return createInitialState()
-    case "ADD_CARTON": {
-      const nextIndex = state.cartones.length + 1
-      return { ...state, cartones: [...state.cartones, createEmptyCarton(nextIndex)] }
+    case "ADD_TICKET": {
+      const nextIndex = state.tickets.length + 1
+      return { ...state, tickets: [...state.tickets, createEmptyTicket(nextIndex)] }
     }
     case "ADD_PLAYER": {
       const nextId = Math.max(0, ...state.players.map((p) => p.id)) + 1
@@ -227,18 +228,18 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
     case "SET_ACTIVE_PLAYER":
       return { ...state, activePlayerId: action.payload }
     case "ASSIGN_NUMBER": {
-      const { cartonId, number } = action.payload
+      const { ticketId, number } = action.payload
       if (state.activePlayerId == null) return state
       const player = state.players.find((p) => p.id === state.activePlayerId)
       let claimed = false
       let released = false
       let nextState: RoundDraftState = {
         ...state,
-        cartones: state.cartones.map((carton) => {
-          if (carton.id !== cartonId) return carton
+        tickets: state.tickets.map((ticket) => {
+          if (ticket.id !== ticketId) return ticket
           return {
-            ...carton,
-            numbers: carton.numbers.map((entry) => {
+            ...ticket,
+            numbers: ticket.numbers.map((entry) => {
               if (entry.number !== number) return entry
               if (entry.playerId === null) {
                 claimed = true
@@ -258,7 +259,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
           ...nextState,
           players: chargePlayer(nextState.players, player.id, NUMBER_PRICE),
         }
-        nextState = { ...nextState, jornadaPlayerIds: trackJornadaPlayers(nextState) }
+        nextState = { ...nextState, gamePlayerIds: trackGamePlayers(nextState) }
         return appendActivity(nextState, {
           type: "number_purchased",
           playerId: player.id,
@@ -275,16 +276,16 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       return nextState
     }
     case "TOGGLE_GIFT": {
-      const { cartonId, number } = action.payload
+      const { ticketId, number } = action.payload
       let gifted = false
       let giftedPlayerId: number | null = null
       const nextState: RoundDraftState = {
         ...state,
-        cartones: state.cartones.map((carton) => {
-          if (carton.id !== cartonId) return carton
+        tickets: state.tickets.map((ticket) => {
+          if (ticket.id !== ticketId) return ticket
           return {
-            ...carton,
-            numbers: carton.numbers.map((entry) => {
+            ...ticket,
+            numbers: ticket.numbers.map((entry) => {
               if (entry.number !== number || entry.playerId === null) return entry
               const nextIsGift = !entry.isGift
               if (nextIsGift) {
@@ -341,17 +342,17 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       return nextState
     }
     case "SET_NUMBER_OWNER": {
-      const { cartonId, number, playerId } = action.payload
-      const carton = state.cartones.find((c) => c.id === cartonId)
-      const previousOwnerId = carton?.numbers.find((n) => n.number === number)?.playerId ?? null
+      const { ticketId, number, playerId } = action.payload
+      const ticket = state.tickets.find((t) => t.id === ticketId)
+      const previousOwnerId = ticket?.numbers.find((n) => n.number === number)?.playerId ?? null
 
       let nextState: RoundDraftState = {
         ...state,
-        cartones: state.cartones.map((c) => {
-          if (c.id !== cartonId) return c
+        tickets: state.tickets.map((t) => {
+          if (t.id !== ticketId) return t
           return {
-            ...c,
-            numbers: c.numbers.map((entry) =>
+            ...t,
+            numbers: t.numbers.map((entry) =>
               entry.number === number ? { ...entry, playerId, isGift: false } : entry
             ),
           }
@@ -362,7 +363,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       if (previousOwnerId !== null) players = refundPlayer(players, previousOwnerId, NUMBER_PRICE)
       if (playerId !== null) players = chargePlayer(players, playerId, NUMBER_PRICE)
       nextState = { ...nextState, players }
-      return { ...nextState, jornadaPlayerIds: trackJornadaPlayers(nextState) }
+      return { ...nextState, gamePlayerIds: trackGamePlayers(nextState) }
     }
     case "RECHARGE_BALANCE": {
       const { playerId, amount } = action.payload
@@ -397,9 +398,9 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       const player = state.players.find((p) => p.id === playerId)
       const nextState: RoundDraftState = {
         ...state,
-        cartones: state.cartones.map((carton) => ({
-          ...carton,
-          numbers: carton.numbers.map((entry) =>
+        tickets: state.tickets.map((ticket) => ({
+          ...ticket,
+          numbers: ticket.numbers.map((entry) =>
             entry.playerId === playerId ? { ...entry, playerId: null, isGift: false } : entry
           ),
         })),
@@ -507,20 +508,20 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
 
       let nextState: RoundDraftState = {
         ...state,
-        cartones: state.cartones.map((carton) => ({
-          ...carton,
-          numbers: carton.numbers.map((entry) => {
+        tickets: state.tickets.map((ticket) => ({
+          ...ticket,
+          numbers: ticket.numbers.map((entry) => {
             const release = releaseNumbers.some(
               (r) =>
-                r.cartonId === carton.id && r.number === entry.number && entry.playerId === playerId
+                r.ticketId === ticket.id && r.number === entry.number && entry.playerId === playerId
             )
             return release ? { ...entry, playerId: null, isGift: false } : entry
           }),
         })),
       }
 
-      const remainingCount = nextState.cartones
-        .flatMap((c) => c.numbers)
+      const remainingCount = nextState.tickets
+        .flatMap((t) => t.numbers)
         .filter((n) => n.playerId === playerId).length
       const charge = remainingCount * NUMBER_PRICE
 
@@ -547,7 +548,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       }
       if (charge > 0) {
         nextState = appendActivity(nextState, {
-          type: "jugada_kept",
+          type: "numbers_kept",
           playerId: player.id,
           playerName: player.name,
           description: `${player.name} mantiene su jugada, debe $${charge}`,
@@ -563,13 +564,13 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
 interface RoundDraftContextValue {
   state: RoundDraftState
   resetDraft: () => void
-  addCarton: () => void
+  addTicket: () => void
   addPlayer: (player: Omit<DraftPlayer, "id">) => void
   setActivePlayer: (playerId: number | null) => void
-  assignNumber: (cartonId: string, number: number) => void
-  toggleGift: (cartonId: string, number: number) => void
+  assignNumber: (ticketId: string, number: number) => void
+  toggleGift: (ticketId: string, number: number) => void
   toggleCheckIn: (playerId: number) => void
-  setNumberOwner: (cartonId: string, number: number, playerId: number | null) => void
+  setNumberOwner: (ticketId: string, number: number, playerId: number | null) => void
   rechargeBalance: (playerId: number, amount: number) => void
   removePlayer: (playerId: number) => void
   logActivity: (entry: Omit<ActivityEntry, "id" | "timestamp">) => void
@@ -578,7 +579,7 @@ interface RoundDraftContextValue {
   closeRound: (nextRound: DraftRoundConfig) => void
   resolveCarryOver: (
     playerId: number,
-    releaseNumbers: { cartonId: string; number: number }[]
+    releaseNumbers: { ticketId: string; number: number }[]
   ) => void
 }
 
@@ -611,16 +612,16 @@ export function RoundDraftProvider({
     () => ({
       state,
       resetDraft: () => dispatch({ type: "RESET" }),
-      addCarton: () => dispatch({ type: "ADD_CARTON" }),
+      addTicket: () => dispatch({ type: "ADD_TICKET" }),
       addPlayer: (player) => dispatch({ type: "ADD_PLAYER", payload: player }),
       setActivePlayer: (playerId) => dispatch({ type: "SET_ACTIVE_PLAYER", payload: playerId }),
-      assignNumber: (cartonId, number) =>
-        dispatch({ type: "ASSIGN_NUMBER", payload: { cartonId, number } }),
-      toggleGift: (cartonId, number) =>
-        dispatch({ type: "TOGGLE_GIFT", payload: { cartonId, number } }),
+      assignNumber: (ticketId, number) =>
+        dispatch({ type: "ASSIGN_NUMBER", payload: { ticketId, number } }),
+      toggleGift: (ticketId, number) =>
+        dispatch({ type: "TOGGLE_GIFT", payload: { ticketId, number } }),
       toggleCheckIn: (playerId) => dispatch({ type: "TOGGLE_CHECK_IN", payload: { playerId } }),
-      setNumberOwner: (cartonId, number, playerId) =>
-        dispatch({ type: "SET_NUMBER_OWNER", payload: { cartonId, number, playerId } }),
+      setNumberOwner: (ticketId, number, playerId) =>
+        dispatch({ type: "SET_NUMBER_OWNER", payload: { ticketId, number, playerId } }),
       rechargeBalance: (playerId, amount) =>
         dispatch({ type: "RECHARGE_BALANCE", payload: { playerId, amount } }),
       removePlayer: (playerId) => dispatch({ type: "REMOVE_PLAYER", payload: { playerId } }),

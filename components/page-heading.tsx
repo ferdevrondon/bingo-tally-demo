@@ -3,10 +3,10 @@ import { Calendar, CirclePower } from "lucide-react"
 import { WinningNumbersCard } from "./winning-numbers-card"
 import React from "react"
 import { Button } from "@/components/ui/button"
-import { EndJornadaDialog } from "./end-jornada-dialog"
+import { EndGameDialog } from "./end-game-dialog"
 
 export default function PageHeadingWithActions() {
-  const [isEndJornadaOpen, setIsEndJornadaOpen] = React.useState(false)
+  const [isEndGameOpen, setIsEndGameOpen] = React.useState(false)
   return (
     <div className="container mx-auto px-4 py-4 md:px-6 2xl:max-w-[1400px]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -41,14 +41,14 @@ export default function PageHeadingWithActions() {
         <div className="flex justify-end">
           <Button
             variant="destructive"
-            onClick={() => setIsEndJornadaOpen(true)}
+            onClick={() => setIsEndGameOpen(true)}
           >
             <CirclePower />
             Terminar jornada
           </Button>
-          <EndJornadaDialog
-            open={isEndJornadaOpen}
-            onOpenChange={setIsEndJornadaOpen}
+          <EndGameDialog
+            open={isEndGameOpen}
+            onOpenChange={setIsEndGameOpen}
           />
         </div>
       </div>

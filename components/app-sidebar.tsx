@@ -42,7 +42,7 @@ const data = {
   navMain: [
     {
       title: "Ronda activa",
-      url: "/ronda-activa",
+      url: "/active-round",
       icon: <ActivityIcon />,
     },
     {
@@ -58,7 +58,7 @@ const data = {
 
     // {
     //   title: "Jornadas",
-    //   url: "/sessions",
+    //   url: "/games",
     //   icon: <ListIcon />,
     // },
     {
@@ -71,7 +71,7 @@ const data = {
     //   url: "#",
     //   icon: <PlayingCardsFan />,
     // },
- 
+
     {
       title: "Reportes",
       url: "/reports",
@@ -196,7 +196,7 @@ export function AppSidebar({
                 <Dice5 className="size-5" />
               </div>
               <span
-                className={"text-xl  text font-semibold " + titleFont.className}
+                className={"text text-xl font-semibold " + titleFont.className}
               >
                 {" "}
                 Bingo Tally.

@@ -1,13 +1,15 @@
 "use client"
 
+import * as React from "react"
 import { ConstructionIcon } from "lucide-react"
 
-import SessionPage from "@/components/session-page"
+import GamePage from "@/components/game-page"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RoundHistoryCard } from "./round-history-card"
+import { RoundsDateFilter, startOfDay } from "./rounds-date-filter"
 
 const tabs = [
-  { name: "Jornadas", value: "jornadas" },
+  { name: "Jornadas", value: "games" },
   { name: "Rondas", value: "rondas" },
   { name: "Deudas", value: "deudas" },
   { name: "Mensual", value: "mensual" },
@@ -29,8 +31,10 @@ function ComingSoonPanel({ label }: { label: string }) {
 }
 
 function ReportsTabs() {
+  const [roundsDate, setRoundsDate] = React.useState(() => startOfDay(new Date()))
+
   return (
-    <Tabs defaultValue="jornadas" className="w-full gap-4">
+    <Tabs defaultValue="games" className="w-full gap-4">
       <TabsList className="mx-4 bg-background lg:mx-6">
         {tabs.map((tab) => (
           <TabsTrigger
@@ -43,11 +47,12 @@ function ReportsTabs() {
         ))}
       </TabsList>
 
-      <TabsContent value="jornadas">
-        <SessionPage />
+      <TabsContent value="games">
+        <GamePage />
       </TabsContent>
-        <TabsContent value="rondas" className="px-4 lg:px-6">
-        <RoundHistoryCard />
+      <TabsContent value="rondas" className="flex flex-col gap-4 px-4 lg:px-6">
+        <RoundsDateFilter date={roundsDate} onDateChange={setRoundsDate} />
+        <RoundHistoryCard selectedDate={roundsDate} />
       </TabsContent>
       <TabsContent value="deudas" className="px-4 lg:px-6">
         <ComingSoonPanel label="Deudas" />

@@ -24,14 +24,14 @@ import {
 } from "@/components/ui/dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
-import type { Carton, DraftPlayer } from "@/lib/round-draft/types"
+import type { Ticket, DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
-function cloneCartones(cartones: Carton[]): Carton[] {
-  return cartones.map((c) => ({ ...c, numbers: c.numbers.map((n) => ({ ...n })) }))
+function cloneTickets(tickets: Ticket[]): Ticket[] {
+  return tickets.map((t) => ({ ...t, numbers: t.numbers.map((n) => ({ ...n })) }))
 }
 
-function cartonesDiffer(a: Carton[], b: Carton[]): boolean {
+function ticketsDiffer(a: Ticket[], b: Ticket[]): boolean {
   return JSON.stringify(a) !== JSON.stringify(b)
 }
 
@@ -45,27 +45,27 @@ export function PlayerEditNumbersDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { state, setNumberOwner, toggleGift, logActivity } = useRoundDraft()
-  const [draft, setDraft] = React.useState<Carton[]>(() => cloneCartones(state.cartones))
+  const [draft, setDraft] = React.useState<Ticket[]>(() => cloneTickets(state.tickets))
   const [pageIndex, setPageIndex] = React.useState(0)
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
   const [pendingSteal, setPendingSteal] = React.useState<number | null>(null)
 
   React.useEffect(() => {
     if (open) {
-      setDraft(cloneCartones(state.cartones))
+      setDraft(cloneTickets(state.tickets))
       setPageIndex(0)
     }
-    // Only reset when the dialog opens, not on every state.cartones change.
+    // Only reset when the dialog opens, not on every state.tickets change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  const isDirty = cartonesDiffer(draft, state.cartones)
+  const isDirty = ticketsDiffer(draft, state.tickets)
   const playerIndexById = new Map(state.players.map((p, i) => [p.id, i]))
   const playerById = new Map(state.players.map((p) => [p.id, p]))
-  const currentCarton = draft[pageIndex]
+  const currentTicket = draft[pageIndex]
   const pendingStealOwnerId =
     pendingSteal !== null
-      ? (currentCarton?.numbers.find((n) => n.number === pendingSteal)?.playerId ?? null)
+      ? (currentTicket?.numbers.find((n) => n.number === pendingSteal)?.playerId ?? null)
       : null
   const pendingStealOwnerName =
     pendingStealOwnerId !== null
@@ -74,11 +74,11 @@ export function PlayerEditNumbersDialog({
 
   function applyCellToggle(number: number) {
     setDraft((prev) =>
-      prev.map((carton) => {
-        if (carton.id !== currentCarton.id) return carton
+      prev.map((ticket) => {
+        if (ticket.id !== currentTicket.id) return ticket
         return {
-          ...carton,
-          numbers: carton.numbers.map((entry) =>
+          ...ticket,
+          numbers: ticket.numbers.map((entry) =>
             entry.number === number
               ? {
                   ...entry,
@@ -93,7 +93,7 @@ export function PlayerEditNumbersDialog({
   }
 
   function handleCellClick(number: number) {
-    const entry = currentCarton.numbers.find((n) => n.number === number)
+    const entry = currentTicket.numbers.find((n) => n.number === number)
     if (entry && entry.playerId !== null && entry.playerId !== player.id) {
       setPendingSteal(number)
       return
@@ -103,11 +103,11 @@ export function PlayerEditNumbersDialog({
 
   function handleToggleGift(number: number) {
     setDraft((prev) =>
-      prev.map((carton) => {
-        if (carton.id !== currentCarton.id) return carton
+      prev.map((ticket) => {
+        if (ticket.id !== currentTicket.id) return ticket
         return {
-          ...carton,
-          numbers: carton.numbers.map((entry) =>
+          ...ticket,
+          numbers: ticket.numbers.map((entry) =>
             entry.number === number ? { ...entry, isGift: !entry.isGift } : entry
           ),
         }
@@ -124,32 +124,32 @@ export function PlayerEditNumbersDialog({
   }
 
   function handleCancel() {
-    setDraft(cloneCartones(state.cartones))
+    setDraft(cloneTickets(state.tickets))
     onOpenChange(false)
   }
 
   function handleAccept() {
     const added: number[] = []
     const removed: number[] = []
-    const giftToggles: { cartonId: string; number: number }[] = []
+    const giftToggles: { ticketId: string; number: number }[] = []
 
-    draft.forEach((carton) => {
-      const original = state.cartones.find((c) => c.id === carton.id)
+    draft.forEach((ticket) => {
+      const original = state.tickets.find((t) => t.id === ticket.id)
       if (!original) return
-      carton.numbers.forEach((entry) => {
+      ticket.numbers.forEach((entry) => {
         const originalEntry = original.numbers.find((n) => n.number === entry.number)
         if (!originalEntry) return
 
         const ownershipChanged = originalEntry.playerId !== entry.playerId
         if (ownershipChanged) {
-          setNumberOwner(carton.id, entry.number, entry.playerId)
+          setNumberOwner(ticket.id, entry.number, entry.playerId)
           if (entry.playerId === player.id) added.push(entry.number)
           else if (originalEntry.playerId === player.id) removed.push(entry.number)
           if (entry.playerId === player.id && entry.isGift) {
-            giftToggles.push({ cartonId: carton.id, number: entry.number })
+            giftToggles.push({ ticketId: ticket.id, number: entry.number })
           }
         } else if (entry.playerId === player.id && entry.isGift !== originalEntry.isGift) {
-          giftToggles.push({ cartonId: carton.id, number: entry.number })
+          giftToggles.push({ ticketId: ticket.id, number: entry.number })
         }
       })
     })
@@ -173,12 +173,12 @@ export function PlayerEditNumbersDialog({
       })
     }
 
-    giftToggles.forEach(({ cartonId, number }) => toggleGift(cartonId, number))
+    giftToggles.forEach(({ ticketId, number }) => toggleGift(ticketId, number))
 
     onOpenChange(false)
   }
 
-  if (!currentCarton) return null
+  if (!currentTicket) return null
 
   return (
     <>
@@ -217,7 +217,7 @@ export function PlayerEditNumbersDialog({
             )}
 
             <div className="grid grid-cols-5 gap-2">
-              {currentCarton.numbers.map((entry) => {
+              {currentTicket.numbers.map((entry) => {
                 const owner = entry.playerId !== null ? playerById.get(entry.playerId) : undefined
                 const isThisPlayer = entry.playerId === player.id
 
@@ -321,7 +321,7 @@ export function PlayerEditNumbersDialog({
             <AlertDialogCancel>Seguir editando</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setDraft(cloneCartones(state.cartones))
+                setDraft(cloneTickets(state.tickets))
                 setShowDiscardConfirm(false)
                 onOpenChange(false)
               }}

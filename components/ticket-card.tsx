@@ -4,37 +4,37 @@ import { GiftIcon } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
-import type { Carton, DraftPlayer } from "@/lib/round-draft/types"
+import type { Ticket, DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
-export interface CartonCardProps {
-  carton: Carton
+export interface TicketCardProps {
+  ticket: Ticket
   players: DraftPlayer[]
   activePlayerId: number | null
   onAssign: (number: number) => void
   onToggleGift: (number: number) => void
 }
 
-export function CartonCard({
-  carton,
+export function TicketCard({
+  ticket,
   players,
   activePlayerId,
   onAssign,
   onToggleGift,
-}: CartonCardProps) {
-  const assignedCount = carton.numbers.filter((n) => n.playerId !== null).length
+}: TicketCardProps) {
+  const assignedCount = ticket.numbers.filter((n) => n.playerId !== null).length
   const playerIndexById = new Map(players.map((p, i) => [p.id, i]))
   const playerById = new Map(players.map((p) => [p.id, p]))
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Cartón #{carton.index}</CardTitle>
+        <CardTitle>Cartón #{ticket.index}</CardTitle>
         <span className="text-xs text-muted-foreground">{assignedCount}/15</span>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-5 gap-2">
-          {carton.numbers.map((entry) => {
+          {ticket.numbers.map((entry) => {
             const owner = entry.playerId !== null ? playerById.get(entry.playerId) : undefined
             const isOwnedByActive =
               entry.playerId !== null && entry.playerId === activePlayerId

@@ -92,7 +92,7 @@ function StepBreadcrumb() {
   )
 }
 
-export default function NuevaJornadaLayout({ children }: { children: React.ReactNode }) {
+export default function NewGameLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1 flex-col">
       <StepBreadcrumb />

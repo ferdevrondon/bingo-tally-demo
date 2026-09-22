@@ -46,8 +46,8 @@ export function PlayerActiveCard({
 
   const countsByNumber = new Map<number, number>()
   const giftByNumber = new Map<number, boolean>()
-  state.cartones.forEach((carton) => {
-    carton.numbers.forEach((entry) => {
+  state.tickets.forEach((ticket) => {
+    ticket.numbers.forEach((entry) => {
       if (entry.playerId === player.id) {
         countsByNumber.set(
           entry.number,
@@ -64,7 +64,7 @@ export function PlayerActiveCard({
       isGift: giftByNumber.get(number) ?? false,
     }))
     .sort((a, b) => a.number - b.number)
-  const totalJugada = numbers.reduce((sum, n) => sum + n.amount, 0)
+  const totalPlayed = numbers.reduce((sum, n) => sum + n.amount, 0)
 
   return (
     <Card className={className}>
@@ -148,7 +148,7 @@ export function PlayerActiveCard({
 
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Total jugada</span>
-          <span className="font-semibold">${totalJugada}</span>
+          <span className="font-semibold">${totalPlayed}</span>
         </div>
 
         <div className="flex items-center justify-between text-sm">
