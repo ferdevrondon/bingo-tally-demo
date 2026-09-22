@@ -1,24 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { ArrowRightIcon, CheckIcon, CircleIcon, PlayIcon } from "lucide-react"
+import { ArrowRightIcon, CheckIcon, PlayIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 
-// ------------------------------------------------------------------
-// Estructura de una jornada (sesión de juego).
-// ------------------------------------------------------------------
 export interface Session {
   id: number
   number: number
@@ -67,72 +56,85 @@ function formatAmount(amount: number) {
   return `$${amount.toLocaleString("en-US")}`
 }
 
-function SessionStat({ value, label }: { value: number; label: string }) {
+function SessionPill({
+  isActive,
+  value,
+  label,
+}: {
+  isActive: boolean
+  value: number
+  label: string
+}) {
   return (
-    <span className="text-sm text-muted-foreground">
-      <span className="font-medium text-foreground">{value}</span> {label}
-    </span>
+    <Badge
+      className={cn(
+        "border-transparent h-6",
+        isActive
+          ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+          : "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+      )}
+    >
+      {value} {label}
+    </Badge>
   )
 }
 
-function SessionCard({ session }: { session: Session }) {
+function SessionRow({ session }: { session: Session }) {
   const isActive = session.status === "active"
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Jornada #{String(session.number).padStart(3, "0")}</CardTitle>
-        <CardDescription>{session.dateLabel}</CardDescription>
-        <CardAction>
-          <Badge
-            variant="outline"
-            className={cn(
-              isActive &&
-                "border-green-600/30 bg-green-50 text-green-700 dark:border-green-500/30 dark:bg-green-950 dark:text-green-400"
-            )}
-          >
-            {isActive ? (
-              <CircleIcon className="fill-current" />
-            ) : (
-              <CheckIcon />
-            )}
-            {isActive ? "Activa" : "Finalizada"}
-          </Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-          <SessionStat value={session.gamesCount} label="partidas" />
-          <SessionStat value={session.playersCount} label="jugadores" />
-          <SessionStat value={session.cardsCount} label="cartones" />
-          {isActive && (
-            <span className="text-sm font-medium text-foreground">
-              {formatAmount(session.revenue)}
-            </span>
-          )}
-        </div>
-      </CardContent>
-      <CardFooter>
-        {!isActive && (
-          <span className="text-sm font-medium">
-            Resultado: {formatAmount(session.revenue)}
+    <Card className="flex-row items-center gap-3 rounded-full px-4 py-3">
+      <div className="flex min-w-0 items-baseline gap-2">
+        <span className="text-base font-bold text-foreground">
+          #{String(session.number).padStart(3, "0")}
+        </span>
+        <span className="truncate text-sm text-muted-foreground">
+          {session.dateLabel}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-wrap items-center justify-center gap-1.5">
+        <SessionPill isActive={isActive} value={session.gamesCount} label="partidas" />
+        <SessionPill isActive={isActive} value={session.playersCount} label="jugadores" />
+        <SessionPill isActive={isActive} value={session.cardsCount} label="cartones" />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-6">
+        <span className="text-base font-bold text-foreground">
+          {formatAmount(session.revenue)}
+        </span>
+        {isActive ? (
+          <span className="flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-500">
+            <span className="size-2 rounded-full bg-green-600 dark:bg-green-500" />
+            Activa
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+            <CheckIcon className="size-3.5" />
+            Teminada.
           </span>
         )}
-        <Button variant="ghost" size="sm" className="ml-auto">
-          Ver jornada
+        <Button
+          size="icon-sm"
+          className="bg-foreground text-background hover:bg-foreground/85"
+          onClick={() => console.log("ver jornada", session.id)}
+          aria-label={`Ver jornada #${String(session.number).padStart(3, "0")}`}
+        >
           <ArrowRightIcon />
         </Button>
-      </CardFooter>
+      </div>
     </Card>
   )
 }
 
 export default function SessionPage() {
   const activeSession = sessions.find((session) => session.status === "active")
-  const previousSessions = sessions.filter((session) => session.status !== "active")
+  const previousSessions = sessions.filter(
+    (session) => session.status !== "active"
+  )
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="@container/main flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           <div className="flex justify-end px-4 lg:px-6">
@@ -144,7 +146,7 @@ export default function SessionPage() {
 
           {activeSession && (
             <div className="px-4 lg:px-6">
-              <SessionCard session={activeSession} />
+              <SessionRow session={activeSession} />
             </div>
           )}
 
@@ -153,9 +155,9 @@ export default function SessionPage() {
               <h2 className="px-4 text-sm font-medium text-muted-foreground lg:px-6">
                 Jornadas anteriores
               </h2>
-              <div className="flex flex-col gap-4 px-4 lg:px-6">
+              <div className="flex flex-col gap-3 px-4 lg:px-6">
                 {previousSessions.map((session) => (
-                  <SessionCard key={session.id} session={session} />
+                  <SessionRow key={session.id} session={session} />
                 ))}
               </div>
             </div>

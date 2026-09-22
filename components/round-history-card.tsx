@@ -140,8 +140,8 @@ export function RoundHistoryCard() {
                 className="flex w-full flex-wrap items-center justify-between gap-3 p-2 text-left"
               >
                 <span className="font-medium">Ronda {round.roundNumber}</span>
-                <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                  <AwardIcon className="size-4" color="gold" />#{round.winningNumber}
+                <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-green-700">
+                  <AwardIcon className="size-4" color="green" /># {round.winningNumber}
                 </span>
                 <span className="text-sm text-muted-foreground">{round.dateLabel}</span>
                 <ChevronDownIcon

@@ -33,9 +33,8 @@ import {
   ActivityIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  Crown,
-  Dice1,
   Dice5,
+  FileChartColumn,
 } from "lucide-react"
 import { Climate_Crisis } from "next/font/google"
 
@@ -51,36 +50,32 @@ const data = {
       url: "/rounds",
       icon: <Target />,
     },
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: <LayoutDashboardIcon />,
-    },
+    // {
+    //   title: "Dashboard",
+    //   url: "/dashboard",
+    //   icon: <LayoutDashboardIcon />,
+    // },
 
-    {
-      title: "Jornadas",
-      url: "/sessions",
-      icon: <ListIcon />,
-    },
+    // {
+    //   title: "Jornadas",
+    //   url: "/sessions",
+    //   icon: <ListIcon />,
+    // },
     {
       title: "Jugadores",
       url: "/players",
       icon: <Users />,
     },
+    // {
+    //   title: "Cartones",
+    //   url: "#",
+    //   icon: <PlayingCardsFan />,
+    // },
+ 
     {
-      title: "Cartones",
-      url: "#",
-      icon: <PlayingCardsFan />,
-    },
-    {
-      title: "Numeros",
-      url: "/numbers",
-      icon: <Hash />,
-    },
-    {
-      title: "Historial",
+      title: "Reportes",
       url: "/reports",
-      icon: <RotateCcwClock />,
+      icon: <FileChartColumn />,
     },
   ],
   navClouds: [
