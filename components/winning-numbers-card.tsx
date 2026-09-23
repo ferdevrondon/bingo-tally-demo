@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { prizeMultiplierForSlot, winnerCountForKind } from "@/lib/round-draft/prize-rules"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 
 export function WinningNumbersCard() {
@@ -64,11 +65,11 @@ export function WinningNumbersCard() {
             blocked && "pointer-events-none opacity-50"
           )}
         >
-          {state.round.prizes.map((prize, i) => (
+          {Array.from({ length: winnerCountForKind(state.round.kind) }, (_, i) => (
             <WinningNumberBall
-              key={i}
+              key={`${state.roundsPlayed}-${i}`}
               slotIndex={i}
-              prizeAmount={prize}
+              multiplier={prizeMultiplierForSlot(state.round!.kind, i)}
               value={state.winningNumbers[i] ?? null}
               usedNumbers={usedNumbers}
               onSubmit={(number) => awardPrize(i, number)}

@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { getCurrentRoundNumber, getRoundKindForNumber } from "@/lib/round-draft/prize-rules"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 import { getBaseRounds } from "@/lib/rounds"
 
@@ -48,7 +49,11 @@ export function TicketsAssignmentPage() {
     setRound,
   } = useRoundDraft()
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
-  const rounds = React.useMemo(() => getBaseRounds(), [])
+  const requiredKind = getRoundKindForNumber(getCurrentRoundNumber(state.roundsPlayed))
+  const rounds = React.useMemo(
+    () => getBaseRounds().filter((r) => r.kind === requiredKind),
+    [requiredKind]
+  )
 
   const activePlayers = getActivePlayers(state)
 
@@ -94,7 +99,9 @@ export function TicketsAssignmentPage() {
           items={rounds.map((r) => ({ label: r.name, value: String(r.id) }))}
         >
           <SelectTrigger className="w-56">
-            <SelectValue placeholder="Selecciona una ronda" />
+            <SelectValue
+              placeholder={`Ronda ${getCurrentRoundNumber(state.roundsPlayed)} — ${requiredKind === "especial" ? "Especial" : "Regular"}`}
+            />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>

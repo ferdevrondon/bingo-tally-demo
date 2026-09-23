@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { winnerCountForKind, type RoundKind } from "@/lib/round-draft/prize-rules"
 
 // ------------------------------------------------------------------
 // Estructura de una ronda. "winnerCount" define cuántos números
@@ -32,14 +33,17 @@ export interface Round {
   id: number
   name: string
   linePrice:number
+  kind: RoundKind
   winnerCount: number
   prizes: string[]
 }
 
 export type NewRound = Omit<Round, "id">
 
-const MAX_WINNER_COUNT = 10
-const winnerCountOptions = Array.from({ length: MAX_WINNER_COUNT }, (_, i) => String(i + 1))
+const kindOptions: { value: RoundKind; label: string }[] = [
+  { value: "regular", label: "Regular (rondas impares)" },
+  { value: "especial", label: "Especial (rondas pares)" },
+]
 
 const prizeOrdinals = [
   "Primer",
@@ -60,9 +64,10 @@ function prizeLabel(index: number) {
 
 const emptyRound: NewRound = {
   name: "",
-  winnerCount: 1,
+  kind: "regular",
+  winnerCount: winnerCountForKind("regular"),
   linePrice:10,
-  prizes: [""],
+  prizes: Array.from({ length: winnerCountForKind("regular") }, () => ""),
 }
 
 export interface RoundFormProps {
@@ -82,10 +87,12 @@ export interface RoundFormProps {
 export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: RoundFormProps) {
   const [round, setRound] = React.useState<NewRound>(emptyRound)
 
-  function updateWinnerCount(value: string | null) {
-    const winnerCount = Number(value ?? 1)
+  function updateKind(value: string | null) {
+    const kind: RoundKind = value === "especial" ? "especial" : "regular"
+    const winnerCount = winnerCountForKind(kind)
     setRound((prev) => ({
       ...prev,
+      kind,
       winnerCount,
       prizes: Array.from({ length: winnerCount }, (_, i) => prev.prizes[i] ?? ""),
     }))
@@ -129,21 +136,25 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="round-winner-count">Números ganadores</FieldLabel>
-            <Select value={String(round.winnerCount)} onValueChange={updateWinnerCount}>
-              <SelectTrigger id="round-winner-count" className="w-full">
+            <FieldLabel htmlFor="round-kind">Tipo</FieldLabel>
+            <Select value={round.kind} onValueChange={updateKind}>
+              <SelectTrigger id="round-kind" className="w-full">
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {winnerCountOptions.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {value}
+                  {kindOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
+            <FieldDescription>
+              {round.winnerCount} número{round.winnerCount > 1 ? "s" : ""} ganador
+              {round.winnerCount > 1 ? "es" : ""} — determinado por el tipo de ronda.
+            </FieldDescription>
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -157,6 +168,9 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
                 placeholder="Premio, ej. 100$"
                 required
               />
+              <FieldDescription>
+                Solo referencia — el premio real se calcula automáticamente.
+              </FieldDescription>
             </Field>
           ))}
         </div>

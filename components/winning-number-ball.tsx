@@ -7,13 +7,13 @@ import { fireConfetti } from "@/lib/confetti"
 import { cn } from "@/lib/utils"
 
 export function WinningNumberBall({
-  prizeAmount,
+  multiplier,
   value,
   usedNumbers,
   onSubmit,
 }: {
   slotIndex: number
-  prizeAmount: number
+  multiplier: number
   value: number | null
   usedNumbers: Set<number>
   onSubmit: (number: number) => void
@@ -66,7 +66,7 @@ export function WinningNumberBall({
     <div className="relative">
       <Crown className="absolute -top-4 left-1/2 z-30 -translate-x-1/2 size-4 fill-green-400 text-green-600" />
       <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full border border-green-500/50 bg-white px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap text-green-700 shadow-sm">
-        ${prizeAmount}
+        {multiplier}x
       </span>
       {value !== null ? (
         ball

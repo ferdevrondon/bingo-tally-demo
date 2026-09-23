@@ -47,7 +47,12 @@ export interface ActivityEntry {
 export interface DraftRoundConfig {
   id: number
   name: string
+  /** Determina la fórmula de premios (ver lib/round-draft/prize-rules.ts). Reglamento: rondas
+   *  impares son "regular", rondas pares son "especial". */
+  kind: "regular" | "especial"
+  /** Solo informativo — el reducer nunca lo usa para calcular premios, siempre deriva de `kind`. */
   winnerCount: number
+  /** Solo informativo/referencia — el premio real se calcula a partir de `kind` y el precio de línea. */
   prizes: number[]
 }
 

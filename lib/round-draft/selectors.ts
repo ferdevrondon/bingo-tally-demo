@@ -22,10 +22,15 @@ export function getRecentActivity(state: RoundDraftState, limit = 20): ActivityE
   return state.activity.slice(0, limit)
 }
 
+export interface NumberWinnerEntry {
+  ticketId: string
+  isGift: boolean
+}
+
 export interface NumberWinner {
   playerId: number
   playerName: string
-  ticketIds: string[]
+  entries: NumberWinnerEntry[]
 }
 
 export interface OwnedNumber {
@@ -43,18 +48,33 @@ export function getPlayerNumbers(state: RoundDraftState, playerId: number): Owne
 }
 
 export function getWinnersForNumber(state: RoundDraftState, number: number): NumberWinner[] {
-  const ticketIdsByPlayer = new Map<number, string[]>()
+  const entriesByPlayer = new Map<number, NumberWinnerEntry[]>()
   state.tickets.forEach((ticket) => {
     const entry = ticket.numbers.find((n) => n.number === number)
     if (entry?.playerId == null) return
-    const ticketIds = ticketIdsByPlayer.get(entry.playerId) ?? []
-    ticketIds.push(ticket.id)
-    ticketIdsByPlayer.set(entry.playerId, ticketIds)
+    const entries = entriesByPlayer.get(entry.playerId) ?? []
+    entries.push({ ticketId: ticket.id, isGift: entry.isGift })
+    entriesByPlayer.set(entry.playerId, entries)
   })
-  return [...ticketIdsByPlayer.entries()].map(([playerId, ticketIds]) => {
+  return [...entriesByPlayer.entries()].map(([playerId, entries]) => {
     const player = state.players.find((p) => p.id === playerId)
-    return { playerId, playerName: player?.name ?? "Jugador desconocido", ticketIds }
+    return { playerId, playerName: player?.name ?? "Jugador desconocido", entries }
   })
+}
+
+export interface LineSaleStats {
+  soldPaid: number
+  soldGift: number
+  unsold: number
+  totalLines: number
+}
+
+export function getLineSaleStats(state: RoundDraftState): LineSaleStats {
+  const allEntries = state.tickets.flatMap((t) => t.numbers)
+  const soldGift = allEntries.filter((n) => n.playerId !== null && n.isGift).length
+  const soldPaid = allEntries.filter((n) => n.playerId !== null && !n.isGift).length
+  const unsold = allEntries.filter((n) => n.playerId === null).length
+  return { soldPaid, soldGift, unsold, totalLines: allEntries.length }
 }
 
 export interface GameSummary {

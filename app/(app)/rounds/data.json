@@ -2,13 +2,15 @@
   {
     "id": 1,
     "Nombre": "Regular",
-    "Numeros ganadores": 2,
-    "Premios": "100$, 50$"
+    "Tipo": "Regular",
+    "Numeros ganadores": 1,
+    "Premios": "100$"
   },
   {
     "id": 2,
     "Nombre": "Especial",
-    "Numeros ganadores": 1,
-    "Premios": "100$"
+    "Tipo": "Especial",
+    "Numeros ganadores": 2,
+    "Premios": "100$, 50$"
   }
 ]

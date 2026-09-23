@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { fireConfetti } from "@/lib/confetti"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { getCurrentRoundNumber, getRoundKindForNumber } from "@/lib/round-draft/prize-rules"
 import { getBaseRounds } from "@/lib/rounds"
 import { Separator } from "@base-ui/react"
 import { CircleAlertIcon } from "lucide-react"
@@ -34,7 +35,11 @@ export function CloseRoundDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { state, closeRound } = useRoundDraft()
-  const otherRounds = getBaseRounds().filter((r) => r.id !== state.round?.id)
+  const nextRoundNumber = getCurrentRoundNumber(state.roundsPlayed) + 1
+  const requiredKind = getRoundKindForNumber(nextRoundNumber)
+  const otherRounds = getBaseRounds().filter(
+    (r) => r.id !== state.round?.id && r.kind === requiredKind
+  )
   const [selectedRoundId, setSelectedRoundId] = React.useState("")
 
   function handleConfirm() {
@@ -76,7 +81,8 @@ export function CloseRoundDialog({
                <div className="px-4 mb-3">
             <span className="mb-2 font-extrabold">
               {" "}
-              Selecciona la siguiente ronda:{" "}
+              Selecciona la siguiente ronda: Ronda {nextRoundNumber} —{" "}
+              {requiredKind === "especial" ? "Especial" : "Regular"}{" "}
             </span>
           </div>
                 <Select
