@@ -48,12 +48,6 @@ const data = {
       icon: <Target />,
     },
     // {
-    //   title: "Dashboard",
-    //   url: "/dashboard",
-    //   icon: <LayoutDashboardIcon />,
-    // },
-
-    // {
     //   title: "Jornadas",
     //   url: "/games",
     //   icon: <ListIcon />,
