@@ -20,7 +20,8 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { signInWithGoogle, signInWithPassword } from "@/lib/supabase/actions"
+import { signInWithGoogle, signInWithPassword } from "@/lib/supabase/actions";
+import {titleFont} from '@/fonts';
 
 export function LoginForm({
   className,
@@ -32,8 +33,8 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Welcome back</CardTitle>
-          <CardDescription>Login with your Google account</CardDescription>
+          <CardTitle className={"text-xl " + titleFont.className}>Welcome back</CardTitle>
+          <CardDescription>Comienza la jornada de hoy!</CardDescription>
         </CardHeader>
         <CardContent>
           <FieldGroup>

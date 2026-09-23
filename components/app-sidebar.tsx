@@ -16,27 +16,24 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
-  LayoutDashboardIcon,
-  ListIcon,
+
   CameraIcon,
   FileTextIcon,
   Settings2Icon,
   DatabaseIcon,
   FileChartColumnIcon,
   FileIcon,
-  ChessQueen,
+
   Users,
-  PlayingCardsFan,
-  RotateCcwClock,
-  Hash,
   Target,
   ActivityIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  Dice5,
+
   FileChartColumn,
 } from "lucide-react"
 import { Climate_Crisis } from "next/font/google"
+import Image from "next/image"
 
 const data = {
   navMain: [
@@ -189,14 +186,14 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="data-[slot=sidebar-menu-button]:p-1.5! group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1.5!"
               render={<a href="#" />}
             >
-              <div className="flex size-5 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Dice5 className="size-5" />
+              <div className="flex size-6 shrink-0 items-center justify-center">
+                 <Image src={'/assets/img/logo.svg'}  alt={'logo'} width={24} height={24} className="size-6"/>
               </div>
               <span
-                className={"text text-xl font-semibold " + titleFont.className}
+                className={"text text-xl font-semibold group-data-[collapsible=icon]:hidden " + titleFont.className}
               >
                 {" "}
                 Bingo Tally.
