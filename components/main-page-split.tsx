@@ -23,16 +23,28 @@ function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
+function subscribeToClock(onTick: () => void) {
+  const id = setInterval(onTick, 1000)
+  return () => clearInterval(id)
+}
+
+// Whole seconds keep the snapshot stable between ticks; null on the server
+// so the first client render matches the server HTML.
+function getClockSnapshot() {
+  return Math.floor(Date.now() / 1000)
+}
+
+function getServerClockSnapshot() {
+  return null
+}
+
 function useClock() {
-  const [now, setNow] = React.useState<Date | null>(null)
-
-  React.useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    setNow(new Date())
-    return () => clearInterval(id)
-  }, [])
-
-  return now
+  const seconds = React.useSyncExternalStore(
+    subscribeToClock,
+    getClockSnapshot,
+    getServerClockSnapshot
+  )
+  return React.useMemo(() => (seconds === null ? null : new Date(seconds * 1000)), [seconds])
 }
 
 function getGreeting(now: Date | null) {

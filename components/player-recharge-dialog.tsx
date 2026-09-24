@@ -32,9 +32,13 @@ export function PlayerRechargeDialog({
   const { state, rechargeBalance } = useRoundDraft()
   const [amount, setAmount] = React.useState("")
 
-  React.useEffect(() => {
+  // Reset the form each time the dialog opens (adjusting state during render
+  // instead of in an effect, per React's "you might not need an effect").
+  const [wasOpen, setWasOpen] = React.useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
     if (open) setAmount("")
-  }, [open])
+  }
 
   const netBalance = player.positiveBalance - player.negativeBalance
   const parsedAmount = Number.parseFloat(amount)

@@ -1,19 +1,12 @@
-"use client"
-
-import * as React from "react"
-
-
-import data from "./data.json"
 import SettingsPage from "@/components/settings-page"
 
+// House name/identifier come from the database once the backend lands
+// (see BACKEND_PLAN.md); until then SettingsPage renders its own form state.
 export default function Page() {
-  const [casa, setCasa] = React.useState(data.casa)
-  const account = data.account
-
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
-        <SettingsPage casa={casa} account={account} onSaveCasa={setCasa} />
+        <SettingsPage />
       </div>
     </div>
   )

@@ -115,10 +115,12 @@ export function RoundHistoryCard({ selectedDate }: { selectedDate: Date }) {
   const dayRounds = rounds.filter((round) => isSameDay(round.date, selectedDate))
   const [expandedId, setExpandedId] = React.useState<number | null>(dayRounds[0]?.id ?? null)
 
-  React.useEffect(() => {
+  // Expand the first round again whenever a different day is picked.
+  const [shownDay, setShownDay] = React.useState(selectedDate.getTime())
+  if (selectedDate.getTime() !== shownDay) {
+    setShownDay(selectedDate.getTime())
     setExpandedId(dayRounds[0]?.id ?? null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate])
+  }
 
   const houseBalance = dayRounds.reduce((sum, r) => sum + r.houseResult, 0)
   const balanceIsPositive = houseBalance >= 0

@@ -125,13 +125,19 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
               required
             />
           </Field>
-            <Field>
+          <Field>
             <FieldLabel htmlFor="line-price">Precio de linea</FieldLabel>
             <Input
               id="line-price"
-              value={round.linePrice}
-              onChange={(e) => setRound((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="10$"
+              type="number"
+              inputMode="decimal"
+              min={0.01}
+              step={0.01}
+              value={Number.isNaN(round.linePrice) ? "" : round.linePrice}
+              onChange={(e) =>
+                setRound((prev) => ({ ...prev, linePrice: e.target.valueAsNumber }))
+              }
+              placeholder="10"
               required
             />
           </Field>

@@ -50,14 +50,15 @@ export function PlayerEditNumbersDialog({
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
   const [pendingSteal, setPendingSteal] = React.useState<number | null>(null)
 
-  React.useEffect(() => {
+  // Only reset when the dialog opens, not on every state.tickets change.
+  const [wasOpen, setWasOpen] = React.useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
     if (open) {
       setDraft(cloneTickets(state.tickets))
       setPageIndex(0)
     }
-    // Only reset when the dialog opens, not on every state.tickets change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }
 
   const isDirty = ticketsDiffer(draft, state.tickets)
   const playerIndexById = new Map(state.players.map((p, i) => [p.id, i]))

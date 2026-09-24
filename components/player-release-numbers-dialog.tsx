@@ -47,13 +47,12 @@ export function PlayerReleaseNumbersDialog({
   const playerIndex = state.players.findIndex((p) => p.id === player.id)
   const hasMultipleTickets = new Set(ownedNumbers.map((n) => n.ticketId)).size > 1
 
-  React.useEffect(() => {
-    if (open) {
-      setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.ticketId, n.number))))
-    }
-    // Only reset when the dialog opens, not on every state.tickets change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  // Only reset when the dialog opens, not on every state.tickets change.
+  const [wasOpen, setWasOpen] = React.useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.ticketId, n.number))))
+  }
 
   const isDirty = keep.size !== ownedNumbers.length
 

@@ -656,6 +656,11 @@ export function RoundDraftProvider({
   React.useEffect(() => {
     const loaded = repository.load()
     if (loaded) dispatch({ type: "HYDRATE", payload: loaded })
+    // Reading localStorage is an external-system sync that must stay after mount
+    // (a lazy initializer would break SSR hydration). The flag has to be render
+    // state, not a ref, or StrictMode's effect re-run would save the empty
+    // default over the stored draft. Replaced by the DB loader in backend Phase 4.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsHydrated(true)
   }, [repository])
 
