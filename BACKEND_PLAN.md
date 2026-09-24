@@ -11,7 +11,7 @@
 
 - Auth is already live (`SUPABASE_AUTH.md`, `lib/supabase/*`, `proxy.ts`).
 - All app data is still mock: players and rounds come from `data.json`, and the live game session lives in the `lib/round-draft/` reducer plus localStorage. `resetDraft()` wipes it when a game session ends.
-- Supabase project `xrporompvbfjfmkfxkwa` has **0 tables**.
+- Supabase project `xrporompvbfjfmkfxkwa`: schema, RLS and seed created in Phase 1 (`supabase/migrations/`).
 
 ## Business rules (non-negotiable)
 
@@ -138,24 +138,28 @@ Functions (all **`security invoker`**, `set search_path = ''`, execute granted t
 - `claim_admin_session()`: raises unless the caller is an admin in some house, then upserts `(auth.uid(), current session_id)`.
 - `admin_heartbeat()`: updates `last_seen_at = now()` only if the caller's session is the claimed one.
 
-Login flow (adapt the existing login page/action):
+Login flow (implemented in Phase 2; shared logic in `lib/data/admin-session.ts`):
 
-The current `signInWithPassword` server action (`lib/supabase/actions.ts`) ends with `redirect("/")`. It must instead return a state (`{ status: 'ok' | 'other_active' }`) so the login form can show the dialog before navigating. **Google OAuth** (`signInWithGoogle` → `app/auth/callback/route.ts`) must run the same check: after `exchangeCodeForSession`, call `admin_session_status()`; for `other_active`, redirect to `/login?confirm=takeover` and show the same dialog there. The admin may sign in with Google; the check is the same for both paths.
+Permissions principle: **the database decides** (RLS + `is_house_admin()`); the UI only hides controls and translates errors. Hiding edit controls from observers is done per phase, in the phase that connects each screen to the database (players/rounds in Phase 3, the live game in Phase 4, the "Solo lectura" badge and a full pass in Phase 5).
 
-1. `signInWithPassword` succeeds.
-2. Call `admin_session_status()`.
+`proxy.ts` bounces signed-in users away from `/login` and `/auth/*`, and the "other device" choice happens *after* signing in, so it lives on its own page, **`/session-conflict`** (`app/(auth)/session-conflict/page.tsx`), used by both sign-in paths.
+
+1. Password (`signInWithPassword` in `lib/supabase/actions.ts`) or Google (`app/auth/callback/route.ts`, after `exchangeCodeForSession`) succeeds.
+2. `resolveAdminSessionAfterLogin()` calls `admin_session_status()`:
    - `not_admin` → go to the app (observers may have several sessions).
-   - `none`, `mine` or `other_stale` → call `claim_admin_session()`, then `supabase.auth.signOut({ scope: 'others' })`, then go to the app.
-   - `other_active` → show a dialog that asks the admin which device keeps the session: **"Esta cuenta ya está abierta en otro dispositivo. ¿Quieres mantener la sesión aquí o cerrarla y seguir en el otro dispositivo?"** with two buttons:
-     - **"Mantener sesión aquí"**: claim + `signOut({ scope: 'others' })` + go to app. The other device is kicked out (see below).
-     - **"Seguir en el otro dispositivo"**: `signOut({ scope: 'local' })` and stay on `/login`. The other device keeps working untouched.
+   - `none`, `mine` or `other_stale` → `claim_admin_session()` + `supabase.auth.signOut({ scope: 'others' })` → go to the app.
+   - `other_active` → `/session-conflict`: **"Esta cuenta ya está abierta en otro dispositivo. ¿Quieres mantener la sesión aquí o cerrarla y seguir en el otro dispositivo?"**
+     - **"Mantener sesión aquí"** (`keepSessionHere`): claim + `signOut({ scope: 'others' })` → `/`. The other device is kicked out (see below).
+     - **"Seguir en el otro dispositivo"** (`continueOnOtherDevice`): `signOut({ scope: 'local' })` → `/login`. The other device keeps working untouched.
+   - If the other device went quiet before the choice is made, `/session-conflict` resolves again and redirects without asking.
 
-Kicking the old session:
+Kicking the old session (`components/admin-session-guard.tsx`, mounted by `(app)/layout.tsx` for the admin only):
 
-- Admin client subscribes via Realtime to `admin_auth_sessions` filtered `user_id=eq.<me>`. When `session_id` changes to something other than its own, it calls `signOut({ scope: 'local' })` and redirects to `/login?reason=replaced`, which shows **"Tu sesión se cerró porque se inició sesión en otro dispositivo."**
-- Fallback: in `(app)/layout.tsx`, if the user is admin and `admin_auth_sessions.session_id` differs from the current token's `session_id`, sign out and redirect the same way.
-- Fallback: any write that fails with `not_admin` for an admin user triggers the same redirect.
-- While the admin tab is open, call `admin_heartbeat()` every 60 seconds.
+- Realtime subscription to `admin_auth_sessions` filtered `user_id=eq.<me>` (table added to the `supabase_realtime` publication in `20260924010837_realtime_admin_auth_sessions.sql`). When `session_id` changes to another value: `signOut({ scope: 'local' })` → `/login?reason=replaced`, which shows **"Tu sesión se cerró porque se inició sesión en otro dispositivo."**
+- Heartbeat: `admin_heartbeat()` on mount and every 60 seconds, then `admin_session_status()`; `other_active`/`other_stale` means this session was replaced and the Realtime event was missed → same sign-out.
+- Layout fallback (`ensureAdminSession()` in `(app)/layout.tsx`, every request): `none`/`other_stale` → claim silently (covers sessions opened before Phase 2); `other_active` → `/session-conflict`. It doesn't sign out other sessions (a layout can't write cookies; the claim alone already blocks their writes).
+- Writes that fail with `not_admin` (from Phase 3 on): `isNotAdminError()` → `/login?reason=replaced`.
+- `/login` also shows `?error=auth_callback_error|oauth_error` messages.
 
 Read the current `session_id` from the access token claims with `supabase.auth.getClaims()` (available in the installed `@supabase/supabase-js` 2.116).
 
@@ -354,9 +358,13 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 - The backup workflow only runs from the default branch (`schedule` and `workflow_dispatch`), so its first manual run happens after this branch is merged: **Actions → db-backup → Run workflow**.
 
 ### Phase 2: Single admin session
-- Session functions wired into the login flow (password action returns state instead of redirecting; Google callback runs the same check), the dialog, the Realtime kick, the layout fallback, the heartbeat, and the `/login?reason=replaced` message.
+- Session functions wired into the login flow (password and Google both resolve the session; the choice lives on `/session-conflict`), the Realtime kick, the layout fallback, the heartbeat, and the `/login?reason=replaced` message.
 
 **Acceptance:** Admin logged in on browser A. Logging in on browser B shows the dialog. "Seguir en el otro dispositivo" signs B out and leaves A working. "Mantener sesión aquí" makes A redirect to login with the message within a few seconds, and any write attempted from A's old token is rejected. An observer can log in on two browsers at once without any dialog.
+
+**Status (2026-09-24): implemented** on branch `feat/backend-phase-2` (stacked on `feat/backend-phase-1`).
+- Verified with the real admin account: a page load claims the session silently and the heartbeat advances `last_seen_at` every 60 s; a second device (the preview browser, already signed in) was sent to `/session-conflict`; "Seguir en el otro dispositivo" signed only that device out (open Auth sessions 2 → 1) and left the claimed session untouched; `/login?reason=replaced` and `?error=oauth_error` show their messages. Security advisor: no new findings.
+- Still to verify with the user signing in on a second device: "Mantener sesión aquí" kicking device A live. The DB side (old session's writes rejected) was already verified in Phase 1. Observer case pending until an observer exists.
 
 ### Phase 3: Players and rounds CRUD
 - `lib/data/players.ts`, `lib/data/rounds.ts` server actions; `/players` and `/rounds` read from the DB.
@@ -364,7 +372,8 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 - Rename the Spanish row keys and values listed under "Naming conventions" for these pages; the `/players` table no longer shows balances (they are per game session).
 - `/rounds` shows and edits "Precio de linea"; unify the two `Round` types (`components/round-form.tsx` and `lib/rounds.ts`).
 - `/settings` has no price field (the price lives on round templates).
-- Observer: no edit/add/delete controls.
+- Observer: no edit/add/delete controls (`useRole()` from `components/house-provider.tsx`).
+- Every write action checks `isNotAdminError()` (`lib/data/admin-session.ts`) and sends a replaced admin session to `/login?reason=replaced`.
 
 **Acceptance:** Rounds created on `/rounds` appear in the round picker with their line price. As observer, a forced write via the browser console (`supabase.from('players').insert(...)`) is rejected.
 

@@ -47,9 +47,9 @@ lib/supabase/actions.ts → signInWithPassword()   ["use server"]
   │  1. validates formData with lib/supabase/schemas.ts's zod loginSchema
   │  2. supabase.auth.signInWithPassword({ email, password })
   │  3. on error   → returns { errors } → shown inline via FieldError
-  │  4. on success → redirect("/")
-  ▼
-proxy.ts sees the new session cookie → lets the request to "/" through
+  │  4. on success → redirect(resolveAdminSessionAfterLogin())   → "/" or "/session-conflict"
+  ▼                  (see "Single admin session" below)
+proxy.ts sees the new session cookie → lets the request through
 ```
 
 ### 2. Google OAuth
@@ -78,7 +78,7 @@ Supabase  →  exchanges the code with Google, creates the Supabase auth code,
 app/auth/callback/route.ts   (Route Handler, GET)
   │  1. reads ?code= from the URL
   │  2. supabase.auth.exchangeCodeForSession(code)  → sets the session cookie
-  │  3. redirect(origin + next)   where next defaults to "/"
+  │  3. resolveAdminSessionAfterLogin() → redirect to next (default "/") or "/session-conflict"
   │  4. on failure → redirect to /login?error=auth_callback_error
   ▼
 proxy.ts sees the new session cookie → lets the request to "/" through
@@ -117,7 +117,8 @@ app/
 │
 └── (auth)/                 — auth-only pages
     ├── layout.tsx          — bare, just {children}, no sidebar
-    └── login/page.tsx
+    ├── login/page.tsx
+    └── session-conflict/page.tsx — admin chooses which device keeps the session
 ```
 
 `app/(app)/layout.tsx` is a Server Component: it calls `lib/supabase/server.ts`'s `createClient()`, reads `auth.getUser()`, maps the result through `lib/supabase/types.ts`'s `toAppUser()` (Supabase's `User` shape → the simple `{name, email, avatar}` shape `AppSidebar`/`NavUser` expect), and passes it down as a prop — replacing what used to be a hardcoded `{name: "shadcn", email: "m@example.com", ...}` object in `components/app-sidebar.tsx`.
@@ -142,6 +143,19 @@ app/
 | `components/nav-user.tsx` | modified | "Log out" now calls `signOut()` |
 | `.env.local` (gitignored) | — | Holds `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
 | `.env.example` | new | Committed placeholder for the two env vars above |
+
+## Single admin session
+
+A house admin can write from only one login session at a time (BACKEND_PLAN.md rule 5). The database enforces it: `private.is_house_admin()` only accepts the `session_id` claim stored in `admin_auth_sessions`. The app keeps the UI in step (details in BACKEND_PLAN.md §2):
+
+| Piece | File | What it does |
+|---|---|---|
+| Post-login check | `lib/data/admin-session.ts` → `resolveAdminSessionAfterLogin()` | Called by both sign-in paths. Claims the session (and signs out the account's other sessions) unless another device was active in the last 2 minutes. |
+| Choice page | `app/(auth)/session-conflict/page.tsx` | "Mantener sesión aquí" (`keepSessionHere`) or "Seguir en el otro dispositivo" (`continueOnOtherDevice`). Lives outside `/login` because proxy.ts sends signed-in users away from `/login`. |
+| Guard | `components/admin-session-guard.tsx` | Admin tabs only: heartbeat every 60 s, plus a Realtime listener on the admin's own `admin_auth_sessions` row. When another device claims the session, this one signs out and goes to `/login?reason=replaced`. |
+| Layout fallback | `app/(app)/layout.tsx` → `ensureAdminSession()` | Every request: claims silently if unclaimed/stale, sends to `/session-conflict` if another device is active. |
+
+`/login` shows a notice for `?reason=replaced` and for the OAuth error redirects (`?error=auth_callback_error`, `?error=oauth_error`).
 
 ## Tenancy: current house and role
 

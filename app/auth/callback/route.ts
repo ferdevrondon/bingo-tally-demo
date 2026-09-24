@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { resolveAdminSessionAfterLogin } from "@/lib/data/admin-session"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: Request) {
@@ -11,7 +12,9 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      // Same single-admin-session check as the password login.
+      const destination = await resolveAdminSessionAfterLogin(supabase)
+      return NextResponse.redirect(`${origin}${destination === "/" ? next : destination}`)
     }
   }
 
