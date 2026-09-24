@@ -143,9 +143,52 @@ app/
 | `.env.local` (gitignored) | — | Holds `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
 | `.env.example` | new | Committed placeholder for the two env vars above |
 
+## Tenancy: current house and role
+
+A signed-in user works inside one **house** (`public.houses`); `public.house_members` links users to houses with role `admin` (at most one per house, enforced by a unique index) or `observer`. The schema, RLS and helper functions are in `supabase/migrations/`; BACKEND_PLAN.md §1–4 explains the model.
+
+```
+app/(app)/layout.tsx  (Server Component)
+  │  getCurrentUser() + getCurrentHouse()   [lib/data/house.ts, cached per request]
+  │    getCurrentHouse = the user's oldest membership → { houseId, houseName, role }, or null
+  ▼
+components/house-provider.tsx  <HouseProvider house={…}>
+  └─ client components: useHouse() / useRole()  → "admin" | "observer" | null
+```
+
+`useRole()` only decides what the UI shows. The database is the real guard: RLS lets members read their house and lets only the admin write, and only from the admin's currently claimed login session (`admin_auth_sessions`, wired into the login flow in BACKEND_PLAN Phase 2).
+
 ## Database backups and restore
 
-_Filled in during BACKEND_PLAN.md Phase 1._ The project is on the Supabase Free plan (no automatic backups), so a nightly GitHub Action (`.github/workflows/db-backup.yml`) will dump the schema and data using the `SUPABASE_DB_URL` repository secret. This section will document where the dumps live and the exact restore steps.
+The project is on the Supabase Free plan, which has no automatic backups. `.github/workflows/db-backup.yml` runs every night at 03:00 America/Mexico_City (and on demand from **Actions → db-backup → Run workflow**). It uses the Supabase CLI to write three files and uploads them as the workflow artifact `db-backup-<run id>`, kept for 30 days:
+
+| File | Contents |
+|---|---|
+| `roles.sql` | Custom database roles |
+| `schema.sql` | Tables, functions, RLS policies, triggers (Supabase internals filtered out) |
+| `data.sql` | All rows, including `auth.users`, as `COPY` statements |
+
+**Secret:** `SUPABASE_DB_URL` (GitHub → Settings → Secrets and variables → Actions) holds the **Session pooler** connection string, port `5432`, user `postgres.xrporompvbfjfmkfxkwa`. GitHub runners are IPv4-only and the direct connection is IPv6 on the Free plan, so the direct string would fail. The dumps contain player data: keep the repo private.
+
+### Restore
+
+1. Download the artifact from the workflow run and unzip it.
+2. Target: the same project (after data loss) or a new project. In a new project, first enable any non-default extensions.
+3. Get the target's Session pooler connection string (**Connect** in the dashboard) and its database password (**Project Settings → Database → Reset database password** if unknown).
+4. With `psql` installed (`brew install postgresql@17`), run:
+
+   ```bash
+   psql --single-transaction --variable ON_ERROR_STOP=1 \
+     --file roles.sql --file schema.sql \
+     --command 'SET session_replication_role = replica' \
+     --file data.sql \
+     --dbname "<SESSION_POOLER_CONNECTION_STRING>"
+   ```
+
+   `session_replication_role = replica` disables triggers during the import. The whole restore is one transaction, so a failure changes nothing.
+5. Re-enable the Realtime publication on `activity_log` and `admin_auth_sessions` (from BACKEND_PLAN Phase 2/5 on) in **Database → Publications**.
+
+Restoring into the *same* project over existing tables fails on conflicts; restore into a fresh project, or reset the database first. Known fixes for permission errors (`supabase_admin` owner lines, the `cli_login_postgres` grant) are in Supabase's guide: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
 
 ## Not wired up yet (intentional, out of scope so far)
 

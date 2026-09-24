@@ -1,0 +1,56 @@
+# Nightly Supabase database backup (the Free plan has no automatic backups).
+# Dumps roles, schema and data with the Supabase CLI and keeps them as a
+# workflow artifact for 30 days. Restore steps: SUPABASE_AUTH.md →
+# "Database backups and restore". Also keeps the project from pausing after 7
+# idle days, since each run connects to the database.
+#
+# Requires the SUPABASE_DB_URL repository secret: the Session pooler connection
+# string (port 5432) — GitHub runners are IPv4-only, and the direct connection
+# is IPv6 on the Free plan.
+name: db-backup
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 03:00 America/Mexico_City (UTC−6)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dump roles, schema and data
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL}" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set"
+            exit 1
+          fi
+          mkdir -p backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only \
+            -x "storage.buckets_vectors" -x "storage.vector_indexes"
+          test -s backup/schema.sql
+          test -s backup/data.sql
+          ls -la backup
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 30
+          if-no-files-found: error
