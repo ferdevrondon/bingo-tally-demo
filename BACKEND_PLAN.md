@@ -40,7 +40,7 @@
 
 This project stays on the Free plan. The design fits within it, but two limits need handling:
 
-- **No automatic backups.** Because the game session record must never be lost, add `.github/workflows/db-backup.yml`: a nightly scheduled job that runs `supabase db dump` (schema) and `supabase db dump --data-only` using the connection string stored as a GitHub secret (`SUPABASE_DB_URL`), then uploads both files as a workflow artifact with 30-day retention. Document how to restore in `SUPABASE_AUTH.md`. Keep the repo private.
+- **No automatic backups.** Because the game session record must never be lost, add `.github/workflows/db-backup.yml`: a nightly scheduled job that runs `supabase db dump` (schema) and `supabase db dump --data-only` using the connection string stored as a GitHub secret (`SUPABASE_DB_URL`), then uploads both files as a workflow artifact with 30-day retention. Document how to restore in `SUPABASE_AUTH.md`. The repo (`ED-bingo/admin_bingo_v1`) is private; keep it that way, since the dumps contain player data.
 - **Projects pause after 7 days without activity.** Daily use prevents it, but the nightly backup job also queries the database, which covers holidays.
 - Other limits (500 MB database, 200 concurrent Realtime connections, 2M Realtime messages/month) are far above what this app needs: ledger rows are tiny, and each open browser tab uses one Realtime connection. Use one channel per page and remove it on unmount so connections don't leak.
 
@@ -110,6 +110,7 @@ create unique index house_members_one_admin
 
 - Current house: the user's membership ordered by `created_at` (deterministic), resolved in `app/(app)/layout.tsx` next to the existing `getUser()`. Expose `{ houseId, role }` to client components through a small context so `useRole()` works.
 - For now the house, the admin and the observers are created with a seed SQL insert (the users must already exist in Supabase Auth). A members screen comes in Phase 6.
+- **Seed admin (temporary):** `ferdevrondon@gmail.com`. This account will be replaced later; write the seed so the admin is looked up by email in one place (a single `select id from auth.users where email = …`), so swapping it is a one-line change plus a `house_members` update. No observers are seeded yet; add them when their emails are known.
 
 ## 2. Single admin session
 
@@ -144,7 +145,9 @@ The current `signInWithPassword` server action (`lib/supabase/actions.ts`) ends 
 2. Call `admin_session_status()`.
    - `not_admin` → go to the app (observers may have several sessions).
    - `none`, `mine` or `other_stale` → call `claim_admin_session()`, then `supabase.auth.signOut({ scope: 'others' })`, then go to the app.
-   - `other_active` → show a dialog: **"Esta cuenta ya está abierta en otro dispositivo. Si continúas, esa sesión se cerrará."** with buttons **"Continuar aquí"** (claim + sign out others + go to app) and **"Cancelar"** (`signOut({ scope: 'local' })`, stay on login).
+   - `other_active` → show a dialog that asks the admin which device keeps the session: **"Esta cuenta ya está abierta en otro dispositivo. ¿Quieres mantener la sesión aquí o cerrarla y seguir en el otro dispositivo?"** with two buttons:
+     - **"Mantener sesión aquí"**: claim + `signOut({ scope: 'others' })` + go to app. The other device is kicked out (see below).
+     - **"Seguir en el otro dispositivo"**: `signOut({ scope: 'local' })` and stay on `/login`. The other device keeps working untouched.
 
 Kicking the old session:
 
@@ -345,7 +348,7 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 ### Phase 2: Single admin session
 - Session functions wired into the login flow (password action returns state instead of redirecting; Google callback runs the same check), the dialog, the Realtime kick, the layout fallback, the heartbeat, and the `/login?reason=replaced` message.
 
-**Acceptance:** Admin logged in on browser A. Logging in on browser B shows the dialog. "Cancelar" leaves A working. "Continuar aquí" makes A redirect to login with the message within a few seconds, and any write attempted from A's old token is rejected. An observer can log in on two browsers at once without any dialog.
+**Acceptance:** Admin logged in on browser A. Logging in on browser B shows the dialog. "Seguir en el otro dispositivo" signs B out and leaves A working. "Mantener sesión aquí" makes A redirect to login with the message within a few seconds, and any write attempted from A's old token is rejected. An observer can log in on two browsers at once without any dialog.
 
 ### Phase 3: Players and rounds CRUD
 - `lib/data/players.ts`, `lib/data/rounds.ts` server actions; `/players` and `/rounds` read from the DB.
