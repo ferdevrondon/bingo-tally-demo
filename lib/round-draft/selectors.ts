@@ -1,10 +1,11 @@
-import { getBasePlayers } from "./players"
 import type { ActivityEntry, DraftPlayer, RoundDraftState } from "./types"
 
+// Players created during the draft are already saved in the catalog, so only
+// assigned numbers and played rounds count as progress that discarding loses.
 export function hasDraftProgress(state: RoundDraftState): boolean {
   return (
-    state.tickets.some((t) => t.numbers.some((n) => n.playerId !== null)) ||
-    state.players.length > getBasePlayers().length
+    state.roundsPlayed > 0 ||
+    state.tickets.some((t) => t.numbers.some((n) => n.playerId !== null))
   )
 }
 

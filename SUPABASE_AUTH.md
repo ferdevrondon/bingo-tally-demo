@@ -106,14 +106,17 @@ lib/supabase/actions.ts → signOut()
 ```
 app/
 ├── layout.tsx              — global only: fonts, <html>/<body>, ThemeProvider,
-│                              RoundDraftProvider, Toaster
+│                              Toaster
 ├── auth/callback/route.ts  — the OAuth callback (a Route Handler, not a page —
 │                              no layout wraps it at all)
 ├── (app)/                  — every real page of the app
 │   ├── layout.tsx          — fetches the current user server-side, renders the
 │   │                          sidebar/header chrome, passes the user down
 │   ├── page.tsx            — root "/", the post-login landing page
-│   ├── new-game/, active-round/, players/, rounds/, games/, reports/, settings/
+│   ├── (game)/layout.tsx   — loads players + round templates, mounts
+│   │   │                      RoundDraftProvider for the live game flow
+│   │   └── new-game/, active-round/
+│   ├── players/, rounds/, games/, reports/, settings/
 │
 └── (auth)/                 — auth-only pages
     ├── layout.tsx          — bare, just {children}, no sidebar
@@ -154,6 +157,7 @@ A house admin can write from only one login session at a time (BACKEND_PLAN.md r
 | Choice page | `app/(auth)/session-conflict/page.tsx` | "Mantener sesión aquí" (`keepSessionHere`) or "Seguir en el otro dispositivo" (`continueOnOtherDevice`). Lives outside `/login` because proxy.ts sends signed-in users away from `/login`. |
 | Guard | `components/admin-session-guard.tsx` | Admin tabs only: heartbeat every 60 s, plus a Realtime listener on the admin's own `admin_auth_sessions` row. When another device claims the session, this one signs out and goes to `/login?reason=replaced`. |
 | Layout fallback | `app/(app)/layout.tsx` → `ensureAdminSession()` | Every request: claims silently if unclaimed/stale, sends to `/session-conflict` if another device is active. |
+| Rejected writes | `lib/data/reject-write.ts` → `rejectWrite()` | Catalog Server Actions (players, round templates): when the admin's write is rejected and `admin_session_status()` is no longer `mine`, signs this device out and redirects to `/login?reason=replaced`. Observers just get a "Solo lectura" error. |
 
 `/login` shows a notice for `?reason=replaced` and for the OAuth error redirects (`?error=auth_callback_error`, `?error=oauth_error`).
 
@@ -169,6 +173,8 @@ app/(app)/layout.tsx  (Server Component)
 components/house-provider.tsx  <HouseProvider house={…}>
   └─ client components: useHouse() / useRole()  → "admin" | "observer" | null
 ```
+
+Members today (seed migrations): the admin `ferdevrondon@gmail.com` (Google) and the observer `rondon.fernanda11@gmail.com` (email + password, account created in the dashboard under **Authentication → Users**; membership in `20260924212622_seed_first_observer.sql`). To add another observer: create the Auth user, then add a migration inserting a `house_members` row with `role = 'observer'`.
 
 `useRole()` only decides what the UI shows. The database is the real guard: RLS lets members read their house and lets only the admin write, and only from the admin's currently claimed login session (`admin_auth_sessions`, wired into the login flow in BACKEND_PLAN Phase 2).
 

@@ -22,27 +22,37 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { winnerCountForKind, type RoundKind } from "@/lib/round-draft/prize-rules"
+import type { RoundInput } from "@/lib/rounds"
 
-// ------------------------------------------------------------------
-// Estructura de una ronda. "winnerCount" define cuántos números
-// ganadores tendrá la ronda, y "prizes" guarda el premio configurado
-// para cada uno de esos números (prizes[0] es el premio del número
-// ganador 1, prizes[1] el del número ganador 2, etc).
-// ------------------------------------------------------------------
-export interface Round {
-  id: number
+// Estado del formulario: los premios se editan como texto ("100$") y se
+// convierten a números al enviar. El tipo de dominio es `Round` (lib/rounds.ts).
+interface RoundFormState {
   name: string
-  linePrice:number
   kind: RoundKind
-  winnerCount: number
+  linePrice: number
   prizes: string[]
 }
 
-export type NewRound = Omit<Round, "id">
+function parseMoney(value: string): number {
+  const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function toFormState(round: RoundInput): RoundFormState {
+  const winnerCount = winnerCountForKind(round.kind)
+  return {
+    name: round.name,
+    kind: round.kind,
+    linePrice: round.linePrice,
+    prizes: Array.from({ length: winnerCount }, (_, i) =>
+      round.prizes[i] !== undefined ? String(round.prizes[i]) : ""
+    ),
+  }
+}
 
 const kindOptions: { value: RoundKind; label: string }[] = [
   { value: "regular", label: "Regular (rondas impares)" },
-  { value: "especial", label: "Especial (rondas pares)" },
+  { value: "special", label: "Especial (rondas pares)" },
 ]
 
 const prizeOrdinals = [
@@ -62,19 +72,22 @@ function prizeLabel(index: number) {
   return `${prizeOrdinals[index] ?? `#${index + 1}`} premio (#${index + 1})`
 }
 
-const emptyRound: NewRound = {
+const emptyRound: RoundInput = {
   name: "",
   kind: "regular",
-  winnerCount: winnerCountForKind("regular"),
-  linePrice:10,
-  prizes: Array.from({ length: winnerCountForKind("regular") }, () => ""),
+  linePrice: 10,
+  prizes: [],
 }
 
 export interface RoundFormProps {
-  /** callback ejecutado con los datos de la nueva ronda al enviar el formulario */
-  onSubmit: (round: NewRound) => void
+  /** callback con los datos de la ronda al enviar; si devuelve una promesa, el botón queda en espera */
+  onSubmit: (round: RoundInput) => void | Promise<void>
   /** callback opcional, ej. para cerrar el drawer/dialog que contiene el formulario */
   onCancel?: () => void
+  /** valores iniciales, ej. al editar una ronda existente */
+  initialValues?: RoundInput
+  /** texto del botón de enviar. Default: "Agregar ronda" */
+  submitLabel?: string
   className?: string
   /**
    * "card" (default) envuelve el formulario en un Card con su propio título,
@@ -84,17 +97,24 @@ export interface RoundFormProps {
   variant?: "card" | "plain"
 }
 
-export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: RoundFormProps) {
-  const [round, setRound] = React.useState<NewRound>(emptyRound)
+export function RoundForm({
+  onSubmit,
+  onCancel,
+  initialValues = emptyRound,
+  submitLabel = "Agregar ronda",
+  className,
+  variant = "card",
+}: RoundFormProps) {
+  const [round, setRound] = React.useState<RoundFormState>(() => toFormState(initialValues))
+  const [isPending, startTransition] = React.useTransition()
+  const winnerCount = winnerCountForKind(round.kind)
 
   function updateKind(value: string | null) {
-    const kind: RoundKind = value === "especial" ? "especial" : "regular"
-    const winnerCount = winnerCountForKind(kind)
+    const kind: RoundKind = value === "special" ? "special" : "regular"
     setRound((prev) => ({
       ...prev,
       kind,
-      winnerCount,
-      prizes: Array.from({ length: winnerCount }, (_, i) => prev.prizes[i] ?? ""),
+      prizes: Array.from({ length: winnerCountForKind(kind) }, (_, i) => prev.prizes[i] ?? ""),
     }))
   }
 
@@ -107,8 +127,14 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    onSubmit(round)
-    setRound(emptyRound)
+    startTransition(async () => {
+      await onSubmit({
+        name: round.name,
+        kind: round.kind,
+        linePrice: round.linePrice,
+        prizes: round.prizes.map(parseMoney),
+      })
+    })
   }
 
   const form = (
@@ -126,7 +152,7 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="line-price">Precio de linea</FieldLabel>
+            <FieldLabel htmlFor="line-price">Precio de línea</FieldLabel>
             <Input
               id="line-price"
               type="number"
@@ -143,7 +169,7 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
           </Field>
           <Field>
             <FieldLabel htmlFor="round-kind">Tipo</FieldLabel>
-            <Select value={round.kind} onValueChange={updateKind}>
+            <Select value={round.kind} onValueChange={updateKind} items={kindOptions}>
               <SelectTrigger id="round-kind" className="w-full">
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
@@ -158,8 +184,8 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
               </SelectContent>
             </Select>
             <FieldDescription>
-              {round.winnerCount} número{round.winnerCount > 1 ? "s" : ""} ganador
-              {round.winnerCount > 1 ? "es" : ""} — determinado por el tipo de ronda.
+              {winnerCount} número{winnerCount > 1 ? "s" : ""} ganador
+              {winnerCount > 1 ? "es" : ""} — determinado por el tipo de ronda.
             </FieldDescription>
           </Field>
         </div>
@@ -181,7 +207,9 @@ export function RoundForm({ onSubmit, onCancel, className, variant = "card" }: R
           ))}
         </div>
         <div className="flex gap-2">
-          <Button type="submit">Agregar ronda</Button>
+          <Button type="submit" disabled={isPending}>
+            {submitLabel}
+          </Button>
           {onCancel && (
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancelar

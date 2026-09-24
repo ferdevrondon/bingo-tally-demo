@@ -4,7 +4,7 @@ import * as React from "react"
 import { PlusIcon } from "lucide-react"
 
 import { PlayerEditNumbersDialog } from "@/components/player-edit-numbers-dialog"
-import { PlayerForm, type NewPlayer } from "@/components/player-form"
+import { PlayerForm } from "@/components/player-form"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,14 +20,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { createPlayer } from "@/lib/data/player-actions"
+import type { PlayerInput } from "@/lib/players"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { toDraftPlayer } from "@/lib/round-draft/players"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
-
-function parseMoney(value: string): number {
-  const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""))
-  return Number.isFinite(parsed) ? parsed : 0
-}
+import { writeSucceeded } from "@/lib/write-feedback"
 
 export function AddPlayerControl() {
   const { state, addPlayer, setActivePlayer } = useRoundDraft()
@@ -38,19 +37,14 @@ export function AddPlayerControl() {
   const inactivePlayers = state.players.filter((p) => !activeIds.has(p.id))
   const editingPlayer = state.players.find((p) => p.id === editingPlayerId) ?? null
 
-  function handleAddPlayer(player: NewPlayer) {
-    // Mirrors the id ADD_PLAYER is about to assign (lib/round-draft/context.tsx),
-    // so we know which player to open the number-picking dialog for right away.
-    const nextId = Math.max(0, ...state.players.map((p) => p.id)) + 1
-    addPlayer({
-      name: player.name,
-      positiveBalance: parseMoney(player.positiveBalance),
-      negativeBalance: parseMoney(player.negativeBalance),
-      checkedIn: false,
-      pendingCarryOverDecision: false,
-    })
+  // The player is saved in the catalog first; its database id is the one the
+  // draft uses, so the number-picking dialog can open for it right away.
+  async function handleAddPlayer(input: PlayerInput) {
+    const result = await createPlayer(input)
+    if (!writeSucceeded(result)) return
+    addPlayer(toDraftPlayer(result.data))
     setIsAddPlayerOpen(false)
-    setEditingPlayerId(nextId)
+    setEditingPlayerId(result.data.id)
   }
 
   function handleSelectExisting(player: DraftPlayer) {

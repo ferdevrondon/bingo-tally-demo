@@ -1,6 +1,6 @@
 import { NUMBER_PRICE, type RoundDraftState } from "./types"
 
-export type RoundKind = "regular" | "especial"
+export type RoundKind = "regular" | "special"
 
 /** The round number currently being played, 1-indexed (rondas completadas + 1). */
 export function getCurrentRoundNumber(roundsPlayed: number): number {
@@ -9,17 +9,17 @@ export function getCurrentRoundNumber(roundsPlayed: number): number {
 
 /** Reglamento: rondas impares son regulares, rondas pares son especiales. */
 export function getRoundKindForNumber(roundNumber: number): RoundKind {
-  return roundNumber % 2 === 1 ? "regular" : "especial"
+  return roundNumber % 2 === 1 ? "regular" : "special"
 }
 
 /** Regular: un número ganador. Especial: dos números ganadores. */
 export function winnerCountForKind(kind: RoundKind): number {
-  return kind === "especial" ? 2 : 1
+  return kind === "special" ? 2 : 1
 }
 
 const MULTIPLIERS: Record<RoundKind, number[]> = {
   regular: [10],
-  especial: [10, 5],
+  special: [10, 5],
 }
 
 /** Multiplicador sobre el precio de línea para el premio de ese slot ganador. */

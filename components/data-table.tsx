@@ -62,7 +62,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -103,7 +102,7 @@ export interface DataTableSelectOption {
 
 // Definición de cada columna que el consumidor del componente pasa
 export interface DataTableColumnDef {
-  /** clave dentro del objeto de datos, ej: "Nombre", "saldo positivo" */
+  /** clave dentro del objeto de datos, ej: "name", "paymentMethod" */
   key: string
   /** texto que se muestra en el header de la tabla */
   header: string
@@ -122,7 +121,7 @@ export interface DataTableColumnDef {
   options?: DataTableSelectOption[]
   /** placeholder para el Select cuando el valor está vacío */
   placeholder?: string
-  /** color del valor de esta columna (texto, y fondo/borde cuando se muestra como Badge), ej. saldo positivo/negativo */
+  /** color del valor de esta columna (texto, y fondo/borde cuando se muestra como Badge), ej. montos a favor/en contra */
   color?: "green" | "red"
   /** tamaño del texto del valor de esta columna */
   textSize?: "sm" | "base" | "lg" | "xl" | "2xl"
@@ -215,8 +214,9 @@ function DraggableRow({ row }: { row: Row<typeof features, DataRow> }) {
 }
 
 // ------------------------------------------------------------------
-// Drawer de detalle genérico: recibe el registro y las columnas,
-// y renderiza un input editable por cada columna.
+// Drawer de detalle genérico: recibe el registro y las columnas y muestra
+// cada valor en solo lectura. La edición se hace con las acciones de fila
+// (rowActions), que es donde el consumidor persiste los cambios.
 // ------------------------------------------------------------------
 function RowDetailDrawer({
   item,
@@ -243,21 +243,24 @@ function RowDetailDrawer({
           <DrawerDescription>Detalle del registro</DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-          <form className="flex flex-col gap-4">
-            {columns.map((col) => (
-              <div key={col.key} className="flex flex-col gap-3">
-                <Label htmlFor={`${item.id}-${col.key}`}>{col.header}</Label>
-                <Input
-                  id={`${item.id}-${col.key}`}
-                  defaultValue={String(item[col.key] ?? "")}
-                />
-              </div>
-            ))}
-          </form>
+          <dl className="flex flex-col gap-4">
+            {columns.map((col) => {
+              const value = String(item[col.key] ?? "")
+              const label =
+                col.type === "select"
+                  ? (col.options?.find((opt) => opt.value === value)?.label ?? value)
+                  : value
+              return (
+                <div key={col.key} className="flex flex-col gap-1">
+                  <dt className="text-muted-foreground">{col.header}</dt>
+                  <dd className="font-medium">{label || "—"}</dd>
+                </div>
+              )
+            })}
+          </dl>
         </div>
         <Separator />
         <DrawerFooter>
-          <Button>Guardar</Button>
           <DrawerClose render={<Button variant="outline" />}>Cerrar</DrawerClose>
         </DrawerFooter>
       </DrawerContent>
@@ -314,6 +317,14 @@ export function DataTable({
   onCellChange,
 }: DataTableProps) {
   const [data, setData] = React.useState(() => initialData)
+  // Vuelve a tomar las filas cuando el consumidor pasa datos nuevos (ej. tras
+  // refresh() de una Server Action). Pasa `data` memoizada para no perder el
+  // orden local en cada render del padre.
+  const [prevInitialData, setPrevInitialData] = React.useState(initialData)
+  if (initialData !== prevInitialData) {
+    setPrevInitialData(initialData)
+    setData(initialData)
+  }
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -631,35 +642,33 @@ export function DataTable({
 // const data = [
 //   {
 //     id: 1,
-//     Nombre: "Juan amor",
-//     usuario: "@amor_j",
-//     "metodo de pago": "Paypal",
-//     "saldo positivo": "130$",
-//     "saldo negativo": "0",
+//     name: "Juan amor",
+//     username: "@amor_j",
+//     paymentMethod: "paypal",
+//     linePrice: "$10",
 //   },
 // ]
 //
 // <DataTable
 //   data={data}
-//   titleKey="Nombre"
+//   titleKey="name"
 //   // checkbox opcional: si se omite o es false, no se renderiza esa columna
 //   enableRowSelection={true}
 //   columns={[
-//     { key: "Nombre", header: "Nombre" },
-//     { key: "usuario", header: "Usuario" },
+//     { key: "name", header: "Nombre" },
+//     { key: "username", header: "Usuario" },
 //     {
-//       key: "metodo de pago",
+//       key: "paymentMethod",
 //       header: "Método de pago",
 //       type: "select", // <- columna tipo selector
 //       options: [
-//         { label: "Paypal", value: "Paypal" },
-//         { label: "Tarjeta de crédito", value: "Tarjeta de crédito" },
-//         { label: "Transferencia", value: "Transferencia" },
-//         { label: "Efectivo", value: "Efectivo" },
+//         { label: "Paypal", value: "paypal" },
+//         { label: "Tarjeta de crédito", value: "credit_card" },
+//         { label: "Transferencia", value: "transfer" },
+//         { label: "Efectivo", value: "cash" },
 //       ],
 //     },
-//     { key: "saldo positivo", header: "Saldo positivo", align: "right", editable: true, color: "green", textSize: "lg" },
-//     { key: "saldo negativo", header: "Saldo negativo", align: "right", editable: true, color: "red", textSize: "lg" },
+//     { key: "linePrice", header: "Precio de línea", align: "right", editable: true, color: "green", textSize: "lg" },
 //   ]}
 //   // el callback recibe (rowId, key, nuevoValor) cada vez que se edita
 //   // un input o se cambia un select

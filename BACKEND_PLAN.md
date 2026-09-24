@@ -158,7 +158,7 @@ Kicking the old session (`components/admin-session-guard.tsx`, mounted by `(app)
 - Realtime subscription to `admin_auth_sessions` filtered `user_id=eq.<me>` (table added to the `supabase_realtime` publication in `20260924010837_realtime_admin_auth_sessions.sql`). When `session_id` changes to another value: `signOut({ scope: 'local' })` → `/login?reason=replaced`, which shows **"Tu sesión se cerró porque se inició sesión en otro dispositivo."**
 - Heartbeat: `admin_heartbeat()` on mount and every 60 seconds, then `admin_session_status()`; `other_active`/`other_stale` means this session was replaced and the Realtime event was missed → same sign-out.
 - Layout fallback (`ensureAdminSession()` in `(app)/layout.tsx`, every request): `none`/`other_stale` → claim silently (covers sessions opened before Phase 2); `other_active` → `/session-conflict`. It doesn't sign out other sessions (a layout can't write cookies; the claim alone already blocks their writes).
-- Writes that fail with `not_admin` (from Phase 3 on): `isNotAdminError()` → `/login?reason=replaced`.
+- Writes that fail with `not_admin` (from Phase 3 on): `rejectWrite()` (`lib/data/reject-write.ts`) uses `isNotAdminError()` (or an update that matched 0 rows) plus `admin_session_status()`; if the session is no longer `mine` it signs out locally and redirects to `/login?reason=replaced`.
 - `/login` also shows `?error=auth_callback_error|oauth_error` messages.
 
 Read the current `session_id` from the access token claims with `supabase.auth.getClaims()` (available in the installed `@supabase/supabase-js` 2.116).
@@ -377,8 +377,19 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 
 **Acceptance:** Rounds created on `/rounds` appear in the round picker with their line price. As observer, a forced write via the browser console (`supabase.from('players').insert(...)`) is rejected.
 
+**Status (2026-09-24): done** on branch `feat/backend-phase-3`.
+- Reads: `lib/data/players.ts` (`listPlayers`), `lib/data/rounds.ts` (`listRoundTemplates`), active rows of the current house. Writes: Server Actions in `lib/data/player-actions.ts` / `round-actions.ts` (create, update, soft delete with `active = false`), zod schemas shared with the forms (`lib/players.ts`, `lib/rounds.ts`), `house_id` from the server, `rejectWrite()` for RLS rejections. No schema migration was needed.
+- Renames done: round kind `"especial"` → `"special"` (a saved draft with the old value is migrated on load), English row keys on both tables, payment method values (`lib/payment-methods.ts`, Spanish labels). `/players` has no balances and `PlayerForm` has no balance fields. One `Round` type (`lib/rounds.ts`, with `linePrice`); `DraftRoundConfig` is an alias of it. Both `data.json` files, `getBasePlayers()` and `getBaseRounds()` are gone. `/settings` never had a price field.
+- Two Phase 4 items done early (approved): `RoundDraftProvider` moved to `app/(app)/(game)/layout.tsx`, and "Agregar jugador/nuevo" during a game saves the player to the catalog and uses its database id. The reducer still charges `NUMBER_PRICE`; the pickers already show each template's price ("Regular · $10"), and Phase 4 switches the amounts to the open round's `line_price`.
+- First observer: `rondon.fernanda11@gmail.com` (email + password, created in the dashboard), membership in `20260924212622_seed_first_observer.sql`.
+- Verified in the browser with the real accounts: as admin, create/edit/inline payment method/delete on `/players` and `/rounds`, all persisted; a round "Prueba F3" at $15 appeared in the `/new-game` picker as "Prueba F3 · $15" and was then deleted; a player created from `/new-game` got its database id and became the active player. As observer: `/players` and `/rounds` show no add button, row actions or inline select; a forced `POST /rest/v1/players` with the observer's token returned 403 / `42501`, and `PATCH` on `players` and `round_templates` changed 0 rows. Test rows were deactivated afterwards (players 14–19, template "Prueba F3").
+- SQL as a simulated observer (rolled back): reads 8 players and 2 templates, inserts rejected with `42501`, updates change 0 rows. Second admin (pending from Phase 1): promoting the observer to admin fails on `house_members_one_admin`.
+- Replaced admin session: `rejectWrite()` checks `admin_session_status()` after a rejected write and signs out to `/login?reason=replaced`; the database side (a non-claimed session's writes are rejected with `42501`) was verified in Phase 1. Not exercised end to end in the browser, because the Phase 2 guard signs a replaced tab out first.
+- Security advisor: no new findings (only the project-level "Leaked password protection" setting, now relevant since the observer uses a password).
+
 ### Phase 4: Live game session persisted
-- Move `RoundDraftProvider` out of the root layout (section 5).
+- Move `RoundDraftProvider` out of the root layout (section 5). **Done early in Phase 3:** it lives in `app/(app)/(game)/layout.tsx`, which already loads the catalog; Phase 4 adds the active game session to that loader.
+- `add_session_player`: the catalog half is **done in Phase 3** (a brand-new player is saved with `createPlayer` and the draft uses its database id); Phase 4 adds the `game_session_players` row.
 - Update `CLAUDE.md` in this phase (when `storage.ts` is deleted): the "UI-only prototype" and `storage.ts`-as-backend-seam sections stop being true here.
 - Loader, game session actions and every function in the section 4 table wired to its reducer action: `ADD_PLAYER`, `ADD_TICKET`, `ASSIGN_NUMBER` (claim and release), `SET_NUMBER_OWNER`, the "Editar jugada" dialog, `TOGGLE_GIFT`, `TOGGLE_CHECK_IN`, `RECHARGE_BALANCE`, `SET_ROUND`, `AWARD_PRIZE`, `CLOSE_ROUND`, `RESOLVE_CARRYOVER`, `REMOVE_PLAYER`, end and discard game session. Remove `LOG_ACTIVITY`.
 - Timeline texts are built in the UI from structured `activity_log` rows (`activity-log-card.tsx`).

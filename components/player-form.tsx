@@ -23,53 +23,25 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Toggle } from "@/components/ui/toggle"
+import { isPaymentMethod, PAYMENT_METHOD_OPTIONS } from "@/lib/payment-methods"
+import type { PlayerInput } from "@/lib/players"
 
-// ------------------------------------------------------------------
-// Estructura de un jugador. Usa nombres de propiedad en inglés,
-// equivalentes a las claves en español del dataset original:
-// Nombre -> name, usuario -> username, metodo de pago -> paymentMethod,
-// saldo positivo -> positiveBalance, saldo negativo -> negativeBalance.
-// ------------------------------------------------------------------
-export interface Player {
-  id: number
-  name: string
-  username: string
-  paymentMethod: string
-  positiveBalance: string
-  negativeBalance: string
-  isVip: boolean
-}
-
-export type NewPlayer = Omit<Player, "id">
-
-export interface PaymentMethodOption {
-  label: string
-  value: string
-}
-
-const defaultPaymentMethods: PaymentMethodOption[] = [
-  { label: "Paypal", value: "Paypal" },
-  { label: "Tarjeta de crédito", value: "Tarjeta de crédito" },
-  { label: "Transferencia", value: "Transferencia" },
-  { label: "Efectivo", value: "Efectivo" },
-]
-
-const emptyPlayer: NewPlayer = {
+const emptyPlayer: PlayerInput = {
   name: "",
   username: "",
-  paymentMethod: "",
-  positiveBalance: "0",
-  negativeBalance: "0",
+  paymentMethod: null,
   isVip: false,
 }
 
 export interface PlayerFormProps {
-  /** callback ejecutado con los datos del nuevo jugador al enviar el formulario */
-  onSubmit: (player: NewPlayer) => void
+  /** callback con los datos del jugador al enviar; si devuelve una promesa, el botón queda en espera */
+  onSubmit: (player: PlayerInput) => void | Promise<void>
   /** callback opcional, ej. para cerrar el drawer/dialog que contiene el formulario */
   onCancel?: () => void
-  /** opciones a mostrar en el select de método de pago */
-  paymentMethods?: PaymentMethodOption[]
+  /** valores iniciales, ej. al editar un jugador existente */
+  initialValues?: PlayerInput
+  /** texto del botón de enviar. Default: "Agregar jugador" */
+  submitLabel?: string
   className?: string
   /**
    * "card" (default) envuelve el formulario en un Card con su propio título,
@@ -79,23 +51,27 @@ export interface PlayerFormProps {
   variant?: "card" | "plain"
 }
 
+// Los saldos no se capturan aquí: son por jornada (BACKEND_PLAN.md regla 7).
 export function PlayerForm({
   onSubmit,
   onCancel,
-  paymentMethods = defaultPaymentMethods,
+  initialValues = emptyPlayer,
+  submitLabel = "Agregar jugador",
   className,
   variant = "card",
 }: PlayerFormProps) {
-  const [player, setPlayer] = React.useState<NewPlayer>(emptyPlayer)
+  const [player, setPlayer] = React.useState<PlayerInput>(initialValues)
+  const [isPending, startTransition] = React.useTransition()
 
-  function updateField<K extends keyof NewPlayer>(key: K, value: NewPlayer[K]) {
+  function updateField<K extends keyof PlayerInput>(key: K, value: PlayerInput[K]) {
     setPlayer((prev) => ({ ...prev, [key]: value }))
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    onSubmit(player)
-    setPlayer(emptyPlayer)
+    startTransition(async () => {
+      await onSubmit(player)
+    })
   }
 
   const form = (
@@ -124,16 +100,18 @@ export function PlayerForm({
         <Field>
           <FieldLabel htmlFor="player-payment-method">Método de pago</FieldLabel>
           <Select
-            value={player.paymentMethod}
-            onValueChange={(value) => updateField("paymentMethod", value ?? "")}
-            items={paymentMethods}
+            value={player.paymentMethod ?? ""}
+            onValueChange={(value) =>
+              updateField("paymentMethod", isPaymentMethod(value) ? value : null)
+            }
+            items={PAYMENT_METHOD_OPTIONS}
           >
             <SelectTrigger id="player-payment-method" className="w-full">
               <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {paymentMethods.map((method) => (
+                {PAYMENT_METHOD_OPTIONS.map((method) => (
                   <SelectItem key={method.value} value={method.value}>
                     {method.label}
                   </SelectItem>
@@ -142,26 +120,6 @@ export function PlayerForm({
             </SelectContent>
           </Select>
         </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field>
-            <FieldLabel htmlFor="player-positive-balance">Saldo positivo</FieldLabel>
-            <Input
-              id="player-positive-balance"
-              value={player.positiveBalance}
-              onChange={(e) => updateField("positiveBalance", e.target.value)}
-              placeholder="0"
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="player-negative-balance">Saldo negativo</FieldLabel>
-            <Input
-              id="player-negative-balance"
-              value={player.negativeBalance}
-              onChange={(e) => updateField("negativeBalance", e.target.value)}
-              placeholder="0"
-            />
-          </Field>
-        </div>
         <Field>
           <FieldLabel>Jugador VIP</FieldLabel>
           <Toggle
@@ -177,7 +135,9 @@ export function PlayerForm({
           <FieldDescription>Los jugadores VIP se destacan en el listado.</FieldDescription>
         </Field>
         <div className="flex gap-2">
-          <Button type="submit">Agregar jugador</Button>
+          <Button type="submit" disabled={isPending}>
+            {submitLabel}
+          </Button>
           {onCancel && (
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancelar

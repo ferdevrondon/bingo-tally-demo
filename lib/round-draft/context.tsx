@@ -2,7 +2,9 @@
 
 import * as React from "react"
 
-import { getBasePlayers } from "./players"
+import type { Round } from "@/lib/rounds"
+
+import { mergeCatalogPlayers } from "./players"
 import { computePerEntryPrize, computeRoundMarginAdjustment, winnerCountForKind } from "./prize-rules"
 import { getActivePlayers, getWinnersForNumber } from "./selectors"
 import { localRoundDraftRepository, type RoundDraftRepository } from "./storage"
@@ -16,12 +18,24 @@ import {
   type RoundDraftState,
 } from "./types"
 
-/** Migra rondas guardadas antes de que `kind` existiera. */
-function inferRoundKind(round: DraftRoundConfig | null): DraftRoundConfig | null {
+/** Migrates rounds saved by older drafts: before `kind` existed, with the old
+ *  Spanish `"especial"` kind, or before `linePrice` existed. */
+function migrateSavedRound(round: DraftRoundConfig | null): DraftRoundConfig | null {
   if (!round) return null
-  if (round.kind === "regular" || round.kind === "especial") return round
-  const inferred = round.name.trim().toLowerCase() === "especial" ? "especial" : "regular"
-  return { ...round, kind: inferred }
+  const saved = round as Partial<DraftRoundConfig> & { kind?: string }
+  const kind =
+    saved.kind === "regular" || saved.kind === "special"
+      ? saved.kind
+      : saved.kind === "especial" || round.name.trim().toLowerCase() === "especial"
+        ? "special"
+        : "regular"
+  return {
+    ...round,
+    kind,
+    winnerCount: winnerCountForKind(kind),
+    linePrice: saved.linePrice ?? NUMBER_PRICE,
+    prizes: saved.prizes ?? [],
+  }
 }
 
 function createEmptyTicket(index: number): Ticket {
@@ -126,10 +140,10 @@ function createSeedActivity(): ActivityEntry[] {
   ]
 }
 
-function createInitialState(): RoundDraftState {
+function createInitialState(basePlayers: DraftPlayer[]): RoundDraftState {
   return {
     tickets: [createEmptyTicket(1)],
-    players: getBasePlayers(),
+    players: basePlayers,
     activePlayerId: null,
     activity: createSeedActivity(),
     round: null,
@@ -180,9 +194,10 @@ function appendActivity(
 
 type Action =
   | { type: "HYDRATE"; payload: RoundDraftState }
-  | { type: "RESET" }
+  | { type: "RESET"; payload: { basePlayers: DraftPlayer[] } }
+  | { type: "SYNC_CATALOG"; payload: { basePlayers: DraftPlayer[] } }
   | { type: "ADD_TICKET" }
-  | { type: "ADD_PLAYER"; payload: Omit<DraftPlayer, "id"> }
+  | { type: "ADD_PLAYER"; payload: DraftPlayer }
   | { type: "SET_ACTIVE_PLAYER"; payload: number | null }
   | { type: "ASSIGN_NUMBER"; payload: { ticketId: string; number: number } }
   | { type: "TOGGLE_GIFT"; payload: { ticketId: string; number: number } }
@@ -215,7 +230,7 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         })),
         tickets: action.payload.tickets ?? [createEmptyTicket(1)],
         activity: action.payload.activity ?? [],
-        round: inferRoundKind(action.payload.round ?? null),
+        round: migrateSavedRound(action.payload.round ?? null),
         winningNumbers: action.payload.winningNumbers ?? [],
         roundsPlayed: action.payload.roundsPlayed ?? 0,
         gamePlayerIds: action.payload.gamePlayerIds ?? [],
@@ -223,18 +238,24 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         gameStartedAt: action.payload.gameStartedAt ?? Date.now(),
       }
     case "RESET":
-      return createInitialState()
+      return createInitialState(action.payload.basePlayers)
+    case "SYNC_CATALOG": {
+      const players = mergeCatalogPlayers(state.players, action.payload.basePlayers)
+      return players === state.players ? state : { ...state, players }
+    }
     case "ADD_TICKET": {
       const nextIndex = state.tickets.length + 1
       return { ...state, tickets: [...state.tickets, createEmptyTicket(nextIndex)] }
     }
     case "ADD_PLAYER": {
-      const nextId = Math.max(0, ...state.players.map((p) => p.id)) + 1
-      const player: DraftPlayer = { id: nextId, ...action.payload }
+      // The id comes from the database (createPlayer); a catalog refresh may
+      // already have brought this player in via SYNC_CATALOG.
+      const player = action.payload
+      const exists = state.players.some((p) => p.id === player.id)
       return {
         ...state,
-        players: [...state.players, player],
-        activePlayerId: nextId,
+        players: exists ? state.players : [...state.players, player],
+        activePlayerId: player.id,
       }
     }
     case "SET_ACTIVE_PLAYER":
@@ -621,9 +642,11 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
 
 interface RoundDraftContextValue {
   state: RoundDraftState
+  /** Active round templates of the house (/rounds), loaded by app/(app)/(game)/layout.tsx. */
+  roundTemplates: Round[]
   resetDraft: () => void
   addTicket: () => void
-  addPlayer: (player: Omit<DraftPlayer, "id">) => void
+  addPlayer: (player: DraftPlayer) => void
   setActivePlayer: (playerId: number | null) => void
   assignNumber: (ticketId: string, number: number) => void
   toggleGift: (ticketId: string, number: number) => void
@@ -645,12 +668,17 @@ const RoundDraftContext = React.createContext<RoundDraftContextValue | null>(nul
 
 export function RoundDraftProvider({
   children,
+  basePlayers,
+  roundTemplates,
   repository = localRoundDraftRepository,
 }: {
   children: React.ReactNode
+  /** The house's catalog players (lib/data/players.ts), balances at 0. */
+  basePlayers: DraftPlayer[]
+  roundTemplates: Round[]
   repository?: RoundDraftRepository
 }) {
-  const [state, dispatch] = React.useReducer(reducer, undefined, createInitialState)
+  const [state, dispatch] = React.useReducer(reducer, basePlayers, createInitialState)
   const [isHydrated, setIsHydrated] = React.useState(false)
 
   React.useEffect(() => {
@@ -671,10 +699,18 @@ export function RoundDraftProvider({
     repository.save(state)
   }, [state, isHydrated, repository])
 
+  React.useEffect(() => {
+    // After the saved draft is applied, and whenever the catalog is refreshed
+    // (a player created or renamed), bring the draft's players up to date.
+    if (!isHydrated) return
+    dispatch({ type: "SYNC_CATALOG", payload: { basePlayers } })
+  }, [basePlayers, isHydrated])
+
   const value = React.useMemo<RoundDraftContextValue>(
     () => ({
       state,
-      resetDraft: () => dispatch({ type: "RESET" }),
+      roundTemplates,
+      resetDraft: () => dispatch({ type: "RESET", payload: { basePlayers } }),
       addTicket: () => dispatch({ type: "ADD_TICKET" }),
       addPlayer: (player) => dispatch({ type: "ADD_PLAYER", payload: player }),
       setActivePlayer: (playerId) => dispatch({ type: "SET_ACTIVE_PLAYER", payload: playerId }),
@@ -696,7 +732,7 @@ export function RoundDraftProvider({
       resolveCarryOver: (playerId, releaseNumbers) =>
         dispatch({ type: "RESOLVE_CARRYOVER", payload: { playerId, releaseNumbers } }),
     }),
-    [state]
+    [state, roundTemplates, basePlayers]
   )
 
   return <RoundDraftContext.Provider value={value}>{children}</RoundDraftContext.Provider>

@@ -22,7 +22,7 @@ import {
 import { fireConfetti } from "@/lib/confetti"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getCurrentRoundNumber, getRoundKindForNumber } from "@/lib/round-draft/prize-rules"
-import { getBaseRounds } from "@/lib/rounds"
+import { roundKindLabel, roundOptionLabel } from "@/lib/rounds"
 import { Separator } from "@base-ui/react"
 import { CircleAlertIcon } from "lucide-react"
 import { Alert, AlertTitle, } from "./ui/alert"
@@ -34,10 +34,10 @@ export function CloseRoundDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { state, closeRound } = useRoundDraft()
+  const { state, roundTemplates, closeRound } = useRoundDraft()
   const nextRoundNumber = getCurrentRoundNumber(state.roundsPlayed) + 1
   const requiredKind = getRoundKindForNumber(nextRoundNumber)
-  const otherRounds = getBaseRounds().filter(
+  const otherRounds = roundTemplates.filter(
     (r) => r.id !== state.round?.id && r.kind === requiredKind
   )
   const [selectedRoundId, setSelectedRoundId] = React.useState("")
@@ -82,14 +82,14 @@ export function CloseRoundDialog({
             <span className="mb-2 font-extrabold">
               {" "}
               Selecciona la siguiente ronda: Ronda {nextRoundNumber} —{" "}
-              {requiredKind === "especial" ? "Especial" : "Regular"}{" "}
+              {roundKindLabel(requiredKind)}{" "}
             </span>
           </div>
                 <Select
                   value={selectedRoundId}
                   onValueChange={(value) => setSelectedRoundId(value ?? "")}
                   items={otherRounds.map((r) => ({
-                    label: r.name,
+                    label: roundOptionLabel(r),
                     value: String(r.id),
                   }))}
                 >
@@ -100,7 +100,7 @@ export function CloseRoundDialog({
                     <SelectGroup>
                       {otherRounds.map((r) => (
                         <SelectItem key={r.id} value={String(r.id)}>
-                          {r.name}
+                          {roundOptionLabel(r)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
