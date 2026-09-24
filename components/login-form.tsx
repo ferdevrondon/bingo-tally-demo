@@ -1,8 +1,10 @@
 "use client"
 
 import { useActionState } from "react"
+import { InfoIcon, TriangleAlertIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -23,14 +25,26 @@ import { Input } from "@/components/ui/input"
 import { signInWithGoogle, signInWithPassword } from "@/lib/supabase/actions";
 import {titleFont} from '@/fonts';
 
+export interface LoginNotice {
+  tone: "info" | "error"
+  message: string
+}
+
 export function LoginForm({
   className,
+  notice,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { notice?: LoginNotice }) {
   const [state, formAction, pending] = useActionState(signInWithPassword, {})
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
+      {notice && (
+        <Alert variant={notice.tone === "error" ? "destructive" : "default"}>
+          {notice.tone === "error" ? <TriangleAlertIcon /> : <InfoIcon />}
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader className="text-center">
           <CardTitle className={"text-xl " + titleFont.className}>Welcome back</CardTitle>

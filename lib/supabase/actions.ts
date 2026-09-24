@@ -3,6 +3,10 @@
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import {
+  claimAdminSession,
+  resolveAdminSessionAfterLogin,
+} from "@/lib/data/admin-session"
 import { createClient } from "@/lib/supabase/server"
 import { loginSchema, type LoginFormState } from "@/lib/supabase/schemas"
 
@@ -33,7 +37,7 @@ export async function signInWithPassword(
     return { errors: { form: [error.message] } }
   }
 
-  redirect("/")
+  redirect(await resolveAdminSessionAfterLogin(supabase))
 }
 
 export async function signInWithGoogle() {
@@ -52,6 +56,21 @@ export async function signInWithGoogle() {
   }
 
   redirect(data.url)
+}
+
+// /session-conflict: this device keeps the admin session; the other one is
+// signed out (its tab notices via Realtime, see AdminSessionGuard).
+export async function keepSessionHere() {
+  const supabase = await createClient()
+  await claimAdminSession(supabase)
+  redirect("/")
+}
+
+// /session-conflict: leave the other device untouched and sign out here.
+export async function continueOnOtherDevice() {
+  const supabase = await createClient()
+  await supabase.auth.signOut({ scope: "local" })
+  redirect("/login")
 }
 
 export async function signOut() {
