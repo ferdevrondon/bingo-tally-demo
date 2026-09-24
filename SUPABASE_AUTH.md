@@ -113,7 +113,7 @@ app/
 │   ├── layout.tsx          — fetches the current user server-side, renders the
 │   │                          sidebar/header chrome, passes the user down
 │   ├── page.tsx            — root "/", the post-login landing page
-│   ├── dashboard/, players/, rounds/, sessions/, settings/, ronda-activa/, …
+│   ├── new-game/, active-round/, players/, rounds/, games/, reports/, settings/
 │
 └── (auth)/                 — auth-only pages
     ├── layout.tsx          — bare, just {children}, no sidebar
@@ -142,6 +142,10 @@ app/
 | `components/nav-user.tsx` | modified | "Log out" now calls `signOut()` |
 | `.env.local` (gitignored) | — | Holds `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
 | `.env.example` | new | Committed placeholder for the two env vars above |
+
+## Database backups and restore
+
+_Filled in during BACKEND_PLAN.md Phase 1._ The project is on the Supabase Free plan (no automatic backups), so a nightly GitHub Action (`.github/workflows/db-backup.yml`) will dump the schema and data using the `SUPABASE_DB_URL` repository secret. This section will document where the dumps live and the exact restore steps.
 
 ## Not wired up yet (intentional, out of scope so far)
 
