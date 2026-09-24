@@ -65,7 +65,7 @@ Glossary (business term in Spanish → name in code):
 | Regalo | gift |
 | Liquidación | settlement |
 | Pago al jugador | payout |
-| Efectivo / Transferencia / Paypal / Tarjeta de crédito / Otro | `cash` / `transfer` / `paypal` / `credit_card` / `other` |
+| Efectivo / Transferencia / Paypal / Tarjeta de crédito / Tarjeta de débito / Otro | `cash` / `transfer` / `paypal` / `credit_card` / `debit_card` / `other` |
 | Pagado / Pendiente | `paid` / `pending` |
 | Observador | observer |
 
@@ -81,7 +81,7 @@ Known Spanish identifiers to rename (in the phase that touches each file):
 | `player-page.tsx`, `lib/round-draft/players.ts`, example comment in `data-table.tsx` | row keys `Nombre`, `usuario`, `metodo de pago`, `saldo positivo`, `saldo negativo` | `name`, `username`, `paymentMethod`, `positiveBalance`, `negativeBalance` |
 | `rounds-page.tsx`, `lib/rounds.ts` | row keys `Nombre`, `Tipo`, `Numeros ganadores`, `Premios` | `name`, `kind`, `winnerCount`, `prizes` |
 | `tabs-solid.tsx` | tab values `rondas`, `deudas`, `mensual`, `diario` | `rounds`, `debts`, `monthly`, `daily` |
-| `player-form.tsx`, `player-page.tsx` | payment method values `"Paypal"`, `"Tarjeta de crédito"`, `"Transferencia"`, `"Efectivo"` | `paypal`, `credit_card`, `transfer`, `cash` (labels stay in Spanish) |
+| `player-form.tsx`, `player-page.tsx` | payment method values `"Paypal"`, `"Tarjeta de crédito"`, `"Tarjeta de débito"`, `"Transferencia"`, `"Efectivo"` | `paypal`, `credit_card`, `debit_card`, `transfer`, `cash` (labels stay in Spanish) |
 | `game-detail-page.tsx` | variables `saldo`, `saldoIsPositive` | `balance`, `isBalancePositive` |
 
 ## 1. Tenancy and roles
@@ -128,10 +128,11 @@ create table public.admin_auth_sessions (
 alter table public.admin_auth_sessions enable row level security;
 create policy "admin_auth_sessions: read own" on public.admin_auth_sessions
   for select to authenticated using (user_id = (select auth.uid()));
--- No insert/update/delete policies: written only through the functions below.
+-- Insert/update policies only let an admin write their OWN row with their
+-- CURRENT session_id (see the init migration).
 ```
 
-Functions (all `security definer`, `set search_path = ''`, execute granted to `authenticated` only):
+Functions (all **`security invoker`**, `set search_path = ''`, execute granted to `authenticated` only). They run as the caller and are bounded by the `admin_auth_sessions` policies above, so they are no more powerful than a direct write of the caller's own row. Being invoker keeps them out of Supabase lints 0028/0029 (security definer functions callable through the API).
 
 - `admin_session_status()` returns `'not_admin' | 'none' | 'mine' | 'other_active' | 'other_stale'`. `other_active` means a different session was seen in the last 2 minutes.
 - `claim_admin_session()`: raises unless the caller is an admin in some house, then upserts `(auth.uid(), current session_id)`.
@@ -186,7 +187,7 @@ Constraints and indexes:
 - `unique (round_id, ticket_id, number)` on `round_winners`: the same ticket and number can't be paid twice in one round.
 - Indexes: `house_id` on every table, `game_session_id` on child tables, `activity_log (game_session_id, created_at desc)`.
 - `activity_log.type` uses the existing `ActivityEntryType` values that real actions produce, plus `'number_released'`, `'number_reassigned'`, `'check_in_undone'`, `'number_ungifted'` (today `number_changed` covers both a swap and removing a gift; split it), `'margin_adjustment'`, `'carryover_kept'` / `'carryover_released'` (today `numbers_kept` / `numbers_released`, renamed so they don't read like `number_released`), `'payout'`, `'game_session_started'`, `'game_session_ended'` and `'adjustment'` for corrections. Drop `special_round_won` and `game_closed`: only the seed data (`createSeedActivity`) uses them.
-- `payment_method` is `check (payment_method in ('cash','transfer','paypal','credit_card','other'))` on `players` and `activity_log`. The seed maps the current `data.json` values: Efectivo → `cash`, Transferencia → `transfer`, Paypal → `paypal`, Tarjeta de crédito → `credit_card`.
+- `payment_method` is `check (payment_method in ('cash','transfer','paypal','credit_card','debit_card','other'))` on `players` and `activity_log`. The seed maps the current `data.json` values: Efectivo → `cash`, Transferencia → `transfer`, Paypal → `paypal`, Tarjeta de crédito → `credit_card`, Tarjeta de débito → `debit_card`.
 
 **Same number on several tickets:**
 
@@ -229,10 +230,10 @@ Notes carried over from the current reducer:
 
 ## 4. Security
 
-Helpers (both `stable security definer set search_path = ''`):
+Helpers (`stable security definer set search_path = ''`) live in the **`private` schema**, which the Data API does not expose: policies can call them, but nobody can call them via `/rest/v1/rpc`. Policies wrap them in `select` so they run once per statement: `using ((select private.is_house_member(house_id)))`. Also in `private`: `is_admin_anywhere()` (used by the `admin_auth_sessions` policies) and `current_session_id()` (the JWT `session_id` claim). Implemented in `supabase/migrations/20260924003234_init.sql`:
 
 ```sql
-create function public.is_house_member(h bigint) returns boolean
+create function private.is_house_member(h bigint) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from public.house_members m
@@ -240,7 +241,7 @@ language sql stable security definer set search_path = '' as $$
   );
 $$;
 
-create function public.is_house_admin(h bigint) returns boolean
+create function private.is_house_admin(h bigint) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1
@@ -249,12 +250,12 @@ language sql stable security definer set search_path = '' as $$
     where m.house_id = h
       and m.user_id = (select auth.uid())
       and m.role = 'admin'
-      and s.session_id = ((select auth.jwt()) ->> 'session_id')::uuid
+      and s.session_id = private.current_session_id()
   );
 $$;
 ```
 
-**Explicit grants (required):** new tables in `public` are no longer exposed to the Data API automatically. In the migration grant `select, insert, update` to `authenticated` **only on `players` and `round_templates`** (CRUD outside the live game session). Every other table gets `select` only: `houses`, `house_members`, `admin_auth_sessions`, `game_sessions`, `game_session_players`, `tickets`, `ticket_numbers`, `game_session_rounds`, `round_winners`, `activity_log`. Game-session tables are written exclusively by the `security definer` functions below, so a balance can never change without its ledger row (not even from the admin's browser console). Grant nothing to `anon`. RLS still decides which rows each user can see.
+**Explicit grants (required):** new tables in `public` are no longer exposed to the Data API automatically. In the migration grant `select, insert, update` to `authenticated` **only on `players` and `round_templates`** (CRUD outside the live game session). Every other table gets `select` only: `houses`, `house_members`, `admin_auth_sessions`, `game_sessions`, `game_session_players`, `tickets`, `ticket_numbers`, `game_session_rounds`, `round_winners`, `activity_log`. Game-session tables are written exclusively by the `security definer` functions below, so a balance can never change without its ledger row (not even from the admin's browser console). The one extra grant is `insert, update` on `admin_auth_sessions` for the invoker session functions, limited by its policies to the caller's own row. Grant nothing to `anon`. RLS still decides which rows each user can see.
 
 RLS on every table:
 
@@ -264,7 +265,7 @@ RLS on every table:
 - Game-session tables (`game_sessions`, `game_session_players`, `tickets`, `ticket_numbers`, `game_session_rounds`, `round_winners`, `activity_log`): select only. Rows are written exclusively by the functions below.
 - `house_members`, `houses`: select only for members. Changes happen through seed SQL for now.
 
-**Money functions** (`security definer`, `set search_path = ''`, `revoke execute ... from public, anon`, `grant execute ... to authenticated`):
+**Money functions** (`security definer`, `set search_path = ''`, `revoke execute ... from public, anon`, `grant execute ... to authenticated`). They must bypass RLS to write select-only tables, so Supabase lint **0029** (security definer callable by `authenticated`) will flag each one: that is intentional (the lint's own "Option 3"). Each function's first check is `private.is_house_admin(h)`, so a signed-in non-admin gets `not_admin`. Phase 4's advisor check expects exactly these 0029 findings and nothing else:
 
 | function | reducer action today | notes |
 |---|---|---|
@@ -328,7 +329,7 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 - **Screen:** a settlement view for the game session at `/games/[id]/settlement` (component `settlement-page.tsx`, UI title "Liquidación"), reachable from the end-game dialog (`end-game-dialog.tsx`) and from `/games/[id]`. It lists every player in the game session (including removed ones) with their `game_session_players` balances. Each row has a "Registrar pago" action that opens a small form: amount (prefilled with the full positive balance, editable for partial payments), payment method (prefilled from `players.payment_method`), and an optional note (e.g. transfer reference).
 - **Function `record_payout(p_player_id, p_game_session_id, p_amount, p_payment_method, p_note, p_request_id)`:** same rules as every money function (admin + current session, derive `house_id`, idempotent `request_id`). It rejects `amount <= 0` and **rejects paying more than the player's positive balance**. It inserts an `activity_log` row of type `payout` with `payment_method` and `note`, and lowers the player's `game_session_players.positive_balance` in the same transaction.
 - **Allowed on ended game sessions.** Unlike the other money functions, `record_payout` works when the game session status is `ended`, because settlement happens after the game is over. It still requires the game session to belong to the same house.
-- **Payment methods:** `payment_method` is text with `check (payment_method in ('cash','transfer','paypal','credit_card','other'))` on both `players` and `activity_log`. `record_recharge` and `record_check_in` also take a payment method, so money coming in is tracked the same way as money going out.
+- **Payment methods:** `payment_method` is text with `check (payment_method in ('cash','transfer','paypal','credit_card','debit_card','other'))` on both `players` and `activity_log`. `record_recharge` and `record_check_in` also take a payment method, so money coming in is tracked the same way as money going out.
 - **Status per player:** computed as `paid` when the positive balance reaches 0 after payouts, `pending` otherwise. (UI labels "Pagado" / "Pendiente"). Debt left at the end of a game session (negative balance) is shown as "Debe" in the same list; since balances are per game session, it is not carried into the next one. This is computed from balances, not stored.
 - **Corrections:** a wrong payout is fixed with an `adjustment` entry, never by editing the payout.
 - Observers see the settlement screen and every payout live, read-only.
@@ -344,6 +345,13 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 **Acceptance:** `list_tables` shows every table with RLS on. `get_advisors` (security) shows no warnings. Inserting a second admin for the same house fails.
 
 - Nightly backup GitHub Action (see "Supabase Free plan constraints").
+
+**Status (2026-09-24): done** on branch `feat/backend-phase-1`.
+- Migrations: `20260924003234_init.sql`, `20260924003304_seed_initial_house.sql` (house "Casa Bingo ED" / `CASA-BINGO-ED`, admin `ferdevrondon@gmail.com`, 8 players, 2 round templates at `line_price = 10`; no observers yet).
+- All 12 tables have RLS on. The security advisor reports no schema findings; its only warning is the project-level Auth setting "Leaked password protection", which is a dashboard toggle, not SQL.
+- RLS verified as simulated users (JWT claims, rolled back): a non-member sees 0 rows; the admin reads but cannot write until `claim_admin_session()`; after claiming, `players` inserts work and direct `game_sessions` inserts are still rejected; the same admin from another session gets `other_active` and every write is rejected.
+- Second admin: the partial unique index `house_members_one_admin` is in place (catalog-verified). A behavioral test needs a second Auth user, so it runs when the first observer exists (promote them to admin → must fail).
+- The backup workflow only runs from the default branch (`schedule` and `workflow_dispatch`), so its first manual run happens after this branch is merged: **Actions → db-backup → Run workflow**.
 
 ### Phase 2: Single admin session
 - Session functions wired into the login flow (password action returns state instead of redirecting; Google callback runs the same check), the dialog, the Realtime kick, the layout fallback, the heartbeat, and the `/login?reason=replaced` message.
