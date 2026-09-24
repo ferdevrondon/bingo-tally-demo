@@ -26,6 +26,7 @@ export default function Rounds() {
       {
         id: Math.max(0, ...prev.map((r) => r.id)) + 1,
         Nombre: round.name,
+        Tipo: round.kind === "especial" ? "Especial" : "Regular",
         "Numeros ganadores": round.winnerCount,
         Premios: round.prizes.join(", "),
       },
@@ -64,6 +65,7 @@ export default function Rounds() {
             data={rounds}
             columns={[
               { key: "Nombre", header: "Nombre" },
+              { key: "Tipo", header: "Tipo" },
               { key: "Numeros ganadores", header: "Números ganadores" },
               { key: "Premios", header: "Premios" },
             ]}

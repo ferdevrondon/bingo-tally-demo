@@ -6,12 +6,13 @@ import { AwardIcon, ChevronDownIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatFilterDateLabel, isSameDay } from "@/components/rounds-date-filter"
 
 interface RoundHistoryEntry {
   id: number
   roundNumber: number
   winningNumber: number
-  dateLabel: string
+  date: Date
   winnerName: string
   linesSold: number
   totalPrice: number
@@ -19,12 +20,23 @@ interface RoundHistoryEntry {
   houseResult: number // negative = house lost money on this round
 }
 
+function daysAgo(n: number): Date {
+  const date = new Date()
+  date.setHours(14, 0, 0, 0)
+  date.setDate(date.getDate() - n)
+  return date
+}
+
+function formatRoundTime(date: Date) {
+  return date.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit" })
+}
+
 const rounds: RoundHistoryEntry[] = [
   {
     id: 1,
     roundNumber: 1,
     winningNumber: 6,
-    dateLabel: "07 Sep · 2:15 PM",
+    date: daysAgo(0),
     winnerName: "Juan Pérez",
     linesSold: 5,
     totalPrice: 500,
@@ -35,7 +47,7 @@ const rounds: RoundHistoryEntry[] = [
     id: 2,
     roundNumber: 2,
     winningNumber: 8,
-    dateLabel: "06 Sep · 3:45 PM",
+    date: daysAgo(1),
     winnerName: "María López",
     linesSold: 6,
     totalPrice: 600,
@@ -46,7 +58,7 @@ const rounds: RoundHistoryEntry[] = [
     id: 3,
     roundNumber: 3,
     winningNumber: 3,
-    dateLabel: "05 Sep · 1:30 PM",
+    date: daysAgo(2),
     winnerName: "Carlos Ruiz",
     linesSold: 4,
     totalPrice: 400,
@@ -99,10 +111,18 @@ function ResultBox({
   )
 }
 
-export function RoundHistoryCard() {
-  const [expandedId, setExpandedId] = React.useState<number | null>(rounds[0]?.id ?? null)
+export function RoundHistoryCard({ selectedDate }: { selectedDate: Date }) {
+  const dayRounds = rounds.filter((round) => isSameDay(round.date, selectedDate))
+  const [expandedId, setExpandedId] = React.useState<number | null>(dayRounds[0]?.id ?? null)
 
-  const houseBalance = rounds.reduce((sum, r) => sum + r.houseResult, 0)
+  // Expand the first round again whenever a different day is picked.
+  const [shownDay, setShownDay] = React.useState(selectedDate.getTime())
+  if (selectedDate.getTime() !== shownDay) {
+    setShownDay(selectedDate.getTime())
+    setExpandedId(dayRounds[0]?.id ?? null)
+  }
+
+  const houseBalance = dayRounds.reduce((sum, r) => sum + r.houseResult, 0)
   const balanceIsPositive = houseBalance >= 0
 
   return (
@@ -110,21 +130,29 @@ export function RoundHistoryCard() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Historial de rondas</CardTitle>
+          <CardDescription>{formatFilterDateLabel(selectedDate)}</CardDescription>
         </div>
-        <Badge
-          variant="outline"
-          className={cn(
-            balanceIsPositive
-              ? "border-green-600/30 text-green-700 dark:text-green-400"
-              : "border-destructive/40 text-destructive"
-          )}
-        >
-          Balance casa: {balanceIsPositive ? "+" : ""}
-          {formatAmount(houseBalance)}
-        </Badge>
+        {dayRounds.length > 0 && (
+          <Badge
+            variant="outline"
+            className={cn(
+              balanceIsPositive
+                ? "border-green-600/30 text-green-700 dark:text-green-400"
+                : "border-destructive/40 text-destructive"
+            )}
+          >
+            Balance casa: {balanceIsPositive ? "+" : ""}
+            {formatAmount(houseBalance)}
+          </Badge>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {rounds.map((round) => {
+        {dayRounds.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No hay rondas registradas para esta fecha.
+          </p>
+        )}
+        {dayRounds.map((round) => {
           const isExpanded = expandedId === round.id
           return (
             <div
@@ -140,10 +168,10 @@ export function RoundHistoryCard() {
                 className="flex w-full flex-wrap items-center justify-between gap-3 p-2 text-left"
               >
                 <span className="font-medium">Ronda {round.roundNumber}</span>
-                <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                  <AwardIcon className="size-4" color="gold" />#{round.winningNumber}
+                <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-green-700">
+                  <AwardIcon className="size-4" color="green" /># {round.winningNumber}
                 </span>
-                <span className="text-sm text-muted-foreground">{round.dateLabel}</span>
+                <span className="text-sm text-muted-foreground">{formatRoundTime(round.date)}</span>
                 <ChevronDownIcon
                   className={cn(
                     "size-4 text-muted-foreground transition-transform",

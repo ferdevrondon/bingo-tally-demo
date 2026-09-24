@@ -411,7 +411,7 @@ export function DataTable({
               return (
                 <Select
                   value={String(value ?? "")}
-                  onValueChange={(next) => handleCellChange(row.original.id, col.key, next)}
+                  onValueChange={(next) => handleCellChange(row.original.id, col.key, next ?? "")}
                   items={options}
                 >
                   <SelectTrigger

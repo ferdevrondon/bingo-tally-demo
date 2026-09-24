@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils"
 
 const ALL_NUMBERS = Array.from({ length: 15 }, (_, i) => i + 1)
 
-function firstOpenCartonId(state: RoundDraftState, number: number): string | undefined {
-  return state.cartones.find((c) => c.numbers.find((n) => n.number === number)?.playerId === null)
+function firstOpenTicketId(state: RoundDraftState, number: number): string | undefined {
+  return state.tickets.find((t) => t.numbers.find((n) => n.number === number)?.playerId === null)
     ?.id
 }
 
@@ -20,8 +20,8 @@ export function OpenNumbersCard() {
   const { state, assignNumber } = useRoundDraft()
 
   const openNumbers = ALL_NUMBERS.map((number) => {
-    const openCount = state.cartones.filter(
-      (carton) => carton.numbers.find((n) => n.number === number)?.playerId === null
+    const openCount = state.tickets.filter(
+      (ticket) => ticket.numbers.find((n) => n.number === number)?.playerId === null
     ).length
     return { number, openCount, amount: openCount * NUMBER_PRICE }
   }).filter((n) => n.openCount > 0)
@@ -56,8 +56,8 @@ export function OpenNumbersCard() {
                 disabled={!canAssign}
                 title={canAssign ? undefined : "Selecciona un jugador primero"}
                 onClick={() => {
-                  const cartonId = firstOpenCartonId(state, number)
-                  if (cartonId) assignNumber(cartonId, number)
+                  const ticketId = firstOpenTicketId(state, number)
+                  if (ticketId) assignNumber(ticketId, number)
                 }}
                 className={cn(canAssign ? "cursor-pointer" : "cursor-not-allowed opacity-60")}
               >

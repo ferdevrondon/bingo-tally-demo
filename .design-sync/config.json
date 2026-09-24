@@ -1,7 +1,7 @@
 {
   "projectId": "5885611f-9435-4e8d-b7c7-664627fd066b",
   "pkg": "next-appyy",
-  "globalName": "AdminBingoUI",
+  "globalName": "Bingo Tally",
   "shape": "package",
   "srcDir": "components/ui",
   "cssEntry": ".ds-sync/compiled-tailwind.css",

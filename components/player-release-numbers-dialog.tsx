@@ -27,8 +27,8 @@ import { getPlayerNumbers } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
-function ownedKey(cartonId: string, number: number) {
-  return `${cartonId}:${number}`
+function ownedKey(ticketId: string, number: number) {
+  return `${ticketId}:${number}`
 }
 
 export function PlayerReleaseNumbersDialog({
@@ -45,15 +45,14 @@ export function PlayerReleaseNumbersDialog({
   const [keep, setKeep] = React.useState<Set<string>>(new Set())
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
   const playerIndex = state.players.findIndex((p) => p.id === player.id)
-  const hasMultipleCartones = new Set(ownedNumbers.map((n) => n.cartonId)).size > 1
+  const hasMultipleTickets = new Set(ownedNumbers.map((n) => n.ticketId)).size > 1
 
-  React.useEffect(() => {
-    if (open) {
-      setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.cartonId, n.number))))
-    }
-    // Only reset when the dialog opens, not on every state.cartones change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  // Only reset when the dialog opens, not on every state.tickets change.
+  const [wasOpen, setWasOpen] = React.useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.ticketId, n.number))))
+  }
 
   const isDirty = keep.size !== ownedNumbers.length
 
@@ -75,14 +74,14 @@ export function PlayerReleaseNumbersDialog({
   }
 
   function handleCancel() {
-    setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.cartonId, n.number))))
+    setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.ticketId, n.number))))
     onOpenChange(false)
   }
 
   function handleAccept() {
     const releaseNumbers = ownedNumbers
-      .filter((n) => !keep.has(ownedKey(n.cartonId, n.number)))
-      .map((n) => ({ cartonId: n.cartonId, number: n.number }))
+      .filter((n) => !keep.has(ownedKey(n.ticketId, n.number)))
+      .map((n) => ({ ticketId: n.ticketId, number: n.number }))
     resolveCarryOver(player.id, releaseNumbers)
     onOpenChange(false)
   }
@@ -108,8 +107,8 @@ export function PlayerReleaseNumbersDialog({
                   Liberar todos
                 </Button>
                 <div className="grid grid-cols-5 gap-2">
-                  {ownedNumbers.map(({ cartonId, cartonIndex, number }) => {
-                    const key = ownedKey(cartonId, number)
+                  {ownedNumbers.map(({ ticketId, ticketIndex, number }) => {
+                    const key = ownedKey(ticketId, number)
                     const kept = keep.has(key)
                     return (
                       <button
@@ -124,9 +123,9 @@ export function PlayerReleaseNumbersDialog({
                         )}
                       >
                         <span>{number}</span>
-                        {hasMultipleCartones && (
+                        {hasMultipleTickets && (
                           <span className="max-w-full truncate text-[10px] leading-none opacity-90">
-                            Cartón #{cartonIndex}
+                            Cartón #{ticketIndex}
                           </span>
                         )}
                       </button>
@@ -159,7 +158,7 @@ export function PlayerReleaseNumbersDialog({
             <AlertDialogCancel>Seguir editando</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.cartonId, n.number))))
+                setKeep(new Set(ownedNumbers.map((n) => ownedKey(n.ticketId, n.number))))
                 setShowDiscardConfirm(false)
                 onOpenChange(false)
               }}

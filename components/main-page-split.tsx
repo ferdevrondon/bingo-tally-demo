@@ -16,23 +16,35 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
-const NEXT_SESSION_NUMBER = 42
+const NEXT_GAME_NUMBER = 42
 const READINESS_PERCENT = 86
 
 function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
+function subscribeToClock(onTick: () => void) {
+  const id = setInterval(onTick, 1000)
+  return () => clearInterval(id)
+}
+
+// Whole seconds keep the snapshot stable between ticks; null on the server
+// so the first client render matches the server HTML.
+function getClockSnapshot() {
+  return Math.floor(Date.now() / 1000)
+}
+
+function getServerClockSnapshot() {
+  return null
+}
+
 function useClock() {
-  const [now, setNow] = React.useState<Date | null>(null)
-
-  React.useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    setNow(new Date())
-    return () => clearInterval(id)
-  }, [])
-
-  return now
+  const seconds = React.useSyncExternalStore(
+    subscribeToClock,
+    getClockSnapshot,
+    getServerClockSnapshot
+  )
+  return React.useMemo(() => (seconds === null ? null : new Date(seconds * 1000)), [seconds])
 }
 
 function getGreeting(now: Date | null) {
@@ -146,7 +158,7 @@ export default function MainPageSplit() {
             <div className="flex items-center justify-between text-xs text-foreground/60">
               <span>
                 Preparación de la jornada #
-                {String(NEXT_SESSION_NUMBER).padStart(3, "0")}
+                {String(NEXT_GAME_NUMBER).padStart(3, "0")}
               </span>
               <span className="font-medium text-foreground">
                 {READINESS_PERCENT}%
@@ -169,7 +181,7 @@ export default function MainPageSplit() {
       <div className="flex flex-col justify-center gap-6 bg-background p-8">
         <div className="flex flex-col gap-3">
           <Badge className="w-fit bg-primary/10 text-primary" variant="outline">
-            Jornada #{String(NEXT_SESSION_NUMBER).padStart(3, "0")}
+            Jornada #{String(NEXT_GAME_NUMBER).padStart(3, "0")}
           </Badge>
           <h1 className="text-3xl font-bold tracking-tight">
             Todo listo para comenzar
@@ -183,7 +195,7 @@ export default function MainPageSplit() {
         <Button
           size="lg"
           className="w-fit gap-2 rounded-4xl bg-gradient-to-r from-primary to-chart-5 px-8 text-base text-primary-foreground hover:opacity-90"
-          onClick={() => router.push("/nueva-jornada")}
+          onClick={() => router.push("/new-game")}
         >
           <PlayIcon className="size-5" />
           Iniciar jornada

@@ -13,7 +13,7 @@ export interface NumberAssignment {
   isGift: boolean
 }
 
-export interface Carton {
+export interface Ticket {
   id: string
   index: number // display order -> "Cartón #{index}"
   numbers: NumberAssignment[] // always 15 entries, seeded 1..15
@@ -28,10 +28,10 @@ export type ActivityEntryType =
   | "player_removed"
   | "special_round_won"
   | "round_started"
-  | "jornada_closed"
+  | "game_closed"
   | "prize_won"
   | "round_closed"
-  | "jugada_kept"
+  | "numbers_kept"
   | "numbers_released"
 
 export interface ActivityEntry {
@@ -47,21 +47,26 @@ export interface ActivityEntry {
 export interface DraftRoundConfig {
   id: number
   name: string
+  /** Determina la fórmula de premios (ver lib/round-draft/prize-rules.ts). Reglamento: rondas
+   *  impares son "regular", rondas pares son "especial". */
+  kind: "regular" | "especial"
+  /** Solo informativo — el reducer nunca lo usa para calcular premios, siempre deriva de `kind`. */
   winnerCount: number
+  /** Solo informativo/referencia — el premio real se calcula a partir de `kind` y el precio de línea. */
   prizes: number[]
 }
 
 export interface RoundDraftState {
-  cartones: Carton[]
+  tickets: Ticket[]
   players: DraftPlayer[]
   activePlayerId: number | null
   activity: ActivityEntry[]
   round: DraftRoundConfig | null
   winningNumbers: (number | null)[]
   roundsPlayed: number
-  jornadaPlayerIds: number[]
+  gamePlayerIds: number[]
   houseBalance: number
-  jornadaStartedAt: number
+  gameStartedAt: number
 }
 
 export const NUMBER_PRICE = 10
