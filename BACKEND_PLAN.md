@@ -362,9 +362,9 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 
 **Acceptance:** Admin logged in on browser A. Logging in on browser B shows the dialog. "Seguir en el otro dispositivo" signs B out and leaves A working. "Mantener sesión aquí" makes A redirect to login with the message within a few seconds, and any write attempted from A's old token is rejected. An observer can log in on two browsers at once without any dialog.
 
-**Status (2026-09-24): implemented** on branch `feat/backend-phase-2` (stacked on `feat/backend-phase-1`).
+**Status (2026-09-24): done** on branch `feat/backend-phase-2` (stacked on `feat/backend-phase-1`).
 - Verified with the real admin account: a page load claims the session silently and the heartbeat advances `last_seen_at` every 60 s; a second device (the preview browser, already signed in) was sent to `/session-conflict`; "Seguir en el otro dispositivo" signed only that device out (open Auth sessions 2 → 1) and left the claimed session untouched; `/login?reason=replaced` and `?error=oauth_error` show their messages. Security advisor: no new findings.
-- Still to verify with the user signing in on a second device: "Mantener sesión aquí" kicking device A live. The DB side (old session's writes rejected) was already verified in Phase 1. Observer case pending until an observer exists.
+- Two-device test with the user (2026-09-24): device B (preview browser) signed in with Google, got `/session-conflict`, chose "Mantener sesión aquí"; device A was signed out live. DB: `admin_auth_sessions.session_id` moved to B's session, the account went from 2 open Auth sessions to 1 (A's refresh token revoked), and B's heartbeat is running. The DB side (a replaced session's writes are rejected) was verified in Phase 1. Observer case pending until an observer exists.
 
 ### Phase 3: Players and rounds CRUD
 - `lib/data/players.ts`, `lib/data/rounds.ts` server actions; `/players` and `/rounds` read from the DB.
