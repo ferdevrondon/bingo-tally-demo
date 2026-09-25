@@ -23,7 +23,7 @@ To add a shadcn/ui component: `npx shadcn@latest add <component>` — it lands i
 
 ## Backend migration in progress
 
-`BACKEND_PLAN.md` is the source of truth for moving this app onto Supabase (Postgres + RLS + Realtime), implemented **one phase at a time**. Until its Phase 4 lands, the "UI-only prototype" description below is still accurate. Rules that already apply to all new code:
+`BACKEND_PLAN.md` is the source of truth for moving this app onto Supabase (Postgres + RLS + Realtime), implemented **one phase at a time**. Phases 1–3 are done: auth, tenancy/roles, the single admin session, and the player and round-template catalogs live in Supabase. The live game session (`lib/round-draft/`) is still client-only until Phase 4. Rules that already apply to all new code:
 
 - **Code nomenclature is English** (tables, columns, functions, types, files, routes, enum values, activity types); **only user-facing text is Spanish**. The plan's "Naming conventions" section has the glossary (jornada → game session, cartón → ticket, …) and the list of existing Spanish identifiers to rename.
 - Supabase database work goes through the `supabase` MCP server configured in `.mcp.json` (project `ADMIN-BINGO`, ref `xrporompvbfjfmkfxkwa`). Auth wiring is documented in `SUPABASE_AUTH.md`.
@@ -31,13 +31,16 @@ To add a shadcn/ui component: `npx shadcn@latest add <component>` — it lands i
 
 ## Architecture
 
-This is a Next.js App Router admin dashboard for running bingo game sessions ("jornadas"). It is a **UI-only prototype with no backend** apart from Supabase Auth: there is no `app/api/`, no ORM/database, and no shared client-side store beyond one feature's local state (see below). Every "page" component follows the same convention — seed `React.useState` from a static `data.json` in the corresponding `app/**/` route folder, mutate that array locally via dialogs/forms, and never persist across reloads. When extending an existing page (players, rounds, games), follow this same pattern unless the task specifically calls for real persistence.
+This is a Next.js App Router admin dashboard for running bingo game sessions ("jornadas"), backed by Supabase (Postgres + RLS). There is no `app/api/` and no ORM: every query uses the signed-in user's Supabase client, so RLS applies (BACKEND_PLAN.md "Architecture decisions").
 
-Domain vocabulary (Spanish) used throughout the UI and worth keeping consistent in new code: **jornada** = a game session/day, **ronda** = a round within a jornada (config: name, winning-number count, prizes — see `components/round-form.tsx`), **cartón** = a bingo card (15 numbers, 1–15, see `components/ticket-card.tsx`), **jugador** = player.
+- **Persisted pages** (`/players`, `/rounds`): the route's `page.tsx` is a Server Component that reads through `lib/data/<thing>.ts` (e.g. `listPlayers()`, cached per request) and passes domain objects as props to a Client Component. Writes are Server Actions in `lib/data/<thing>-actions.ts` (`"use server"`): validate with the shared zod schema (`lib/players.ts`, `lib/rounds.ts`), take `house_id` from `getCurrentHouse()` (never from the client), `.select()` after updates (RLS turns a forbidden update into 0 rows, not an error), return a `WriteResult` (`lib/data/write-result.ts`) and call `refresh()` from `next/cache`. Failures go through `rejectWrite()` (`lib/data/reject-write.ts`), which sends a replaced admin session to `/login?reason=replaced`; the client shows errors with `writeSucceeded()` (`lib/write-feedback.ts`). Hide admin-only controls with `useRole()` (`components/house-provider.tsx`) — the database is the real guard.
+- **Still mock** (`/games`, `/games/[id]`, `/reports`, dashboard numbers): hardcoded arrays in their components until BACKEND_PLAN.md Phase 6.
+
+Domain vocabulary (Spanish) used throughout the UI and worth keeping consistent in new code: **jornada** = a game session/day, **ronda** = a round within a jornada (round template config: name, kind `regular`/`special`, line price, informational prizes — see `lib/rounds.ts` and `components/round-form.tsx`), **cartón** = a bingo card (15 numbers, 1–15, see `components/ticket-card.tsx`), **jugador** = player.
 
 ### App shell
 
-The root layout `app/layout.tsx` holds only global providers: `ThemeProvider` → `RoundDraftProvider` → route content, plus the `sonner` `Toaster`. Routes are split into two route groups: `app/(auth)/` (bare layout for `/login`) and `app/(app)/`, whose layout fetches the signed-in user and renders the chrome — `SidebarProvider` → `AppSidebar` (nav definitions live inline in `components/app-sidebar.tsx`) → `SidebarInset` → `SiteHeader` (derives its page title from `usePathname()`) → page. `proxy.ts` (Next 16's renamed middleware) redirects unauthenticated requests to `/login`. Nested layouts beyond that are the exception — only add one (like `app/(app)/new-game/layout.tsx`, the step breadcrumb) when a route subtree needs shared chrome or a scoped provider.
+The root layout `app/layout.tsx` holds only global providers: `ThemeProvider` → route content, plus the `sonner` `Toaster`. Routes are split into two route groups: `app/(auth)/` (bare layout for `/login`) and `app/(app)/`, whose layout fetches the signed-in user and renders the chrome — `SidebarProvider` → `AppSidebar` (nav definitions live inline in `components/app-sidebar.tsx`) → `SidebarInset` → `SiteHeader` (derives its page title from `usePathname()`) → page. It also resolves the current house and role (`HouseProvider`). `proxy.ts` (Next 16's renamed middleware) redirects unauthenticated requests to `/login`. Nested layouts beyond that are the exception — only add one when a route subtree needs shared chrome or a scoped provider: `app/(app)/(game)/layout.tsx` (a URL-less route group around `/new-game` and `/active-round`) loads the catalog and mounts `RoundDraftProvider`; `app/(app)/(game)/new-game/layout.tsx` adds the step breadcrumb.
 
 ### UI kit
 
@@ -47,14 +50,14 @@ Styling is Tailwind v4 with CSS-variable theming in `app/globals.css` (OKLCH col
 
 ### `components/data-table.tsx`
 
-A shared, feature-rich table (drag-to-reorder rows via `@dnd-kit`, sorting/filtering/pagination via `@tanstack/react-table`, a row-detail `Drawer`, `rowActions` dropdown) used by the players and rounds list pages. Column config supports a `type: "select"` editable column and `color`/`textSize` display hints. Reuse this component for any new tabular list rather than building a bespoke table.
+A shared, feature-rich table (drag-to-reorder rows via `@dnd-kit`, sorting/filtering/pagination via `@tanstack/react-table`, a row-detail `Drawer`, `rowActions` dropdown) used by the players and rounds list pages. Column config supports a `type: "select"` editable column and `color`/`textSize` display hints. The row-detail drawer is read-only (editing goes through `rowActions`), and the table re-syncs when its `data` prop changes, so pass memoized rows. Reuse this component for any new tabular list rather than building a bespoke table.
 
 ### Multi-step flows with cross-route state: `lib/round-draft/`
 
 Most pages are single-route and don't need shared state. The live game flow (`/new-game` to assign tickets and players → `/active-round` to play and close rounds) is the one exception, since it spans two routes and needs to survive navigation between them. The pattern established there:
 
 - `types.ts` — plain domain types for the flow.
-- `players.ts` / similarly-named normalizers — convert a route's Spanish-keyed, string-typed mock `data.json` into typed domain objects (see the money-string parsing in `players.ts`, mirroring the manual field mapping already done in `components/player-page.tsx`).
+- `players.ts` — converts catalog players (loaded from the database by the `(game)` layout) into draft players with per-game-session balances at 0, and merges catalog changes into a saved draft (`SYNC_CATALOG`). The provider also exposes the house's round templates (`roundTemplates`). A player created during the flow is saved to the catalog first (`createPlayer`) and enters the draft with its database id.
 - `storage.ts` — defines a small repository interface (`load`/`save`/`clear`) with a `localStorage`-backed implementation as the only one that exists today. It was meant as the seam for a real backend, but BACKEND_PLAN.md Phase 4 replaces it instead (per-action database writes don't fit a whole-state `save`): the provider will receive its initial state from a server loader and `storage.ts` is deleted.
 - `context.tsx` — a `useReducer`-based `XProvider` + `useX()` hook. Hydration from storage happens in a `useEffect` *after* mount (not in the reducer's lazy initializer) to stay SSR-safe, and the "save to storage" effect is gated on a `isHydrated` flag so it never overwrites saved state with the pre-hydration default on mount.
 
@@ -62,4 +65,4 @@ Follow this same shape for any future multi-step/cross-route feature instead of 
 
 ### Data model notes
 
-Mock `data.json` files often use **Spanish keys and string-typed money fields** (e.g. `"saldo positivo": "130$"`) that don't match the TypeScript domain interfaces 1:1 (e.g. `Player` in `components/player-form.tsx` uses English field names). Field mapping is done manually at the read/write boundary in each page — check the existing mapping in `components/player-page.tsx` / `lib/round-draft/players.ts` before adding a new consumer of that data.
+Database rows are snake_case (`lib/supabase/database.types.ts`, generated with the Supabase MCP); domain types are camelCase (`Player` in `lib/players.ts`, `Round` in `lib/rounds.ts`). The mapping lives in one place per table (`toPlayer()` / `toRound()` in `lib/data/`). Enum-like values are English in code and the database (`payment_method`: `lib/payment-methods.ts` has the values and their Spanish labels; round kind `regular`/`special`). Players carry no balances: balances are per game session (`game_session_players`, BACKEND_PLAN.md rule 7).

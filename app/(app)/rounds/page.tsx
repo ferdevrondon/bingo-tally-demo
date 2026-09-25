@@ -1,12 +1,13 @@
-"use client"
-
 import Rounds from "@/components/rounds-page"
+import { listRoundTemplates } from "@/lib/data/rounds"
 
-export default function Page() {
+export default async function Page() {
+  const rounds = await listRoundTemplates()
+
   return (
-    <div className=" px-6 flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col px-6">
       <div className="@container/main flex flex-1 flex-col gap-2">
-        <Rounds />
+        <Rounds rounds={rounds} />
       </div>
     </div>
   )

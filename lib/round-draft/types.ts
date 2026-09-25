@@ -1,3 +1,5 @@
+import type { Round } from "@/lib/rounds"
+
 export interface DraftPlayer {
   id: number
   name: string
@@ -44,17 +46,9 @@ export interface ActivityEntry {
   synthetic?: boolean
 }
 
-export interface DraftRoundConfig {
-  id: number
-  name: string
-  /** Determina la fórmula de premios (ver lib/round-draft/prize-rules.ts). Reglamento: rondas
-   *  impares son "regular", rondas pares son "especial". */
-  kind: "regular" | "especial"
-  /** Solo informativo — el reducer nunca lo usa para calcular premios, siempre deriva de `kind`. */
-  winnerCount: number
-  /** Solo informativo/referencia — el premio real se calcula a partir de `kind` y el precio de línea. */
-  prizes: number[]
-}
+/** The round template being played. The reducer derives prizes from `kind`
+ *  (lib/round-draft/prize-rules.ts); `winnerCount` and `prizes` are informational. */
+export type DraftRoundConfig = Round
 
 export interface RoundDraftState {
   tickets: Ticket[]

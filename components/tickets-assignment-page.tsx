@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowRightIcon, PlusIcon } from "lucide-react"
 
 import { TicketCard } from "@/components/ticket-card"
-import { PlayerForm, type NewPlayer } from "@/components/player-form"
+import { PlayerForm } from "@/components/player-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,18 +28,18 @@ import {
 } from "@/components/ui/select"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getCurrentRoundNumber, getRoundKindForNumber } from "@/lib/round-draft/prize-rules"
+import { createPlayer } from "@/lib/data/player-actions"
+import type { PlayerInput } from "@/lib/players"
+import { toDraftPlayer } from "@/lib/round-draft/players"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
-import { getBaseRounds } from "@/lib/rounds"
-
-function parseMoney(value: string): number {
-  const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""))
-  return Number.isFinite(parsed) ? parsed : 0
-}
+import { roundKindLabel, roundOptionLabel } from "@/lib/rounds"
+import { writeSucceeded } from "@/lib/write-feedback"
 
 export function TicketsAssignmentPage() {
   const router = useRouter()
   const {
     state,
+    roundTemplates,
     addTicket,
     addPlayer,
     setActivePlayer,
@@ -51,20 +51,18 @@ export function TicketsAssignmentPage() {
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
   const requiredKind = getRoundKindForNumber(getCurrentRoundNumber(state.roundsPlayed))
   const rounds = React.useMemo(
-    () => getBaseRounds().filter((r) => r.kind === requiredKind),
-    [requiredKind]
+    () => roundTemplates.filter((r) => r.kind === requiredKind),
+    [roundTemplates, requiredKind]
   )
 
   const activePlayers = getActivePlayers(state)
 
-  function handleAddPlayer(player: NewPlayer) {
-    addPlayer({
-      name: player.name,
-      positiveBalance: parseMoney(player.positiveBalance),
-      negativeBalance: parseMoney(player.negativeBalance),
-      checkedIn: false,
-      pendingCarryOverDecision: false,
-    })
+  // The player is saved in the catalog first, so the draft uses the database
+  // id (no predicted ids that could clash with players created on /players).
+  async function handleAddPlayer(input: PlayerInput) {
+    const result = await createPlayer(input)
+    if (!writeSucceeded(result)) return
+    addPlayer(toDraftPlayer(result.data))
     setIsAddPlayerOpen(false)
   }
 
@@ -96,18 +94,18 @@ export function TicketsAssignmentPage() {
             const round = rounds.find((r) => r.id === Number(value))
             if (round) setRound(round)
           }}
-          items={rounds.map((r) => ({ label: r.name, value: String(r.id) }))}
+          items={rounds.map((r) => ({ label: roundOptionLabel(r), value: String(r.id) }))}
         >
           <SelectTrigger className="w-56">
             <SelectValue
-              placeholder={`Ronda ${getCurrentRoundNumber(state.roundsPlayed)} — ${requiredKind === "especial" ? "Especial" : "Regular"}`}
+              placeholder={`Ronda ${getCurrentRoundNumber(state.roundsPlayed)} — ${roundKindLabel(requiredKind)}`}
             />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               {rounds.map((r) => (
                 <SelectItem key={r.id} value={String(r.id)}>
-                  {r.name}
+                  {roundOptionLabel(r)}
                 </SelectItem>
               ))}
             </SelectGroup>
