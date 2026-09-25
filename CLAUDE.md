@@ -23,7 +23,7 @@ To add a shadcn/ui component: `npx shadcn@latest add <component>` — it lands i
 
 ## Backend migration in progress
 
-`BACKEND_PLAN.md` is the source of truth for moving this app onto Supabase (Postgres + RLS + Realtime), implemented **one phase at a time**. Phases 1–3 are done: auth, tenancy/roles, the single admin session, and the player and round-template catalogs live in Supabase. The live game session (`lib/round-draft/`) is still client-only until Phase 4. Rules that already apply to all new code:
+`BACKEND_PLAN.md` is the source of truth for moving this app onto Supabase (Postgres + RLS + Realtime), implemented **one phase at a time**. Phases 1–3 are done: auth, tenancy/roles, the single admin session, and the player and round-template catalogs live in Supabase. Phase 4a added the game-session SQL functions (`supabase/migrations/*_game_session_functions.sql`: one `security definer` function per game action, idempotent by `request_id`, amounts computed in SQL); the live game session (`lib/round-draft/`) is still client-only until Phase 4b wires it to them. Rules that already apply to all new code:
 
 - **Code nomenclature is English** (tables, columns, functions, types, files, routes, enum values, activity types); **only user-facing text is Spanish**. The plan's "Naming conventions" section has the glossary (jornada → game session, cartón → ticket, …) and the list of existing Spanish identifiers to rename.
 - Supabase database work goes through the `supabase` MCP server configured in `.mcp.json` (project `ADMIN-BINGO`, ref `xrporompvbfjfmkfxkwa`). Auth wiring is documented in `SUPABASE_AUTH.md`.

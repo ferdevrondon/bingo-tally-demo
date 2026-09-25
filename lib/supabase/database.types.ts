@@ -568,9 +568,160 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_session_player: {
+        Args: {
+          p_game_session_id: number
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: number
+      }
+      add_ticket: {
+        Args: { p_game_session_id: number; p_request_id: string }
+        Returns: number
+      }
       admin_heartbeat: { Args: never; Returns: undefined }
       admin_session_status: { Args: never; Returns: string }
+      award_prize: {
+        Args: {
+          p_number: number
+          p_request_id: string
+          p_round_id: number
+          p_slot: number
+        }
+        Returns: undefined
+      }
       claim_admin_session: { Args: never; Returns: undefined }
+      close_round: {
+        Args: {
+          p_next_round_template_id: number
+          p_request_id: string
+          p_round_id: number
+        }
+        Returns: number
+      }
+      discard_game_session: {
+        Args: { p_game_session_id: number; p_request_id: string }
+        Returns: undefined
+      }
+      edit_player_numbers: {
+        Args: {
+          p_changes: Json
+          p_game_session_id: number
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      end_game_session: {
+        Args: { p_game_session_id: number; p_request_id: string }
+        Returns: undefined
+      }
+      reassign_number: {
+        Args: {
+          p_expected_owner_id: number
+          p_new_owner_id: number
+          p_number: number
+          p_request_id: string
+          p_ticket_id: number
+        }
+        Returns: undefined
+      }
+      record_check_in: {
+        Args: {
+          p_game_session_id: number
+          p_payment_method: string
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      record_payout: {
+        Args: {
+          p_amount: number
+          p_game_session_id: number
+          p_note: string
+          p_payment_method: string
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      record_purchase: {
+        Args: {
+          p_number: number
+          p_player_id: number
+          p_request_id: string
+          p_ticket_id: number
+        }
+        Returns: undefined
+      }
+      record_recharge: {
+        Args: {
+          p_amount: number
+          p_game_session_id: number
+          p_note: string
+          p_payment_method: string
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      release_number: {
+        Args: {
+          p_number: number
+          p_player_id: number
+          p_request_id: string
+          p_ticket_id: number
+        }
+        Returns: undefined
+      }
+      remove_player: {
+        Args: {
+          p_game_session_id: number
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      resolve_carryover: {
+        Args: {
+          p_game_session_id: number
+          p_player_id: number
+          p_release: Json
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      start_game_session: {
+        Args: { p_house_id: number; p_request_id: string }
+        Returns: number
+      }
+      start_round: {
+        Args: {
+          p_game_session_id: number
+          p_request_id: string
+          p_round_template_id: number
+        }
+        Returns: number
+      }
+      toggle_gift: {
+        Args: {
+          p_number: number
+          p_player_id: number
+          p_request_id: string
+          p_ticket_id: number
+        }
+        Returns: undefined
+      }
+      undo_check_in: {
+        Args: {
+          p_game_session_id: number
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
