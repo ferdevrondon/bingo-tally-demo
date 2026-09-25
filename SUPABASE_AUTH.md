@@ -206,7 +206,7 @@ The project is on the Supabase Free plan, which has no automatic backups. `.gith
    ```
 
    `session_replication_role = replica` disables triggers during the import. The whole restore is one transaction, so a failure changes nothing.
-5. Re-enable the Realtime publication on `activity_log` and `admin_auth_sessions` (from BACKEND_PLAN Phase 2/5 on) in **Database → Publications**.
+5. Re-enable the Realtime publication on `admin_auth_sessions` (BACKEND_PLAN Phase 2) and `activity_log` (Phase 4a) in **Database → Publications**. The idempotency table `private.processed_requests` is in the dumps too; it only needs to keep existing, its old rows can be dropped.
 
 Restoring into the *same* project over existing tables fails on conflicts; restore into a fresh project, or reset the database first. Known fixes for permission errors (`supabase_admin` owner lines, the `cli_login_postgres` grant) are in Supabase's guide: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
 
