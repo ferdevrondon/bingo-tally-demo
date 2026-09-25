@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useRoundDraft } from "@/lib/round-draft/context"
+import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
 import type { Ticket, DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
@@ -44,7 +44,7 @@ export function PlayerEditNumbersDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { state, setNumberOwner, toggleGift, logActivity } = useRoundDraft()
+  const { state, editPlayerNumbers } = useRoundDraft()
   const [draft, setDraft] = React.useState<Ticket[]>(() => cloneTickets(state.tickets))
   const [pageIndex, setPageIndex] = React.useState(0)
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
@@ -129,53 +129,41 @@ export function PlayerEditNumbersDialog({
     onOpenChange(false)
   }
 
+  // Every position this player gained, lost or re-gifted, saved in one
+  // transaction (edit_player_numbers). Numbers taken from another player carry
+  // the owner this screen showed, so a stale screen can't take a number that
+  // changed in the meantime.
   function handleAccept() {
-    const added: number[] = []
-    const removed: number[] = []
-    const giftToggles: { ticketId: string; number: number }[] = []
-
+    const changes: NumberEdit[] = []
     draft.forEach((ticket) => {
       const original = state.tickets.find((t) => t.id === ticket.id)
       if (!original) return
       ticket.numbers.forEach((entry) => {
         const originalEntry = original.numbers.find((n) => n.number === entry.number)
         if (!originalEntry) return
-
-        const ownershipChanged = originalEntry.playerId !== entry.playerId
-        if (ownershipChanged) {
-          setNumberOwner(ticket.id, entry.number, entry.playerId)
-          if (entry.playerId === player.id) added.push(entry.number)
-          else if (originalEntry.playerId === player.id) removed.push(entry.number)
-          if (entry.playerId === player.id && entry.isGift) {
-            giftToggles.push({ ticketId: ticket.id, number: entry.number })
-          }
-        } else if (entry.playerId === player.id && entry.isGift !== originalEntry.isGift) {
-          giftToggles.push({ ticketId: ticket.id, number: entry.number })
+        const wasMine = originalEntry.playerId === player.id
+        const isMine = entry.playerId === player.id
+        if (isMine && (!wasMine || entry.isGift !== originalEntry.isGift)) {
+          changes.push({
+            ticketId: ticket.id,
+            number: entry.number,
+            owned: true,
+            isGift: entry.isGift,
+            expectedOwnerId: wasMine ? null : originalEntry.playerId,
+          })
+        } else if (wasMine && !isMine) {
+          changes.push({
+            ticketId: ticket.id,
+            number: entry.number,
+            owned: false,
+            isGift: false,
+            expectedOwnerId: null,
+          })
         }
       })
     })
 
-    const swapCount = Math.min(added.length, removed.length)
-    for (let i = 0; i < swapCount; i++) {
-      logActivity({
-        type: "number_changed",
-        playerId: player.id,
-        playerName: player.name,
-        description: `${player.name} cambió número ${removed[i]} por ${added[i]}`,
-      })
-    }
-    const leftoverAdded = added.slice(swapCount)
-    if (leftoverAdded.length > 0) {
-      logActivity({
-        type: "number_purchased",
-        playerId: player.id,
-        playerName: player.name,
-        description: `${player.name} compró número${leftoverAdded.length > 1 ? "s" : ""} ${leftoverAdded.join(", ")}`,
-      })
-    }
-
-    giftToggles.forEach(({ ticketId, number }) => toggleGift(ticketId, number))
-
+    editPlayerNumbers(player.id, changes)
     onOpenChange(false)
   }
 

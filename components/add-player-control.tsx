@@ -23,13 +23,12 @@ import {
 import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { toDraftPlayer } from "@/lib/round-draft/players"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 export function AddPlayerControl() {
-  const { state, addPlayer, setActivePlayer } = useRoundDraft()
+  const { state, setActivePlayer } = useRoundDraft()
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
   const [editingPlayerId, setEditingPlayerId] = React.useState<number | null>(null)
 
@@ -37,12 +36,12 @@ export function AddPlayerControl() {
   const inactivePlayers = state.players.filter((p) => !activeIds.has(p.id))
   const editingPlayer = state.players.find((p) => p.id === editingPlayerId) ?? null
 
-  // The player is saved in the catalog first; its database id is the one the
-  // draft uses, so the number-picking dialog can open for it right away.
+  // The player is saved in the catalog first; the refreshed game session
+  // brings them in, and the number-picking dialog opens for them then.
   async function handleAddPlayer(input: PlayerInput) {
     const result = await createPlayer(input)
     if (!writeSucceeded(result)) return
-    addPlayer(toDraftPlayer(result.data))
+    setActivePlayer(result.data.id)
     setIsAddPlayerOpen(false)
     setEditingPlayerId(result.data.id)
   }

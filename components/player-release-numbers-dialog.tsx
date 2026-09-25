@@ -27,7 +27,7 @@ import { getPlayerNumbers } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
-function ownedKey(ticketId: string, number: number) {
+function ownedKey(ticketId: number, number: number) {
   return `${ticketId}:${number}`
 }
 

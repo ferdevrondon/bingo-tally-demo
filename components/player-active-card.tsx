@@ -22,8 +22,8 @@ import { PlayerEditNumbersDialog } from "@/components/player-edit-numbers-dialog
 import { PlayerRechargeDialog } from "@/components/player-recharge-dialog"
 import { PlayerReleaseNumbersDialog } from "@/components/player-release-numbers-dialog"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
+import { useCheckInToggle } from "@/components/check-in-dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { NUMBER_PRICE } from "@/lib/round-draft/types"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
@@ -34,8 +34,9 @@ export function PlayerActiveCard({
   player: DraftPlayer
   className?: string
 }) {
-  const { state, removePlayer, toggleCheckIn, resolveCarryOver } =
-    useRoundDraft()
+  const { state, removePlayer, resolveCarryOver } = useRoundDraft()
+  const checkInToggle = useCheckInToggle()
+  const linePrice = state.round?.linePrice ?? 0
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [isRechargeOpen, setIsRechargeOpen] = React.useState(false)
   const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
@@ -60,7 +61,7 @@ export function PlayerActiveCard({
   const numbers = [...countsByNumber.entries()]
     .map(([number, count]) => ({
       number,
-      amount: count * NUMBER_PRICE,
+      amount: count * linePrice,
       isGift: giftByNumber.get(number) ?? false,
     }))
     .sort((a, b) => a.number - b.number)
@@ -103,47 +104,55 @@ export function PlayerActiveCard({
         <Button variant="outline" onClick={() => setIsEditOpen(true)}>
           Editar jugada
         </Button>
-        <div
-          className={cn(
-            "flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors",
-            player.checkedIn
-              ? "border-green-500/40 bg-green-500/10"
-              : cn(
-                  "border-amber-500/40 bg-amber-500/10",
-                  player.negativeBalance > 0 && "animate-pulse"
-                )
-          )}
-        >
-          <span
+        {/* After a round closes the player first keeps or releases their numbers;
+            the new round's charge (and the check-in) comes after that. */}
+        {player.pendingCarryOverDecision ? (
+          <p className="rounded-xl border border-dashed px-3 py-2 text-sm text-muted-foreground">
+            Decide si mantiene o libera su jugada para la nueva ronda.
+          </p>
+        ) : (
+          <div
             className={cn(
-              "font-medium",
+              "flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors",
               player.checkedIn
-                ? "text-green-700 dark:text-green-400"
-                : "text-amber-700 dark:text-amber-400"
+                ? "border-green-500/40 bg-green-500/10"
+                : cn(
+                    "border-amber-500/40 bg-amber-500/10",
+                    player.negativeBalance > 0 && "animate-pulse"
+                  )
             )}
           >
-            {player.checkedIn ? "Check-in confirmado" : "Check-in pendiente"}
-            {player.negativeBalance > 0 && !player.checkedIn && (
-              <span className="ml-2 text-xs font-semibold text-destructive">
-                Debe ${player.negativeBalance}
-              </span>
-            )}
-          </span>
-          <Toggle
-            pressed={player.checkedIn}
-            onPressedChange={() => toggleCheckIn(player.id)}
-            size="sm"
-            aria-label="Check-in"
-            className={cn(
-              "border transition-all duration-300",
-              player.checkedIn
-                ? "animate-in zoom-in-50 border-green-600 bg-green-600 text-white hover:bg-green-600/90 aria-pressed:bg-green-600 aria-pressed:text-white"
-                : "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
-            )}
-          >
-            <CheckIcon />
-          </Toggle>
-        </div>
+            <span
+              className={cn(
+                "font-medium",
+                player.checkedIn
+                  ? "text-green-700 dark:text-green-400"
+                  : "text-amber-700 dark:text-amber-400"
+              )}
+            >
+              {player.checkedIn ? "Check-in confirmado" : "Check-in pendiente"}
+              {player.negativeBalance > 0 && !player.checkedIn && (
+                <span className="ml-2 text-xs font-semibold text-destructive">
+                  Debe ${player.negativeBalance}
+                </span>
+              )}
+            </span>
+            <Toggle
+              pressed={player.checkedIn}
+              onPressedChange={() => checkInToggle.toggle(player)}
+              size="sm"
+              aria-label="Check-in"
+              className={cn(
+                "border transition-all duration-300",
+                player.checkedIn
+                  ? "animate-in zoom-in-50 border-green-600 bg-green-600 text-white hover:bg-green-600/90 aria-pressed:bg-green-600 aria-pressed:text-white"
+                  : "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+              )}
+            >
+              <CheckIcon />
+            </Toggle>
+          </div>
+        )}
         <Separator />
 
         <div className="flex items-center justify-between text-sm">
@@ -199,6 +208,7 @@ export function PlayerActiveCard({
         </Button>
       </CardContent>
 
+      {checkInToggle.dialog}
       <PlayerEditNumbersDialog
         player={player}
         open={isEditOpen}
@@ -227,11 +237,11 @@ export function PlayerActiveCard({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              ¿Retirar a {player.name} de la ronda?
+              ¿Retirar a {player.name} de la jornada?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Sus números quedarán disponibles de nuevo en los cartones y dejará
-              de aparecer en esta ronda.
+              Sus números quedarán disponibles de nuevo en los cartones, sin
+              reembolso. Su saldo se conserva para la liquidación.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

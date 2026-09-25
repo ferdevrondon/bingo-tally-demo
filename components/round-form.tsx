@@ -51,8 +51,8 @@ function toFormState(round: RoundInput): RoundFormState {
 }
 
 const kindOptions: { value: RoundKind; label: string }[] = [
-  { value: "regular", label: "Regular (rondas impares)" },
-  { value: "special", label: "Especial (rondas pares)" },
+  { value: "regular", label: "Regular (1 número ganador)" },
+  { value: "special", label: "Especial (2 números ganadores)" },
 ]
 
 const prizeOrdinals = [

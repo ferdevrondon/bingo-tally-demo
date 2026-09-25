@@ -11,10 +11,14 @@ export function CheckInBalanceAlert() {
   const { state } = useRoundDraft()
   const activePlayers = getActivePlayers(state)
 
-  const pendingCheckIn = activePlayers.filter((p) => !p.checkedIn)
-  const withNegativeBalance = activePlayers.filter((p) => p.negativeBalance > 0)
+  // Players still deciding their play for the new round aren't asked for a
+  // check-in yet: its charge is only known after that decision.
+  const pendingDecision = activePlayers.filter((p) => p.pendingCarryOverDecision)
+  const pendingCheckIn = activePlayers.filter(
+    (p) => !p.checkedIn && !p.pendingCarryOverDecision
+  )
 
-  if (pendingCheckIn.length === 0 && withNegativeBalance.length === 0) {
+  if (pendingCheckIn.length === 0 && pendingDecision.length === 0) {
     return null
   }
 
@@ -39,6 +43,17 @@ export function CheckInBalanceAlert() {
               ))}
             </div>
           </AlertDescription>
+        </Alert>
+      )}
+      {pendingDecision.length > 0 && (
+        <Alert className="w-fit border-none bg-amber-600/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-400">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {pendingDecision.length} jugador{pendingDecision.length === 1 ? "" : "es"}{" "}
+            {pendingDecision.length === 1 ? "debe" : "deben"} decidir si mantiene
+            {pendingDecision.length === 1 ? "" : "n"} o libera
+            {pendingDecision.length === 1 ? "" : "n"} su jugada
+          </AlertTitle>
         </Alert>
       )}
     </>

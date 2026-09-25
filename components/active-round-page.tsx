@@ -11,7 +11,7 @@ import { PlayerActiveCard } from "@/components/player-active-card"
 import { RoundHistoryCard } from "@/components/round-history-card"
 import { Button } from "@/components/ui/button"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getActivePlayers, hasDraftProgress } from "@/lib/round-draft/selectors"
+import { getActivePlayers } from "@/lib/round-draft/selectors"
 import PageHeadingWithActions from "./page-heading"
 import { Separator } from "./ui/separator"
 import { WinningNumbersCard } from "./winning-numbers-card"
@@ -20,11 +20,11 @@ export function ActiveRoundPage() {
   const { state } = useRoundDraft()
   const activePlayers = getActivePlayers(state)
 
-  if (!hasDraftProgress(state)) {
+  if (!state.round) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Todavía no has empezado a asignar cartones.
+          Todavía no has elegido la ronda de esta jornada.
         </p>
         <Button nativeButton={false} render={<Link href="/new-game" />}>
           Ir a cartones y jugadores

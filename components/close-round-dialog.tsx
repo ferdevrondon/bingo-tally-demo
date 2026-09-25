@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/select"
 import { fireConfetti } from "@/lib/confetti"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getCurrentRoundNumber, getRoundKindForNumber } from "@/lib/round-draft/prize-rules"
-import { roundKindLabel, roundOptionLabel } from "@/lib/rounds"
+import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
+import { roundOptionLabel } from "@/lib/rounds"
 import { Separator } from "@base-ui/react"
 import { CircleAlertIcon } from "lucide-react"
 import { Alert, AlertTitle, } from "./ui/alert"
@@ -36,19 +36,20 @@ export function CloseRoundDialog({
 }) {
   const { state, roundTemplates, closeRound } = useRoundDraft()
   const nextRoundNumber = getCurrentRoundNumber(state.roundsPlayed) + 1
-  const requiredKind = getRoundKindForNumber(nextRoundNumber)
-  const otherRounds = roundTemplates.filter(
-    (r) => r.id !== state.round?.id && r.kind === requiredKind
-  )
+  // Any active round template can follow, the current one included.
+  const nextRounds = roundTemplates
   const [selectedRoundId, setSelectedRoundId] = React.useState("")
+  const [isPending, startTransition] = React.useTransition()
 
   function handleConfirm() {
-    const round = otherRounds.find((r) => r.id === Number(selectedRoundId))
-    if (!round) return
-    closeRound(round)
-    fireConfetti()
-    setSelectedRoundId("")
-    onOpenChange(false)
+    const templateId = Number(selectedRoundId)
+    if (!templateId) return
+    startTransition(async () => {
+      if (!(await closeRound(templateId))) return
+      fireConfetti()
+      setSelectedRoundId("")
+      onOpenChange(false)
+    })
   }
 
   return (
@@ -72,23 +73,22 @@ export function CloseRoundDialog({
             </span>
           </div> */}
           <div className="">
-            {otherRounds.length === 0 ? (
+            {nextRounds.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No hay otra ronda configurada. Agrega una ronda en Rondas.
+                No hay rondas configuradas. Agrega una ronda en Rondas.
               </p>
             ) : (
               <>
                <div className="px-4 mb-3">
             <span className="mb-2 font-extrabold">
               {" "}
-              Selecciona la siguiente ronda: Ronda {nextRoundNumber} —{" "}
-              {roundKindLabel(requiredKind)}{" "}
+              Selecciona la siguiente ronda: Ronda {nextRoundNumber}
             </span>
           </div>
                 <Select
                   value={selectedRoundId}
                   onValueChange={(value) => setSelectedRoundId(value ?? "")}
-                  items={otherRounds.map((r) => ({
+                  items={nextRounds.map((r) => ({
                     label: roundOptionLabel(r),
                     value: String(r.id),
                   }))}
@@ -98,7 +98,7 @@ export function CloseRoundDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {otherRounds.map((r) => (
+                      {nextRounds.map((r) => (
                         <SelectItem key={r.id} value={String(r.id)}>
                           {roundOptionLabel(r)}
                         </SelectItem>
@@ -123,7 +123,7 @@ export function CloseRoundDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button disabled={!selectedRoundId} onClick={handleConfirm}>
+          <Button disabled={!selectedRoundId || isPending} onClick={handleConfirm}>
             Confirmar
           </Button>
         </DialogFooter>
