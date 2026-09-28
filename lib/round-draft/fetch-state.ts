@@ -41,7 +41,7 @@ export async function fetchGameSessionState(
     supabase
       .from("game_session_players")
       .select(
-        "player_id, positive_balance, negative_balance, checked_in, pending_carryover, removed_at, players(name, payment_method)"
+        "player_id, balance, checked_in, pending_carryover, removed_at, players(name, payment_method)"
       )
       .eq("game_session_id", id),
     supabase.from("tickets").select("id, index").eq("game_session_id", id).order("index"),
@@ -51,7 +51,7 @@ export async function fetchGameSessionState(
       .eq("game_session_id", id),
     supabase
       .from("game_session_rounds")
-      .select("id, seq, name, kind, line_price, status, winning_numbers, round_template_id")
+      .select("id, seq, name, line_price, prizes, status, winning_numbers, round_template_id")
       .eq("game_session_id", id)
       .order("seq"),
     supabase
@@ -66,7 +66,7 @@ export async function fetchGameSessionState(
     if (result.error) throw result.error
   }
 
-  // Catalog players (balances 0 until they join) plus every player of this
+  // Catalog players (balance 0 until they join) plus every player of this
   // game session, including ones deactivated in the catalog since.
   const playersById = new Map<number, DraftPlayer>(
     (catalog.data ?? []).map((p) => [
@@ -75,8 +75,7 @@ export async function fetchGameSessionState(
         id: p.id,
         name: p.name,
         paymentMethod: isPaymentMethod(p.payment_method) ? p.payment_method : null,
-        positiveBalance: 0,
-        negativeBalance: 0,
+        balance: 0,
         checkedIn: false,
         pendingCarryOverDecision: false,
         inSession: false,
@@ -91,8 +90,7 @@ export async function fetchGameSessionState(
       paymentMethod: isPaymentMethod(row.players?.payment_method)
         ? row.players.payment_method
         : null,
-      positiveBalance: Number(row.positive_balance),
-      negativeBalance: Number(row.negative_balance),
+      balance: Number(row.balance),
       checkedIn: row.checked_in,
       pendingCarryOverDecision: row.pending_carryover,
       inSession: true,
@@ -109,7 +107,7 @@ export async function fetchGameSessionState(
 
   const roundRows = rounds.data ?? []
   const open = roundRows.find((r) => r.status === "open") ?? null
-  const winnerCount = open?.kind === "special" ? 2 : 1
+  const prizes = open ? open.prizes.map(Number) : []
 
   return {
     gameSessionId: id,
@@ -140,13 +138,13 @@ export async function fetchGameSessionState(
           templateId: open.round_template_id,
           seq: open.seq,
           name: open.name,
-          kind: open.kind === "special" ? "special" : "regular",
           linePrice: Number(open.line_price),
+          prizes,
         }
       : null,
     rounds: roundRows.map((r) => ({ id: r.id, seq: r.seq, name: r.name })),
     winningNumbers: open
-      ? Array.from({ length: winnerCount }, (_, i) => open.winning_numbers[i] ?? null)
+      ? prizes.map((_, i) => open.winning_numbers[i] ?? null)
       : [],
     roundsPlayed: roundRows.filter((r) => r.status === "closed").length,
     houseBalance: Number(gameSession.house_balance),

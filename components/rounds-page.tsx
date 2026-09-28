@@ -26,24 +26,18 @@ import {
   deactivateRoundTemplate,
   updateRoundTemplate,
 } from "@/lib/data/round-actions"
-import {
-  formatMoney,
-  roundKindLabel,
-  type Round,
-  type RoundInput,
-} from "@/lib/rounds"
+import { formatMoney, type Round, type RoundInput } from "@/lib/rounds"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 const columns: DataTableColumnDef[] = [
   { key: "name", header: "Nombre" },
-  { key: "kind", header: "Tipo" },
   { key: "winnerCount", header: "Números ganadores" },
   { key: "linePrice", header: "Precio de línea" },
   { key: "prizes", header: "Premios" },
 ]
 
-// /rounds: plantillas de ronda de la casa. El precio de línea se copia a la
-// ronda cuando empieza, así que editarlo no cambia una ronda en curso.
+// /rounds: plantillas de ronda de la casa. El precio de línea y los premios se
+// copian a la ronda cuando empieza, así que editarlos no cambia una ronda en curso.
 export default function Rounds({ rounds }: { rounds: Round[] }) {
   const isAdmin = useRole() === "admin"
   const [isAddRoundOpen, setIsAddRoundOpen] = React.useState(false)
@@ -55,10 +49,9 @@ export default function Rounds({ rounds }: { rounds: Round[] }) {
       rounds.map((round) => ({
         id: round.id,
         name: round.name,
-        kind: roundKindLabel(round.kind),
-        winnerCount: round.winnerCount,
+        winnerCount: round.prizes.length,
         linePrice: formatMoney(round.linePrice),
-        prizes: round.prizes.map(formatMoney).join(", "),
+        prizes: round.prizes.map(formatMoney).join(" · "),
       })),
     [rounds]
   )

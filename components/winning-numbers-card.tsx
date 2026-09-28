@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { prizeMultiplierForSlot, winnerCountForKind } from "@/lib/round-draft/prize-rules"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 
 export function WinningNumbersCard() {
@@ -40,12 +39,12 @@ export function WinningNumbersCard() {
     )
   }
 
+  // Winning numbers wait until every player with numbers is in the round
+  // (check-in, rule A); a negative balance never blocks.
   const activePlayers = getActivePlayers(state)
   const pendingCheckIn = activePlayers.filter((p) => !p.checkedIn)
-  const withNegativeBalance = activePlayers.filter((p) => p.negativeBalance > 0)
   const pendingCarryOver = activePlayers.filter((p) => p.pendingCarryOverDecision)
-  const blocked =
-    pendingCheckIn.length > 0 || withNegativeBalance.length > 0 || pendingCarryOver.length > 0
+  const blocked = pendingCheckIn.length > 0 || pendingCarryOver.length > 0
   const usedNumbers = new Set(
     state.winningNumbers.filter((n): n is number => n !== null)
   )
@@ -65,11 +64,11 @@ export function WinningNumbersCard() {
             blocked && "pointer-events-none opacity-50"
           )}
         >
-          {Array.from({ length: winnerCountForKind(state.round.kind) }, (_, i) => (
+          {state.round.prizes.map((prize, i) => (
             <WinningNumberBall
               key={`${state.roundsPlayed}-${i}`}
               slotIndex={i}
-              multiplier={prizeMultiplierForSlot(state.round!.kind, i)}
+              prize={prize}
               value={state.winningNumbers[i] ?? null}
               usedNumbers={usedNumbers}
               onSubmit={(number) => awardPrize(i, number)}

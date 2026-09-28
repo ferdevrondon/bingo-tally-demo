@@ -69,9 +69,7 @@ export function describeActivity(entry: ActivityEntry, state: RoundDraftState): 
     case "recharge":
       return `${player} recargó ${amount}${method}${note}`
     case "check_in":
-      return (entry.amount ?? 0) > 0
-        ? `${player} hizo check-in y pagó ${amount}${method}`
-        : `${player} hizo check-in`
+      return `${player} hizo check-in (está en la ronda)`
     case "check_in_undone":
       return `Se deshizo el check-in de ${player}`
     case "round_started":
@@ -83,7 +81,7 @@ export function describeActivity(entry: ActivityEntry, state: RoundDraftState): 
         ? `Salió el #${entry.number}: nadie lo tenía`
         : `${player} ganó ${amount} con ${position}`
     case "margin_adjustment":
-      return `Resultado de la casa en la ${roundLabel}: ${(entry.amount ?? 0) < 0 ? "-" : "+"}${amount}`
+      return `La casa por números regalados y sin vender en la ${roundLabel}: ${(entry.amount ?? 0) < 0 ? "-" : "+"}${amount}`
     case "carryover_kept":
       return (entry.amount ?? 0) > 0
         ? `${player} mantiene su jugada (${amount})`

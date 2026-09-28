@@ -30,12 +30,68 @@ export interface NumberEdit {
   expectedOwnerId: number | null
 }
 
+/** The house result (decided with the product owner on 2026-09-28): sales
+ *  - prizes paid + the margin of each played round, where the house "plays"
+ *  what it didn't sell. Recharges and payouts are cash, not part of it. */
+export interface HouseResult {
+  /** Numbers sold, net of refunds (unplayed round refunds included). */
+  sales: number
+  /** Prizes paid to players (positive amount). */
+  prizes: number
+  /** -P per gifted number that didn't win. */
+  gifts: number
+  /** -P per unsold number that didn't win. */
+  unsoldLosing: number
+  /** prize - P per unsold number that won. */
+  unsoldWinning: number
+  total: number
+}
+
 export interface GameSessionSummary {
   roundsPlayed: number
-  houseBalance: number
+  house: HouseResult
   playersCount: number
-  negativeBalanceTotal: number
+  /** What players owe the house (sum of negative balances, as a positive amount). */
+  owedByPlayers: number
+  /** What the house owes players (sum of positive balances). */
+  owedToPlayers: number
   durationMs: number
+}
+
+export interface RoundWinnerEntry {
+  playerId: number
+  ticketId: number
+  number: number
+  slot: number
+  prize: number
+}
+
+/** A closed round, for the summary shown when it closes (business rule F). */
+export interface ClosedRoundSummary {
+  seq: number
+  name: string
+  prizes: number[]
+  winningNumbers: (number | null)[]
+  winners: RoundWinnerEntry[]
+  house: HouseResult
+}
+
+// activity_log rows that move game money between a player and the house.
+const SALE_TYPES = [
+  "number_purchased",
+  "number_released",
+  "number_reassigned",
+  "number_gifted",
+  "number_ungifted",
+  "carryover_kept",
+]
+
+function houseResult(parts: Omit<HouseResult, "total">): HouseResult {
+  return {
+    ...parts,
+    total:
+      parts.sales - parts.prizes + parts.gifts + parts.unsoldLosing + parts.unsoldWinning,
+  }
 }
 
 type Position = { ticketId: number; number: number }
@@ -154,17 +210,12 @@ export function createGameApi(isAdmin: boolean) {
         })
       ),
 
-    checkIn: (
-      gameSessionId: number,
-      playerId: number,
-      paymentMethod: PaymentMethod | null,
-      requestId: string
-    ) =>
+    // Check-in (rule A): "in this round", no money.
+    checkIn: (gameSessionId: number, playerId: number, requestId: string) =>
       run((s) =>
         s.rpc("record_check_in", {
           p_game_session_id: gameSessionId,
           p_player_id: playerId,
-          p_payment_method: nullable(paymentMethod),
           p_request_id: requestId,
         })
       ),
@@ -234,9 +285,62 @@ export function createGameApi(isAdmin: boolean) {
         })
       ),
 
-    // The end-of-game-session summary, read after end_game_session.
+    // The summary of a closed round (rule F), read after close_round.
+    fetchRoundSummary: async (roundId: number): Promise<ClosedRoundSummary | null> => {
+      const [round, winners, sales] = await Promise.all([
+        supabase
+          .from("game_session_rounds")
+          .select(
+            "seq, name, prizes, winning_numbers, margin_gifts, margin_unsold_losing, margin_unsold_winning"
+          )
+          .eq("id", roundId)
+          .single(),
+        supabase
+          .from("round_winners")
+          .select("player_id, ticket_id, number, slot, prize")
+          .eq("round_id", roundId)
+          .order("slot")
+          .order("id"),
+        supabase
+          .from("activity_log")
+          .select("type, amount")
+          .eq("round_id", roundId)
+          .in("type", [...SALE_TYPES, "adjustment"]),
+      ])
+      if (round.error || winners.error || sales.error) return null
+      const winnerRows = winners.data.map(
+        (w): RoundWinnerEntry => ({
+          playerId: w.player_id,
+          ticketId: w.ticket_id,
+          number: w.number,
+          slot: w.slot,
+          prize: Number(w.prize),
+        })
+      )
+      return {
+        seq: round.data.seq,
+        name: round.data.name,
+        prizes: round.data.prizes.map(Number),
+        winningNumbers: round.data.winning_numbers,
+        winners: winnerRows,
+        house: houseResult({
+          sales: sales.data.reduce(
+            (sum, a) => sum + (a.type === "adjustment" ? -1 : 1) * Number(a.amount ?? 0),
+            0
+          ),
+          prizes: winnerRows.reduce((sum, w) => sum + w.prize, 0),
+          gifts: Number(round.data.margin_gifts ?? 0),
+          unsoldLosing: Number(round.data.margin_unsold_losing ?? 0),
+          unsoldWinning: Number(round.data.margin_unsold_winning ?? 0),
+        }),
+      }
+    },
+
+    // The end-of-game-session summary, read after end_game_session. Sales are
+    // derived from house_balance (sales - prizes + margins), so the ledger
+    // doesn't need to be read row by row.
     fetchSummary: async (gameSessionId: number): Promise<GameSessionSummary | null> => {
-      const [gameSession, rounds, players] = await Promise.all([
+      const [gameSession, rounds, winners, players] = await Promise.all([
         supabase
           .from("game_sessions")
           .select("house_balance, started_at, ended_at")
@@ -244,23 +348,39 @@ export function createGameApi(isAdmin: boolean) {
           .single(),
         supabase
           .from("game_session_rounds")
-          .select("winning_numbers")
+          .select("winning_numbers, margin_gifts, margin_unsold_losing, margin_unsold_winning")
           .eq("game_session_id", gameSessionId)
           .eq("status", "closed"),
+        supabase.from("round_winners").select("prize").eq("game_session_id", gameSessionId),
         supabase
           .from("game_session_players")
-          .select("negative_balance, removed_at")
+          .select("balance, removed_at")
           .eq("game_session_id", gameSessionId),
       ])
-      if (gameSession.error) return null
-      const sessionPlayers = players.data ?? []
+      if (gameSession.error || rounds.error || winners.error || players.error) return null
+      const closedRounds = rounds.data
+      const sum = (values: (number | null)[]) =>
+        values.reduce<number>((total, v) => total + Number(v ?? 0), 0)
+      const gifts = sum(closedRounds.map((r) => r.margin_gifts))
+      const unsoldLosing = sum(closedRounds.map((r) => r.margin_unsold_losing))
+      const unsoldWinning = sum(closedRounds.map((r) => r.margin_unsold_winning))
+      const prizes = sum(winners.data.map((w) => w.prize))
+      const total = Number(gameSession.data.house_balance)
+      const balances = players.data.map((p) => Number(p.balance))
       return {
         // A round closed without winning numbers was never played.
-        roundsPlayed: (rounds.data ?? []).filter((r) => r.winning_numbers.some((n) => n !== null))
+        roundsPlayed: closedRounds.filter((r) => r.winning_numbers.some((n) => n !== null))
           .length,
-        houseBalance: Number(gameSession.data.house_balance),
-        playersCount: sessionPlayers.filter((p) => p.removed_at === null).length,
-        negativeBalanceTotal: sessionPlayers.reduce((sum, p) => sum + Number(p.negative_balance), 0),
+        house: houseResult({
+          sales: total + prizes - gifts - unsoldLosing - unsoldWinning,
+          prizes,
+          gifts,
+          unsoldLosing,
+          unsoldWinning,
+        }),
+        playersCount: players.data.filter((p) => p.removed_at === null).length,
+        owedByPlayers: -sum(balances.filter((b) => b < 0)),
+        owedToPlayers: sum(balances.filter((b) => b > 0)),
         durationMs:
           Date.parse(gameSession.data.ended_at ?? gameSession.data.started_at) -
           Date.parse(gameSession.data.started_at),

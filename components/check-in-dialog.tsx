@@ -11,16 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { balanceLabel } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 
-function formatBalance(value: number) {
-  return `${value >= 0 ? "+" : "-"}$${Math.abs(value)}`
-}
-
-// Confirmation before a check-in with debt: the debt is taken as paid, which
-// changes the player's balance (record_check_in, with the player's default
-// payment method).
+// Check-in only confirms the player is in this round (business rule A): it
+// moves no money and never blocks a negative balance. A player who owes gets
+// a confirmation first, as a reminder of the debt.
 function CheckInDialog({
   player,
   onOpenChange,
@@ -30,17 +27,14 @@ function CheckInDialog({
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
 }) {
-  const debt = player?.negativeBalance ?? 0
-  const balanceAfter = player ? player.positiveBalance : 0
-
   return (
     <Dialog open={player !== null} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Check-in de {player?.name}</DialogTitle>
           <DialogDescription>
-            Al confirmar, su deuda de ${debt} se toma como pagada y su saldo queda en{" "}
-            {formatBalance(balanceAfter)}.
+            {player?.name} {balanceLabel(player?.balance ?? 0).toLowerCase()}. El check-in
+            confirma que está en esta ronda; su saldo no cambia.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-row justify-end gap-2">
@@ -54,15 +48,15 @@ function CheckInDialog({
   )
 }
 
-// Toggling check-in: undo when checked in; otherwise check in right away when
-// there is no debt, or confirm first.
+// Toggling check-in: undo when checked in; otherwise check in right away, or
+// confirm first when the player owes.
 export function useCheckInToggle() {
   const { checkIn, undoCheckIn } = useRoundDraft()
   const [pendingPlayer, setPendingPlayer] = React.useState<DraftPlayer | null>(null)
 
   function toggle(player: DraftPlayer) {
     if (player.checkedIn) undoCheckIn(player.id)
-    else if (player.negativeBalance > 0) setPendingPlayer(player)
+    else if (player.balance < 0) setPendingPlayer(player)
     else checkIn(player.id)
   }
 

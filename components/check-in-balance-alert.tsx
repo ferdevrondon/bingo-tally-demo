@@ -12,7 +12,7 @@ export function CheckInBalanceAlert() {
   const activePlayers = getActivePlayers(state)
 
   // Players still deciding their play for the new round aren't asked for a
-  // check-in yet: its charge is only known after that decision.
+  // check-in yet: they first keep or release their numbers.
   const pendingDecision = activePlayers.filter((p) => p.pendingCarryOverDecision)
   const pendingCheckIn = activePlayers.filter(
     (p) => !p.checkedIn && !p.pendingCarryOverDecision
