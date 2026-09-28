@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useNow } from "@/hooks/use-now"
 import { formatRelativeTime } from "@/lib/format-relative-time"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
 import { useRoundDraft } from "@/lib/round-draft/context"
@@ -27,11 +28,13 @@ function ActivityLogRow({
   playerName,
   description,
   colorClass,
+  now,
 }: {
   entry: ActivityEntry
   playerName: string | null
   description: string
   colorClass: string
+  now: number | null
 }) {
   return (
     <div className="flex items-start gap-3">
@@ -60,7 +63,7 @@ function ActivityLogRow({
       </div>
       <Tooltip>
         <TooltipTrigger className="shrink-0 text-xs text-muted-foreground">
-          {formatRelativeTime(entry.timestamp)}
+          {now === null ? "\u00a0" : formatRelativeTime(entry.timestamp, now)}
         </TooltipTrigger>
         <TooltipContent>{new Date(entry.timestamp).toLocaleString("es")}</TooltipContent>
       </Tooltip>
@@ -70,6 +73,7 @@ function ActivityLogRow({
 
 export function ActivityLogCard() {
   const { state } = useRoundDraft()
+  const now = useNow()
   const entries = getRecentActivity(state)
   const playerIndexById = new Map(state.players.map((p, i) => [p.id, i]))
 
@@ -91,6 +95,7 @@ export function ActivityLogCard() {
               colorClass={getPlayerColorClass(
                 entry.playerId !== null ? (playerIndexById.get(entry.playerId) ?? -1) : -1
               )}
+              now={now}
             />
           ))
         )}
