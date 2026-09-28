@@ -54,6 +54,10 @@ export type ActivityEntryType =
   | "carryover_released"
   | "payout"
   | "adjustment"
+  | "balance_opened"
+  | "balance_closed"
+  | "credit_kept_for_play"
+  | "credit_payout_pending"
 
 /** One activity_log row: structured data only. The UI builds the sentence
  *  (components/activity-log-card.tsx). */
