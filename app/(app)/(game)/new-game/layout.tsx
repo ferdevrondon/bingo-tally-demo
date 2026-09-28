@@ -22,18 +22,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { hasDraftProgress } from "@/lib/round-draft/selectors"
+import { hasRounds } from "@/lib/round-draft/selectors"
 
+// Leaving /new-game keeps the game session. While it has no rounds it can
+// also be discarded ("Salir y borrar", discard_game_session); once a round
+// exists it can only be ended from /active-round.
 function BackToStartCrumb() {
   const router = useRouter()
-  const { state, resetDraft } = useRoundDraft()
+  const { state, discardGameSession } = useRoundDraft()
   const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [isPending, startTransition] = React.useTransition()
 
-  const hasProgress = hasDraftProgress(state)
+  const canDiscard = !hasRounds(state)
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault()
-    if (hasProgress) {
+    if (canDiscard) {
       setConfirmOpen(true)
     } else {
       router.push("/")
@@ -41,9 +45,12 @@ function BackToStartCrumb() {
   }
 
   function handleConfirmDiscard() {
-    resetDraft()
-    setConfirmOpen(false)
-    router.push("/")
+    startTransition(async () => {
+      if (await discardGameSession()) {
+        setConfirmOpen(false)
+        router.push("/")
+      }
+    })
   }
 
   return (
@@ -57,16 +64,20 @@ function BackToStartCrumb() {
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>¿Estás seguro?</DialogTitle>
+            <DialogTitle>¿Salir de la jornada?</DialogTitle>
             <DialogDescription>
-              Se borrarán los cartones y jugadores seleccionados para esta ronda.
+              La jornada todavía no tiene rondas. Puedes dejarla para continuar después, o
+              borrarla junto con sus cartones.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-row justify-end">
+          <DialogFooter className="flex-row justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleConfirmDiscard}>
+            <Button variant="outline" onClick={() => router.push("/")}>
+              Salir sin borrar
+            </Button>
+            <Button variant="destructive" disabled={isPending} onClick={handleConfirmDiscard}>
               Salir y borrar
             </Button>
           </DialogFooter>

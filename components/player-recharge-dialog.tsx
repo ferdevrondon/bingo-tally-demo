@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { PaymentMethodSelect } from "@/components/payment-method-select"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,7 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import type { PaymentMethod } from "@/lib/payment-methods"
 import { formatRelativeTime } from "@/lib/format-relative-time"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getLastRechargeActivity } from "@/lib/round-draft/selectors"
@@ -31,24 +35,34 @@ export function PlayerRechargeDialog({
 }) {
   const { state, rechargeBalance } = useRoundDraft()
   const [amount, setAmount] = React.useState("")
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod | null>(null)
+  const [note, setNote] = React.useState("")
+  // One recharge per dialog opening: a double click reuses the same request.
+  const [requestKey, setRequestKey] = React.useState(() => crypto.randomUUID())
 
   // Reset the form each time the dialog opens (adjusting state during render
-  // instead of in an effect, per React's "you might not need an effect").
+  // instead of in an effect, per React's "you might not need an effect"). The
+  // payment method is prefilled from the player's catalog data.
   const [wasOpen, setWasOpen] = React.useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
-    if (open) setAmount("")
+    if (open) {
+      setAmount("")
+      setPaymentMethod(player.paymentMethod)
+      setNote("")
+      setRequestKey(crypto.randomUUID())
+    }
   }
 
   const netBalance = player.positiveBalance - player.negativeBalance
   const parsedAmount = Number.parseFloat(amount)
-  const isValid = Number.isFinite(parsedAmount) && parsedAmount > 0
+  const isValid = Number.isFinite(parsedAmount) && parsedAmount > 0 && paymentMethod !== null
 
   const lastRecharge = getLastRechargeActivity(state, player.id)
 
   function handleConfirm() {
-    if (!isValid) return
-    rechargeBalance(player.id, parsedAmount)
+    if (!isValid || paymentMethod === null) return
+    rechargeBalance(player.id, parsedAmount, paymentMethod, note.trim() || null, requestKey)
     onOpenChange(false)
   }
 
@@ -118,6 +132,27 @@ export function PlayerRechargeDialog({
                 ${preset}
               </Button>
             ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <FieldLabel htmlFor="recharge-payment-method">Método de pago</FieldLabel>
+              <PaymentMethodSelect
+                id="recharge-payment-method"
+                value={paymentMethod}
+                onChange={setPaymentMethod}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="recharge-note">Nota (opcional)</FieldLabel>
+              <Input
+                id="recharge-note"
+                value={note}
+                maxLength={200}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Ej. referencia"
+              />
+            </Field>
           </div>
 
           <p className="text-xs text-muted-foreground">

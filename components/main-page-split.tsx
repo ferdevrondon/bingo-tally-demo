@@ -1,11 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import {
-  ArrowRightIcon,
   FlameIcon,
-  PlayIcon,
   TrophyIcon,
   UsersIcon,
   WalletIcon,
@@ -13,8 +10,8 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { StartGameSessionButton } from "@/components/start-game-session-button"
 
 const NEXT_GAME_NUMBER = 42
 const READINESS_PERCENT = 86
@@ -91,7 +88,6 @@ const stats = [
 // ------------------------------------------------------------------
 export default function MainPageSplit() {
   const now = useClock()
-  const router = useRouter()
 
   const dateLabel = now
     ? capitalize(
@@ -192,15 +188,7 @@ export default function MainPageSplit() {
           </p>
         </div>
 
-        <Button
-          size="lg"
-          className="w-fit gap-2 rounded-4xl bg-gradient-to-r from-primary to-chart-5 px-8 text-base text-primary-foreground hover:opacity-90"
-          onClick={() => router.push("/new-game")}
-        >
-          <PlayIcon className="size-5" />
-          Iniciar jornada
-          <ArrowRightIcon className="size-4" />
-        </Button>
+        <StartGameSessionButton className="rounded-4xl bg-gradient-to-r from-primary to-chart-5 px-8 text-base text-primary-foreground hover:opacity-90" />
 
         <div className="grid grid-cols-2 gap-4">
           {stats.map((stat) => (

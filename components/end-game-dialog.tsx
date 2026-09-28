@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -12,8 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import type { GameSessionSummary } from "@/lib/round-draft/game-api"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getGameSummary } from "@/lib/round-draft/selectors"
 import { FileChartColumn } from "lucide-react"
 
 function formatDuration(ms: number): string {
@@ -30,18 +31,52 @@ export function EndGameDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { state, resetDraft } = useRoundDraft()
+  const { endGameSession } = useRoundDraft()
   const router = useRouter()
-  const summary = getGameSummary(state)
+  const [summary, setSummary] = React.useState<GameSessionSummary | null>(null)
+  const [isPending, startTransition] = React.useTransition()
 
-  function handleNewGame() {
-    resetDraft()
-    onOpenChange(false)
+  // end_game_session closes the open round when all its winning numbers are
+  // in (refunding it when it was never played) and marks the game session
+  // ended. Nothing is deleted.
+  function handleConfirmEnd() {
+    startTransition(async () => {
+      const result = await endGameSession()
+      if (result) setSummary(result)
+    })
+  }
+
+  function handleGoHome() {
     router.push("/")
   }
 
+  if (!summary) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Terminar la jornada?</DialogTitle>
+            <DialogDescription>
+              Si la ronda actual ya tiene todos sus números ganadores, se cierra con su resultado.
+              Si todavía no se jugó, se cierra sin resultado y se devuelve lo cobrado por ella.
+              Una ronda con números ganadores a medias no deja terminar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" disabled={isPending} onClick={handleConfirmEnd}>
+              Terminar jornada
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={(next) => !next && handleGoHome()}>
       <DialogContent className={"w-3xl"}>
         <DialogHeader>
           <DialogTitle className={"text-xl"}>
@@ -102,7 +137,7 @@ export function EndGameDialog({
         </div>
 
         <DialogFooter className="flex-row justify-end gap-2 bg-muted/50 p-3">
-          <Button onClick={handleNewGame}>Comenzar nueva jornada</Button>
+          <Button onClick={handleGoHome}>Ir al inicio</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

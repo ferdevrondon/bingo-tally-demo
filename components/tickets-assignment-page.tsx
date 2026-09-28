@@ -26,13 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useCheckInToggle } from "@/components/check-in-dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getCurrentRoundNumber, getRoundKindForNumber } from "@/lib/round-draft/prize-rules"
+import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
-import { toDraftPlayer } from "@/lib/round-draft/players"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
-import { roundKindLabel, roundOptionLabel } from "@/lib/rounds"
+import { roundOptionLabel } from "@/lib/rounds"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 export function TicketsAssignmentPage() {
@@ -41,29 +41,43 @@ export function TicketsAssignmentPage() {
     state,
     roundTemplates,
     addTicket,
-    addPlayer,
     setActivePlayer,
     assignNumber,
     toggleGift,
-    toggleCheckIn,
-    setRound,
+    startRound,
   } = useRoundDraft()
+  const checkInToggle = useCheckInToggle()
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
-  const requiredKind = getRoundKindForNumber(getCurrentRoundNumber(state.roundsPlayed))
-  const rounds = React.useMemo(
-    () => roundTemplates.filter((r) => r.kind === requiredKind),
-    [roundTemplates, requiredKind]
-  )
+  const [isRoundPending, startRoundTransition] = React.useTransition()
+  const [isTicketPending, startTicketTransition] = React.useTransition()
 
   const activePlayers = getActivePlayers(state)
+  // start_round only swaps the picked round while nothing has happened in it
+  // (sales, kept plays, winning numbers).
+  const roundLocked =
+    state.round !== null &&
+    (state.winningNumbers.some((n) => n !== null) ||
+      state.tickets.some((t) => t.numbers.some((n) => n.playerId !== null)) ||
+      state.activity.some((a) => a.roundId === state.round?.roundId && a.type !== "round_started"))
 
-  // The player is saved in the catalog first, so the draft uses the database
-  // id (no predicted ids that could clash with players created on /players).
+  // The player is saved in the catalog first; the refreshed game session
+  // brings them in with their database id.
   async function handleAddPlayer(input: PlayerInput) {
     const result = await createPlayer(input)
     if (!writeSucceeded(result)) return
-    addPlayer(toDraftPlayer(result.data))
+    setActivePlayer(result.data.id)
     setIsAddPlayerOpen(false)
+  }
+
+  // Any active round template can start the game session (business rule 9:
+  // numbers need an open round). It can be changed until something happens
+  // in the round.
+  function handleRoundChange(value: string | null) {
+    const templateId = Number(value)
+    if (!templateId || templateId === state.round?.templateId) return
+    startRoundTransition(async () => {
+      await startRound(templateId)
+    })
   }
 
   return (
@@ -89,21 +103,19 @@ export function TicketsAssignmentPage() {
         </Select>
 
         <Select
-          value={state.round ? String(state.round.id) : ""}
-          onValueChange={(value) => {
-            const round = rounds.find((r) => r.id === Number(value))
-            if (round) setRound(round)
-          }}
-          items={rounds.map((r) => ({ label: roundOptionLabel(r), value: String(r.id) }))}
+          value={state.round?.templateId != null ? String(state.round.templateId) : ""}
+          onValueChange={handleRoundChange}
+          disabled={isRoundPending || roundLocked}
+          items={roundTemplates.map((r) => ({ label: roundOptionLabel(r), value: String(r.id) }))}
         >
           <SelectTrigger className="w-56">
             <SelectValue
-              placeholder={`Ronda ${getCurrentRoundNumber(state.roundsPlayed)} — ${roundKindLabel(requiredKind)}`}
+              placeholder={`Ronda ${getCurrentRoundNumber(state.roundsPlayed)} — elige la ronda`}
             />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {rounds.map((r) => (
+              {roundTemplates.map((r) => (
                 <SelectItem key={r.id} value={String(r.id)}>
                   {roundOptionLabel(r)}
                 </SelectItem>
@@ -164,20 +176,24 @@ export function TicketsAssignmentPage() {
               <div key={player.id} className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{player.name}</span>
-                  {player.negativeBalance > 0 && (
+                  {player.negativeBalance > 0 && !player.pendingCarryOverDecision && (
                     <span className="text-xs font-medium text-destructive">
                       Debe ${player.negativeBalance}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`checkin-${player.id}`}
-                    checked={player.checkedIn}
-                    onCheckedChange={() => toggleCheckIn(player.id)}
-                  />
-                  <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
-                </div>
+                {player.pendingCarryOverDecision ? (
+                  <span className="text-xs text-muted-foreground">Decide su jugada</span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`checkin-${player.id}`}
+                      checked={player.checkedIn}
+                      onCheckedChange={() => checkInToggle.toggle(player)}
+                    />
+                    <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
+                  </div>
+                )}
               </div>
             ))}
           </CardContent>
@@ -198,18 +214,27 @@ export function TicketsAssignmentPage() {
 
         <button
           type="button"
-          onClick={addTicket}
-          className="flex w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+          disabled={isTicketPending}
+          onClick={() =>
+            startTicketTransition(async () => {
+              await addTicket()
+            })
+          }
+          className="flex w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
         >
           <PlusIcon className="size-5" />
           Agregar cartón
         </button>
       </div>
 
+      {checkInToggle.dialog}
+
       <div className="flex justify-end border-t pt-4">
         <Button
           size="lg"
           className="gap-2"
+          disabled={!state.round}
+          title={state.round ? undefined : "Primero elige la ronda"}
           onClick={() => router.push("/active-round")}
         >
           Empezar ronda

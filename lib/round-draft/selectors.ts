@@ -1,12 +1,9 @@
 import type { ActivityEntry, DraftPlayer, RoundDraftState } from "./types"
 
-// Players created during the draft are already saved in the catalog, so only
-// assigned numbers and played rounds count as progress that discarding loses.
-export function hasDraftProgress(state: RoundDraftState): boolean {
-  return (
-    state.roundsPlayed > 0 ||
-    state.tickets.some((t) => t.numbers.some((n) => n.playerId !== null))
-  )
+/** The game session has at least one round (open or closed): it can no
+ *  longer be discarded ("Salir y borrar"), and /active-round has a game. */
+export function hasRounds(state: RoundDraftState): boolean {
+  return state.round !== null || state.rounds.length > 0
 }
 
 export function getActivePlayers(state: RoundDraftState): DraftPlayer[] {
@@ -24,7 +21,7 @@ export function getRecentActivity(state: RoundDraftState, limit = 20): ActivityE
 }
 
 export interface NumberWinnerEntry {
-  ticketId: string
+  ticketId: number
   isGift: boolean
 }
 
@@ -35,7 +32,7 @@ export interface NumberWinner {
 }
 
 export interface OwnedNumber {
-  ticketId: string
+  ticketId: number
   ticketIndex: number
   number: number
 }
@@ -76,24 +73,6 @@ export function getLineSaleStats(state: RoundDraftState): LineSaleStats {
   const soldPaid = allEntries.filter((n) => n.playerId !== null && !n.isGift).length
   const unsold = allEntries.filter((n) => n.playerId === null).length
   return { soldPaid, soldGift, unsold, totalLines: allEntries.length }
-}
-
-export interface GameSummary {
-  roundsPlayed: number
-  houseBalance: number
-  playersCount: number
-  negativeBalanceTotal: number
-  durationMs: number
-}
-
-export function getGameSummary(state: RoundDraftState): GameSummary {
-  return {
-    roundsPlayed: state.roundsPlayed,
-    houseBalance: state.houseBalance,
-    playersCount: state.gamePlayerIds.length,
-    negativeBalanceTotal: state.players.reduce((sum, p) => sum + p.negativeBalance, 0),
-    durationMs: Date.now() - state.gameStartedAt,
-  }
 }
 
 export function getLastRechargeActivity(

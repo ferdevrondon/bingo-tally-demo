@@ -21,10 +21,29 @@
 4. **Everyone else is an observer.** Observers see everything in their house live, including a game session in progress, but cannot change anything. The database enforces this, not just the UI.
 5. **The admin account can only be active in one session at a time.** If the admin logs in on a second device while the first is in use, the login screen warns them. If they continue, the old session is closed and can no longer write.
 6. Reports and live information are reviewed daily.
-7. **Balances are per game session.** Every game session starts each player at 0. Positive/negative balances live on `game_session_players`, not on `players`, and are settled at the end of the game session (section 5b).
+7. ~~**Balances are per game session.** Every game session starts each player at 0. Positive/negative balances live on `game_session_players`, not on `players`, and are settled at the end of the game session (section 5b).~~ **Superseded by v2 rules B and D** (below): one signed balance per player that carries over from one game session to the next. Phases 1–4b implement the old rule; 4c and 4d replace it.
 8. **The line price ("Precio de linea") is configured per round template** (`round_templates.line_price`) and copied onto the round when it starts (`game_session_rounds.line_price`), so editing a template never alters a round in progress. Every charge, refund and prize uses the price of the **open round**.
 9. **No number without an open round.** A number can only be assigned while the game session has an open round; `/new-game` requires picking the round first.
-10. **Purchases always create debt.** Buying a number adds the price to `negative_balance`; it never consumes `positive_balance`. Debt is paid at check-in (or by a recharge).
+10. ~~**Purchases always create debt.** Buying a number adds the price to `negative_balance`; it never consumes `positive_balance`. Debt is paid at check-in (or by a recharge).~~ **Superseded by v2 rules A and B**: a purchase lowers the player's signed balance, and check-in moves no money.
+
+### Business rules v2 (decided with the product owner on 2026-09-28)
+
+These replace the money rules above. They are implemented in **Phase 4c** (A, B, C, E, F) and **Phase 4d** (D, G); until then the app runs the old rules. The "Pending design" list at the end of this section is settled in the plan of the phase that needs it, not before.
+
+- **A. Check-in means "this player is in this round".** It is per round (cleared when the round closes), moves no money and never blocks anyone: a player can play with a positive or a negative balance. Money moves only through recharges (payments in), purchases and prizes (on the balance) and payouts (payments out).
+- **B. One signed balance per player.** Buying a number subtracts the line price, releasing a paid number adds it back, recharges and prizes add. The `positive_balance` / `negative_balance` pair and "pay debt first" go away. A negative balance is what the player owes; a positive one is what the house owes them.
+- **C. Gifted numbers.** A gift is only for the round in which it was given: if the player keeps their play after the round closes, the gifted number becomes a normal number and is charged like the others. A gifted number that wins pays the prize **minus the line price** for each gifted ticket. Example: Ana plays #5 on 5 tickets, 3 of them gifted, so she pays 2 × $10 = $20; if #5 wins she receives 5 × prize − 3 × $10. The 90 % / 10 % split goes away.
+- **D. The balance carries over between game sessions, with traceability.** A game session no longer starts every player at 0: each player enters with the balance they had (positive or negative), and that opening balance is recorded for each game session, as is the closing balance. Reports can show, per game session, what each player started with, what moved and what they ended with.
+- **E. Configurable rounds.** A round template has a line price, a number of prizes (winning numbers) and the value of each prize, all set by the admin on `/rounds`. The prize is no longer derived from a multiplier of the line price. The round copies its prizes when it starts, like `line_price` today (rule 8).
+- **F. Round summary.** When a round closes, the admin sees who won, with which number and on which ticket ("Cartón N · #X"), and how much.
+- **G. Before starting a game session**, the admin is warned about players with a positive balance still unpaid (and players who owe). A player status (owes / has credit / settled) is **derived from the balance**, never stored; a manual status for cases like "not reachable" may come later.
+
+Pending design (settled in the 4c or 4d plan):
+- House balance with one signed balance: keep a "house result" (sales − prizes ± unsold numbers) apart from "cash" (recharges − payouts)? Does the house still "play" unsold numbers (today's round margin)? (4c)
+- Round kind: does `regular` / `special` stay as a label once prizes are configurable? (4c)
+- Recharges and payouts outside a game session: at any time, or only when a game session starts or ends? (4d)
+- Manual player statuses, if any, and who changes them. (4d)
+- Whether a player removed mid-session carries their balance to their account like everyone else. (4d)
 
 ## Architecture decisions
 
@@ -170,7 +189,7 @@ Ids are `bigint generated always as identity` (keeps the existing `number` ids i
 | table | purpose | key columns |
 |---|---|---|
 | `players` | house player catalog (no balances) | house_id, name, username, payment_method, is_vip bool, active bool |
-| `round_templates` | rounds configured on `/rounds` | house_id, name, kind ('regular','special'), winner_count, line_price numeric(12,2) not null check (line_price > 0), prizes numeric[] (informational only: the paid prize is always derived from `kind` and `line_price`) |
+| `round_templates` | rounds configured on `/rounds` | house_id, name, kind ('regular','special'), winner_count, line_price numeric(12,2) not null check (line_price > 0), prizes numeric[] (informational only: the paid prize is always derived from `kind` and `line_price`; **from 4c** the real paid value per slot, rule E) |
 | `game_sessions` | one per day/session | house_id, number, status ('active','ended'), started_at, ended_at, house_balance, created_by |
 | `game_session_players` | who plays in this game session **+ their balances for this game session** | house_id, game_session_id, player_id, positive_balance, negative_balance, checked_in, pending_carryover, removed_at null |
 | `tickets` | tickets (cartones) | house_id, game_session_id, index |
@@ -198,8 +217,8 @@ Constraints and indexes:
 A position is identified by **(ticket, number)**, never by the number alone. If a player owns number 2 on tickets 1, 2, 3 and 4, that is 4 separate `ticket_numbers` rows, 4 separate `record_purchase` calls and 4 separate ledger rows, each with its own `ticket_id`.
 
 - There is no "open/closed ticket": every ticket plays every round, and owned numbers carry over from round to round until released (carryover) or reassigned.
-- When number 2 wins a round, **`award_prize`** (not `close_round`; prizes are paid the moment a winning number is entered, as `AWARD_PRIZE` does today) writes **one `round_winners` row per ticket where number 2 is owned**, each with its `ticket_id`, and **one `prize_won` ledger row per ticket**. Each ticket pays the full per-ticket prize: nothing is split between tickets or between players. A gifted ticket pays 90% and the house keeps 10%. Today the reducer writes a single aggregated log line per player ("N líneas"); that becomes one row per ticket.
-- `award_prize` computes the prize in SQL from the round `kind`, the slot and the round's `line_price` (multiplier 10 for a regular round; 10 and 5 for the two slots of a special round), mirroring `prize-rules.ts`. It never trusts an amount sent by the client.
+- When number 2 wins a round, **`award_prize`** (not `close_round`; prizes are paid the moment a winning number is entered, as `AWARD_PRIZE` does today) writes **one `round_winners` row per ticket where number 2 is owned**, each with its `ticket_id`, and **one `prize_won` ledger row per ticket**. Each ticket pays the full per-ticket prize: nothing is split between tickets or between players. A gifted ticket pays 90% and the house keeps 10% (**from 4c:** prize − P, rule C). Today the reducer writes a single aggregated log line per player ("N líneas"); that becomes one row per ticket.
+- `award_prize` computes the prize in SQL from the round `kind`, the slot and the round's `line_price` (multiplier 10 for a regular round; 10 and 5 for the two slots of a special round), mirroring `prize-rules.ts`. From 4c it pays the round's copied `prizes[slot]` instead (rule E). It never trusts an amount sent by the client.
 - Every function that touches a number takes `ticket_id` + `number` as arguments, never `number` alone.
 - In the UI and reports, always label positions as **"Cartón 3 · #2"**, so a player with the same number on several tickets sees each one.
 - Mistakes are corrected per ticket: un-assigning #2 on ticket 3 does not affect #2 on the other tickets.
@@ -231,6 +250,26 @@ Notes carried over from the current reducer:
 - Unchecking check-in does not restore the debt (it only clears `checked_in`); it writes a `check_in_undone` timeline row with no `amount`.
 - `margin_adjustment` keeps today's rules: −P per unsold losing number, `+(prize − P)` per unsold winning number, −P per gifted losing number. Paid numbers and gifted winning numbers are already covered by check-in and `prize_won`.
 - The 10% the house keeps on gifted winning tickets is the difference between the full prize and what the player gets, so `house_balance` moves by the player's share only.
+
+**Ledger mapping v2 (draft for Phase 4c, business rules v2).** The table above describes Phases 4a–4b. From 4c, `game_session_players` has one signed `balance` instead of `positive_balance` / `negative_balance`; the final mapping (and the `house_balance` column, see "Pending design") is written into the 4c migration as a SQL comment, like the one above. `P` = the open round's `line_price`; `prize[s]` = the round's copied prize for slot `s`.
+
+| type | `amount` (sign) | balance |
+|---|---|---|
+| `recharge` | +x (with `payment_method`) | +x |
+| `number_purchased` | +P (charged) | −P |
+| `number_released` (paid number) | −P (refund) | +P |
+| `number_released` (gifted number) | 0 | — |
+| `number_gifted` / `number_ungifted` | −P / +P | +P / −P |
+| `number_reassigned` | refund the previous owner (unless gift), charge the new owner | as released / purchased |
+| `check_in` / `check_in_undone` | none | — (rule A) |
+| `prize_won` (one row per ticket) | paid ticket: +prize[s]; gifted ticket: +(prize[s] − P) | +amount |
+| `carryover_kept` | +P × every kept number, gifts included (they stop being gifts, rule C) | −amount |
+| `carryover_released` | 0 | — |
+| `player_removed` | 0 | unchanged |
+| `payout` | −x (with `payment_method`) | −x (limits decided in 4d) |
+| `adjustment` | ±x | ±x |
+
+Phase 4d adds `game_session_players.opening_balance` (the player's balance when they join the game session, positive or negative) and the player's running balance between game sessions, kept in its own table written only by functions (never in `players`, which the admin edits directly). Reconciliation then becomes: `opening_balance + sum(ledger rows of the game session) = closing balance`, per player and per game session.
 
 ## 4. Security
 
@@ -318,15 +357,18 @@ Keep `RoundDraftProvider` and the reducer. Change where state comes from and goe
 
 1. **Load:** today `RoundDraftProvider` is mounted in the root `app/layout.tsx` (it even wraps `/login`). Move it into a layout shared by `/new-game` and `/active-round` (e.g. a route group `app/(app)/(game)/layout.tsx`). That layout is a Server Component: it loads the house's active game session with `lib/data/load-game-session.ts`, builds a `RoundDraftState` and passes it to the provider as `initialState`. This replaces `localRoundDraftRepository.load()`; delete `storage.ts`. `RoundDraftState` gains `gameSessionId`, and `DraftRoundConfig` gains `linePrice`; `NUMBER_PRICE` stops being a constant: the open round's `linePrice` is passed to `computePerEntryPrize` (already takes `price`), `computeRoundMarginAdjustment`, `chargePlayer` and `refundPlayer`, and `open-numbers-card.tsx` / `player-active-card.tsx` read it too. `DraftPlayer` balances now mean the player's balances **in this game session**.
    `hasDraftProgress` (compares against `getBasePlayers().length`) is replaced by "the active game session has rounds".
-2. **Act (admin only):** `dispatch` stays optimistic for instant UI. A thin wrapper in `context.tsx` generates a `request_id` (`crypto.randomUUID()`) and calls the matching action in `lib/data/game-session-actions.ts`. On error: `sonner` toast with a Spanish message (`number_taken` → "Ese número ya fue asignado", `not_admin` → session-replaced redirect), then refetch and `HYDRATE`.
+2. **Act (admin only):** `dispatch` stays optimistic for instant UI. A thin wrapper in `context.tsx` generates a `request_id` (`crypto.randomUUID()`) and calls the matching SQL function **straight from the browser** with `supabase.rpc()` (`lib/round-draft/game-api.ts`; decided in 4b because a Server Action per tap, which Next runs one at a time and follows with a router refresh, added about a second to every interaction). Calls go through an ordered client-side queue. When the queue is idle, the game session is read again in the background (`lib/round-draft/fetch-state.ts`, shared with the server loader, ~300 ms debounce) and replaces the local state unless a new action started meanwhile. Structural actions (add ticket, pick round, close round) wait for that read. On error: `sonner` toast with a Spanish message (`number_taken` → "Ese número ya fue asignado", `not_admin` → session-replaced redirect), then the re-sync reverts the optimistic change. Only "Iniciar jornada" (home page) stays a Server Action, because it redirects.
 3. **Watch (everyone):** one Realtime subscription per active game session on `activity_log` filtered `game_session_id=eq.X`. On insert, refetch and dispatch `HYDRATE`. Debounce the refetch by ~250 ms, and skip it while the local admin has actions in flight (refetch once they settle) so optimistic state doesn't flicker.
 4. **Observer UI:** `useRole()` hides the action buttons (assign, recharge, award, close round, end game session, edit player/round). Observers see a small "Solo lectura" badge. RLS is the real guard.
 5. "Iniciar jornada" calls `start_game_session` (or reuses the active one) before navigating to `/new-game`; picking the round there calls `start_round`. "Empezar ronda" only navigates to `/active-round`. "Terminar jornada" calls `end_game_session` (`status = 'ended'`); nothing is deleted. "Salir y borrar" (`app/(app)/new-game/layout.tsx`) calls `discard_game_session` and is only shown while the game session has no rounds. Remove `createSeedActivity`.
-6. **Check-in asks for the payment method** when the player has debt (prefilled from `players.payment_method`), because `record_check_in` records that money coming in.
+6. **Check-in** with debt shows a confirmation only ("la deuda se toma como pagada y su saldo queda en…"). It does not ask for the payment method: `record_check_in` records the player's default one (`players.payment_method`, `other` when unset). Decided with the product owner in 4b; the recharge dialog does ask for the method. After a round closes, a player's check-in only appears once they keep or release their numbers (the new round's charge is known then).
+   **From Phase 4c (rule A):** check-in only confirms the player is in the current round. It moves no money, asks for no payment method and never blocks a player with a negative balance; `record_check_in` stops paying debt and the confirmation text changes accordingly. The "keep or release first" order stays.
 
 Enable Realtime publication on `activity_log` and `admin_auth_sessions` only.
 
 ## 5b. Settlement at the end of the game session
+
+> **Superseded by business rules v2 (rule D).** Settlement is no longer per game session: payouts and payments go against the player's balance, which carries over. Phase 4d redesigns this section (where payouts are recorded, whether they can happen between game sessions, the per-player status derived from the balance). `record_payout` from 4a is kept as a starting point. The text below is the original design, kept for reference.
 
 Business rule: payments to players happen **outside the app** (cash or transfer). After paying, the admin records each payment manually, player by player, with the method used.
 
@@ -396,11 +438,11 @@ Business rule: payments to players happen **outside the app** (cash or transfer)
 
 **Acceptance:** Run a full game session as admin (assign numbers, recharge, award, close 2 rounds, end). Include one player who owns the same number on 4 tickets (one of them a gift): when that number wins, `round_winners` has 4 rows with 4 different `ticket_id`s, the timeline shows each labeled as "Cartón N · #X", and the gifted ticket pays 90%. Reload mid-session and nothing is lost. Double-clicking "Recargar" records one recharge. With `execute_sql`, each `game_session_players` balance and `game_sessions.house_balance` match the ledger according to the documented mapping. Editing a round template's line price mid-round does not change the open round's prices. Assigning a number with no open round is rejected (`no_open_round`). "Salir y borrar" deletes a game session with no rounds and is rejected (`game_session_has_rounds`) once a round exists. As observer, `supabase.rpc('record_recharge', ...)` is rejected.
 
-- `record_payout` + the settlement screen (section 5b).
+- ~~`record_payout` + the settlement screen (section 5b).~~ Moved to Phase 4d (business rules v2).
 
-**Settlement acceptance:** after ending the test game session, record a partial payout by `transfer` and a full payout in `cash`. Balances drop accordingly, the timeline shows both with their method, paying more than the balance is rejected, and double-clicking "Registrar pago" records one payment.
+~~**Settlement acceptance:** after ending the test game session, record a partial payout by `transfer` and a full payout in `cash`. Balances drop accordingly, the timeline shows both with their method, paying more than the balance is rejected, and double-clicking "Registrar pago" records one payment.~~ Replaced by the 4d acceptance.
 
-Phase 4 is delivered in three branches, each with its own acceptance: **4a** the database functions (no UI change), **4b** the loader and wiring the draft to them (the acceptance above), **4c** the settlement screen (the settlement acceptance).
+Phase 4 is delivered in four branches, each with its own plan and acceptance: **4a** the database functions (no UI change), **4b** the loader and wiring the draft to them, **4c** game rules v2, **4d** the player account between game sessions (which absorbs the settlement). The original plan had a 4c for the settlement screen; business rules v2 (2026-09-28) replaced it.
 
 Decisions taken with the product owner (2026-09-24), implemented in 4a:
 - **Free round choice.** The admin picks any active round template to start the game session and to continue after each close, the same template included. The odd = regular / even = special suggestion no longer restricts the pickers (the UI filter goes away in 4b). `start_round` / `close_round` accept any active template of the house.
@@ -415,13 +457,38 @@ Decisions taken with the product owner (2026-09-24), implemented in 4a:
 - Verified with `execute_sql` as the real admin session and the observer (one transaction, rolled back): a full game session with 3 rounds (switching the picked template before any sale, same number on 4 tickets with one gift → 4 `round_winners` rows on 4 tickets paying 100/100/100/90, special round slots paying 10 × P and 5 × P, carryover keep/release, remove player, release, stale and valid reassign, "Editar jugada" with buy + gift + release, check-in/undo, the next round with the same template, ending with an unplayed round refunded, partial and full payouts). Per-player balances and `house_balance` match the ledger (0 mismatches; house −1060 = 120 in − 540 prizes − 540 − 100 margins, checked by hand). Rejections: `no_open_round`, `number_taken`, `number_owner_changed`, `round_in_progress` (switch after a sale, close/end partly awarded), `payment_method_required`, `game_session_has_rounds`, `payout_exceeds_balance`; repeated request ids wrote one row (purchase, recharge, payout, add_ticket); editing a template's price mid-round left the open round at its price; a game session with no rounds was discarded; the observer and a non-claimed admin session got `not_admin` on every call tried.
 - Security advisor: exactly the 19 expected 0029 findings (one per public function) plus the project-level leaked-password setting; nothing else.
 
+**Phase 4b status (2026-09-28): done** on branch `feat/backend-phase-4b`.
+- `app/(app)/(game)/layout.tsx` loads the active game session (`lib/data/load-game-session.ts` → `fetchGameSessionState`) and hands it to `RoundDraftProvider`; without one, it shows "No hay una jornada activa" with "Iniciar jornada". `storage.ts`, `LOG_ACTIVITY`, the seed activity, `NUMBER_PRICE`, `hasDraftProgress` and the odd/even round filter are gone; ticket ids are numbers; `ActivityEntry` is structured and `lib/round-draft/activity-text.ts` builds the Spanish timeline ("Cartón N · #X").
+- Writes: see §5.2 (direct `supabase.rpc`, ordered queue, background re-sync). The reducer uses the open round's `line_price` and no longer refunds a released gifted number (same as SQL).
+- Home "Iniciar jornada" creates or reuses the active game session with ticket #1. "Salir y borrar" only while the game session has no rounds. "Terminar jornada" confirms, calls `end_game_session` and shows the saved summary. The real game session number on the home page and heading stays for Phase 6.
+- First real game session played by the product owner (#1, 2 rounds, 71 ledger rows): number 2 on 4 tickets (one gifted) paid 100/100/100/90 on 4 `round_winners` rows; every player balance and `house_balance` (−360) match the ledger.
+- Adjustments after that first run: writes moved from Server Actions to direct `supabase.rpc` (§5.2) to remove a ~1 s delay per tap; check-in with debt is a confirmation only, with the player's default payment method (§5.6); after a round closes, check-in appears only once the player keeps or releases their play; one request id per recharge dialog opening (a double click records one recharge); the round picker locks once something happens in the round; the background re-sync retries on failure.
+- **Reduced acceptance (decided 2026-09-28).** Business rules v2 change the money rules in 4c, so 4b is only accepted on what survives them: interactions feel instant and the queue keeps their order; reloading mid-session loses nothing; double-clicking "Recargar" records one recharge; "Iniciar jornada", "Terminar jornada" (with its summary) and "Salir y borrar" work. The check-in money flow and the SQL reconciliation of game session #2 are not tested here: 4c rewrites them.
+- Reduced acceptance passed in the browser with the admin account (2026-09-28), on game session #2: five quick taps showed on screen within 37 ms and were stored in order (~150 ms per call in the background); buy/release sequences tapped 80–120 ms apart ended with the right owners on screen and in the database; a reload mid-session kept numbers, balance (−$30) and timeline; double-clicking "Confirmar recarga" wrote one `recharge` row; "Terminar jornada" closed the unplayed round, refunded its $80 (`unplayed_round_refund`) and showed the summary; a new game session was removed with "Salir y borrar". Known limit: two opposite taps on the same number fired within the same frame (only possible from a script) are sent as two purchases, and the second is rejected with `number_taken`, with no data harm.
+- Fixed during acceptance: the timeline's relative time ("hace 2 minutos") caused a hydration mismatch now that entries come from the server; it is rendered from a client-only clock (`hooks/use-now.ts`, refreshed every 30 s).
+
+### Phase 4c: Game rules v2
+Business rules v2 A, B, C, E and F, within one game session (balances still start at 0 per game session until 4d).
+- New migration (never edit 4a's): `round_templates` with a configurable number of prizes and their values (`winner_count` = length of `prizes`, which become the real paid values); `game_session_rounds` copies `prizes` and `winner_count` when the round starts; `game_session_players` gets one signed `balance` in place of `positive_balance` / `negative_balance`. Money functions rewritten with `create or replace` (purchase, release, gift, check-in, award, close, carryover, end) following the v2 ledger mapping (section 3). **Deletes every game session created before 4c** (test data only; approved by the product owner on 2026-09-28), so the new columns start clean.
+- UI: the `/rounds` form (number of prizes and each prize value), winning-number slots from the round's `winner_count`, `prize-rules.ts` and the reducer on the new rules (the optimistic UI must still match SQL), balances shown as one signed amount, check-in as "está en esta ronda" with no money and no negative-balance block, a round summary when a round closes (rule F).
+- Decide first (4c plan): house balance and round margin, round kind (see "Pending design").
+
+**Acceptance:** SQL simulation like 4a's (one transaction, rolled back): a round with 3 configured prizes pays each slot its configured value; a gifted winning ticket pays prize − P; a kept gifted number is charged in the next round and is no longer a gift; check-in writes no money; balances go negative and positive and match the ledger (0 mismatches). In the browser: create a round template with its prizes, play a full game session with it, see the round summary on close, and check that editing a template's prizes mid-round doesn't change the open round.
+
+### Phase 4d: Player account between game sessions
+Business rules v2 D and G, plus the settlement that used to be 4c (section 5b).
+- Starts with a short design session with the product owner on the "Pending design" items of 4d.
+- The player's running balance in its own table, written only by functions; `game_session_players.opening_balance` recorded when a player joins a game session, and the closing balance passed back to the player's account when it ends; payouts and payments recorded against the account (inside or outside a game session, as decided); an alert on "Iniciar jornada" listing players with credit or debt; the player status derived from the balance on `/players`.
+
+**Acceptance:** SQL reconciliation across at least two consecutive game sessions: for each player, `opening_balance + ledger = closing balance`, and the next game session opens with that closing balance. In the browser: the alert before starting a game session lists the right players; a payout lowers the balance and appears in the timeline with its method; double-clicking the payout button records one payment.
+
 ### Phase 5: Realtime and observer view
 - `activity_log` subscription + debounced `HYDRATE`; `useRole()` gating in every action component; "Solo lectura" badge.
 
 **Acceptance:** Admin in one browser, observer in another: the observer sees each assignment and award appear within ~1 second and has no action buttons. A user from a second test house sees nothing from the first house.
 
 ### Phase 6: Reports and members
-- `/games`: list of game sessions (replaces the hardcoded `games` array in `game-page.tsx`); `/games/[id]` reads the real game session. `/reports?game=id`: rounds, winners, timeline, per-player totals, from SQL. The report includes a **cash summary**: total recharges and total payouts per payment method, and the players still pending payment. "Daily" grouping uses `houses.timezone`, with a game session counted on its start date.
+- `/games`: list of game sessions (replaces the hardcoded `games` array in `game-page.tsx`); `/games/[id]` reads the real game session. `/reports?game=id`: rounds, winners, timeline, per-player totals, from SQL. The report includes a **cash summary**: total recharges and total payouts per payment method, and the players still pending payment. With business rules v2 each game session report also shows every player's opening balance, movements and closing balance (from 4d), and the prizes as configured on each round (from 4c). "Daily" grouping uses `houses.timezone`, with a game session counted on its start date.
 - `RoundHistoryCard` and `player-rounds-dialog` use real rounds; the "Jornada #42" heading (`page-heading.tsx`) and `NEXT_GAME_NUMBER` (`main-page*.tsx`) use real numbers.
 - Optional: a members page where the admin invites observers by email through a server action using the service-role key (server-only, never exposed to the client).
 
