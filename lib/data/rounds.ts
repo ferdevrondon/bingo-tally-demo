@@ -7,20 +7,14 @@ import { createClient } from "@/lib/supabase/server"
 
 type RoundTemplateRow = Database["public"]["Tables"]["round_templates"]["Row"]
 
-export const ROUND_TEMPLATE_COLUMNS =
-  "id, name, kind, winner_count, line_price, prizes"
+export const ROUND_TEMPLATE_COLUMNS = "id, name, line_price, prizes"
 
 export function toRound(
-  row: Pick<
-    RoundTemplateRow,
-    "id" | "name" | "kind" | "winner_count" | "line_price" | "prizes"
-  >
+  row: Pick<RoundTemplateRow, "id" | "name" | "line_price" | "prizes">
 ): Round {
   return {
     id: row.id,
     name: row.name,
-    kind: row.kind === "special" ? "special" : "regular",
-    winnerCount: row.winner_count,
     linePrice: Number(row.line_price),
     prizes: row.prizes.map(Number),
   }

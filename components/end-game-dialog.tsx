@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
+import { HouseResultBreakdown } from "@/components/house-result-breakdown"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import type { GameSessionSummary } from "@/lib/round-draft/game-api"
+import { formatMoney } from "@/lib/rounds"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { FileChartColumn } from "lucide-react"
 
@@ -108,17 +110,27 @@ export function EndGameDialog({
           </div>
           <div className="rounded-lg border bg-muted/30 p-3">
             <div className="text-xs tracking-wide text-muted-foreground uppercase">
-              Dinero obtenido en casa
-            </div>
-            <div className="text-lg font-semibold">${summary.houseBalance}</div>
-          </div>
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs tracking-wide text-muted-foreground uppercase">
               Jugadores activos
             </div>
             <div className="text-lg font-semibold">{summary.playersCount}</div>
           </div>
           <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs tracking-wide text-muted-foreground uppercase">
+              Deben los jugadores
+            </div>
+            <div className="text-lg font-semibold text-destructive">
+              {formatMoney(summary.owedByPlayers)}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs tracking-wide text-muted-foreground uppercase">
+              A favor de los jugadores
+            </div>
+            <div className="text-lg font-semibold text-green-600">
+              {formatMoney(summary.owedToPlayers)}
+            </div>
+          </div>
+          <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
             <div className="text-xs tracking-wide text-muted-foreground uppercase">
               Tiempo de la jornada
             </div>
@@ -127,12 +139,10 @@ export function EndGameDialog({
             </div>
           </div>
           <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs tracking-wide text-muted-foreground uppercase">
-              Saldo negativo total
+            <div className="mb-2 text-xs tracking-wide text-muted-foreground uppercase">
+              Resultado de la casa
             </div>
-            <div className="text-lg font-semibold text-destructive">
-              ${summary.negativeBalanceTotal}
-            </div>
+            <HouseResultBreakdown house={summary.house} />
           </div>
         </div>
 

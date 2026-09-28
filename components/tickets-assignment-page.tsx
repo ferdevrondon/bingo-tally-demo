@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select"
 import { useCheckInToggle } from "@/components/check-in-dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { balanceLabel } from "@/lib/round-draft/balance"
 import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
@@ -176,9 +177,15 @@ export function TicketsAssignmentPage() {
               <div key={player.id} className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{player.name}</span>
-                  {player.negativeBalance > 0 && !player.pendingCarryOverDecision && (
-                    <span className="text-xs font-medium text-destructive">
-                      Debe ${player.negativeBalance}
+                  {player.balance !== 0 && !player.pendingCarryOverDecision && (
+                    <span
+                      className={
+                        player.balance < 0
+                          ? "text-xs font-medium text-destructive"
+                          : "text-xs font-medium text-green-600"
+                      }
+                    >
+                      {balanceLabel(player.balance)}
                     </span>
                   )}
                 </div>

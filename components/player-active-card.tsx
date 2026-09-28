@@ -23,6 +23,7 @@ import { PlayerRechargeDialog } from "@/components/player-recharge-dialog"
 import { PlayerReleaseNumbersDialog } from "@/components/player-release-numbers-dialog"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import { useCheckInToggle } from "@/components/check-in-dialog"
+import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
@@ -43,7 +44,7 @@ export function PlayerActiveCard({
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = React.useState(false)
   const [isReleaseOpen, setIsReleaseOpen] = React.useState(false)
 
-  const netBalance = player.positiveBalance - player.negativeBalance
+  const balance = player.balance
 
   const countsByNumber = new Map<number, number>()
   const giftByNumber = new Map<number, boolean>()
@@ -76,10 +77,10 @@ export function PlayerActiveCard({
         <span
           className={cn(
             "text-lg font-bold",
-            netBalance >= 0 ? "text-green-600" : "text-destructive"
+            balance >= 0 ? "text-green-600" : "text-destructive"
           )}
         >
-          {netBalance >= 0 ? "+" : "-"}${Math.abs(netBalance)}
+          {signedMoney(balance)}
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -118,7 +119,7 @@ export function PlayerActiveCard({
                 ? "border-green-500/40 bg-green-500/10"
                 : cn(
                     "border-amber-500/40 bg-amber-500/10",
-                    player.negativeBalance > 0 && "animate-pulse"
+                    balance < 0 && "animate-pulse"
                   )
             )}
           >
@@ -131,9 +132,9 @@ export function PlayerActiveCard({
               )}
             >
               {player.checkedIn ? "Check-in confirmado" : "Check-in pendiente"}
-              {player.negativeBalance > 0 && !player.checkedIn && (
+              {balance < 0 && !player.checkedIn && (
                 <span className="ml-2 text-xs font-semibold text-destructive">
-                  Debe ${player.negativeBalance}
+                  {balanceLabel(balance)}
                 </span>
               )}
             </span>

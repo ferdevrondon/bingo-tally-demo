@@ -21,14 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { winnerCountForKind, type RoundKind } from "@/lib/round-draft/prize-rules"
-import type { RoundInput } from "@/lib/rounds"
+import { MAX_PRIZES, type RoundInput } from "@/lib/rounds"
 
-// Estado del formulario: los premios se editan como texto ("100$") y se
-// convierten a números al enviar. El tipo de dominio es `Round` (lib/rounds.ts).
+// Estado del formulario: los premios se editan como texto y se convierten a
+// números al enviar. El tipo de dominio es `Round` (lib/rounds.ts).
 interface RoundFormState {
   name: string
-  kind: RoundKind
   linePrice: number
   prizes: string[]
 }
@@ -39,42 +37,26 @@ function parseMoney(value: string): number {
 }
 
 function toFormState(round: RoundInput): RoundFormState {
-  const winnerCount = winnerCountForKind(round.kind)
   return {
     name: round.name,
-    kind: round.kind,
     linePrice: round.linePrice,
-    prizes: Array.from({ length: winnerCount }, (_, i) =>
-      round.prizes[i] !== undefined ? String(round.prizes[i]) : ""
-    ),
+    prizes: round.prizes.length > 0 ? round.prizes.map(String) : [""],
   }
 }
 
-const kindOptions: { value: RoundKind; label: string }[] = [
-  { value: "regular", label: "Regular (1 número ganador)" },
-  { value: "special", label: "Especial (2 números ganadores)" },
-]
+const prizeCountOptions = Array.from({ length: MAX_PRIZES }, (_, i) => ({
+  value: String(i + 1),
+  label: `${i + 1} premio${i === 0 ? "" : "s"} (${i + 1} número${i === 0 ? "" : "s"} ganador${i === 0 ? "" : "es"})`,
+}))
 
-const prizeOrdinals = [
-  "Primer",
-  "Segundo",
-  "Tercer",
-  "Cuarto",
-  "Quinto",
-  "Sexto",
-  "Séptimo",
-  "Octavo",
-  "Noveno",
-  "Décimo",
-]
+const prizeOrdinals = ["Primer", "Segundo", "Tercer", "Cuarto", "Quinto"]
 
 function prizeLabel(index: number) {
-  return `${prizeOrdinals[index] ?? `#${index + 1}`} premio (#${index + 1})`
+  return `${prizeOrdinals[index] ?? `#${index + 1}`} premio`
 }
 
 const emptyRound: RoundInput = {
   name: "",
-  kind: "regular",
   linePrice: 10,
   prizes: [],
 }
@@ -107,14 +89,12 @@ export function RoundForm({
 }: RoundFormProps) {
   const [round, setRound] = React.useState<RoundFormState>(() => toFormState(initialValues))
   const [isPending, startTransition] = React.useTransition()
-  const winnerCount = winnerCountForKind(round.kind)
 
-  function updateKind(value: string | null) {
-    const kind: RoundKind = value === "special" ? "special" : "regular"
+  function updatePrizeCount(value: string | null) {
+    const count = Math.min(Math.max(Number(value) || 1, 1), MAX_PRIZES)
     setRound((prev) => ({
       ...prev,
-      kind,
-      prizes: Array.from({ length: winnerCountForKind(kind) }, (_, i) => prev.prizes[i] ?? ""),
+      prizes: Array.from({ length: count }, (_, i) => prev.prizes[i] ?? ""),
     }))
   }
 
@@ -130,7 +110,6 @@ export function RoundForm({
     startTransition(async () => {
       await onSubmit({
         name: round.name,
-        kind: round.kind,
         linePrice: round.linePrice,
         prizes: round.prizes.map(parseMoney),
       })
@@ -167,15 +146,19 @@ export function RoundForm({
               required
             />
           </Field>
-          <Field>
-            <FieldLabel htmlFor="round-kind">Tipo</FieldLabel>
-            <Select value={round.kind} onValueChange={updateKind} items={kindOptions}>
-              <SelectTrigger id="round-kind" className="w-full">
+          <Field className="col-span-2">
+            <FieldLabel htmlFor="round-prize-count">Número de premios</FieldLabel>
+            <Select
+              value={String(round.prizes.length)}
+              onValueChange={updatePrizeCount}
+              items={prizeCountOptions}
+            >
+              <SelectTrigger id="round-prize-count" className="w-full">
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {kindOptions.map((option) => (
+                  {prizeCountOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -184,8 +167,7 @@ export function RoundForm({
               </SelectContent>
             </Select>
             <FieldDescription>
-              {winnerCount} número{winnerCount > 1 ? "s" : ""} ganador
-              {winnerCount > 1 ? "es" : ""} — determinado por el tipo de ronda.
+              Cada número ganador paga su premio por cada cartón que lo tenga.
             </FieldDescription>
           </Field>
         </div>
@@ -195,14 +177,16 @@ export function RoundForm({
               <FieldLabel htmlFor={`round-prize-${index}`}>{prizeLabel(index)}</FieldLabel>
               <Input
                 id={`round-prize-${index}`}
+                type="number"
+                inputMode="decimal"
+                min={0.01}
+                step={0.01}
                 value={prize}
                 onChange={(e) => updatePrize(index, e.target.value)}
-                placeholder="Premio, ej. 100$"
+                placeholder="100"
                 required
               />
-              <FieldDescription>
-                Solo referencia — el premio real se calcula automáticamente.
-              </FieldDescription>
+              <FieldDescription>Por cartón con el número ganador.</FieldDescription>
             </Field>
           ))}
         </div>

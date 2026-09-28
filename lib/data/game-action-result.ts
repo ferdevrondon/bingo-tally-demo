@@ -1,6 +1,6 @@
 // Result of a game session action (lib/round-draft/game-api.ts). The
 // error is the code raised by the SQL function (the game session functions
-// migration), or a generic one. Plain data so Client Components can import it.
+// and game rules v2 migrations), or a generic one. Plain data so Client Components can import it.
 
 export type GameActionError =
   | "read_only"
@@ -20,6 +20,8 @@ export type GameActionError =
   | "slot_already_awarded"
   | "number_already_won"
   | "no_pending_carryover"
+  | "pending_carryover"
+  | "check_in_pending"
   | "payment_method_required"
   | "invalid_amount"
   | "payout_exceeds_balance"
@@ -48,6 +50,8 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   slot_already_awarded: "Ese número ganador ya fue registrado.",
   number_already_won: "Ese número ya salió en esta ronda.",
   no_pending_carryover: "Ese jugador ya decidió su jugada.",
+  pending_carryover: "Primero decide si el jugador mantiene o libera su jugada.",
+  check_in_pending: "Todos los jugadores con números deben hacer check-in antes de anotar ganadores.",
   payment_method_required: "Elige el método de pago.",
   invalid_amount: "El monto debe ser mayor a 0.",
   payout_exceeds_balance: "El pago no puede ser mayor al saldo a favor del jugador.",

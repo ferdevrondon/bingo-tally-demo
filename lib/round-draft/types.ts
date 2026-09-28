@@ -1,20 +1,21 @@
 import type { PaymentMethod } from "@/lib/payment-methods"
-import type { RoundKind } from "./prize-rules"
 
-/** A player as seen by the live game: catalog data plus their balances in
+/** A player as seen by the live game: catalog data plus their balance in
  *  this game session (game_session_players; 0 when not in it yet). */
 export interface DraftPlayer {
   id: number
   name: string
-  /** From the catalog; prefills the check-in and recharge payment method. */
+  /** From the catalog; prefills the recharge payment method. */
   paymentMethod: PaymentMethod | null
-  positiveBalance: number
-  negativeBalance: number
+  /** Signed (business rule B): negative = owes the house, positive = the
+   *  house owes them. */
+  balance: number
+  /** In the open round (rule A). Cleared when a round closes. */
   checkedIn: boolean
   pendingCarryOverDecision: boolean
   /** Has a game_session_players row (joined by a purchase or recharge). */
   inSession: boolean
-  /** Removed from this game session (remove_player); keeps its balances. */
+  /** Removed from this game session (remove_player); keeps its balance. */
   removed: boolean
 }
 
@@ -77,9 +78,11 @@ export interface DraftRound {
   templateId: number | null
   seq: number
   name: string
-  kind: RoundKind
   /** Copied from the template when the round started (business rule 8). */
   linePrice: number
+  /** Prize per winning ticket for each winning number, copied from the
+   *  template (rule E). Its length is the number of winning numbers. */
+  prizes: number[]
 }
 
 /** Rounds of the game session by id, for labels ("Ronda 2 · Especial"). */
@@ -102,6 +105,7 @@ export interface RoundDraftState {
   winningNumbers: (number | null)[]
   /** Closed rounds of this game session. */
   roundsPlayed: number
+  /** House result so far: sales - prizes + the margin of closed rounds. */
   houseBalance: number
   gameStartedAt: number
 }

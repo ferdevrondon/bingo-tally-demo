@@ -28,7 +28,7 @@
 
 ### Business rules v2 (decided with the product owner on 2026-09-28)
 
-These replace the money rules above. They are implemented in **Phase 4c** (A, B, C, E, F) and **Phase 4d** (D, G); until then the app runs the old rules. The "Pending design" list at the end of this section is settled in the plan of the phase that needs it, not before.
+These replace the money rules above. They are implemented in **Phase 4c** (A, B, C, E, F; done) and **Phase 4d** (D, G; balances still start at 0 per game session until then). The "Pending design" list at the end of this section is settled in the plan of the phase that needs it, not before.
 
 - **A. Check-in means "this player is in this round".** It is per round (cleared when the round closes), moves no money and never blocks anyone: a player can play with a positive or a negative balance. Money moves only through recharges (payments in), purchases and prizes (on the balance) and payouts (payments out).
 - **B. One signed balance per player.** Buying a number subtracts the line price, releasing a paid number adds it back, recharges and prizes add. The `positive_balance` / `negative_balance` pair and "pay debt first" go away. A negative balance is what the player owes; a positive one is what the house owes them.
@@ -39,8 +39,9 @@ These replace the money rules above. They are implemented in **Phase 4c** (A, B,
 - **G. Before starting a game session**, the admin is warned about players with a positive balance still unpaid (and players who owe). A player status (owes / has credit / settled) is **derived from the balance**, never stored; a manual status for cases like "not reachable" may come later.
 
 Pending design (settled in the 4c or 4d plan):
-- House balance with one signed balance: keep a "house result" (sales − prizes ± unsold numbers) apart from "cash" (recharges − payouts)? Does the house still "play" unsold numbers (today's round margin)? (4c)
-- Round kind: does `regular` / `special` stay as a label once prizes are configurable? (4c)
+- ~~House balance with one signed balance (4c).~~ **Decided 2026-09-28:** `house_balance` is the **house result**: sales − prizes paid + the round margin. The house still "plays" what it didn't sell: −P per unsold number that loses, prize − P per unsold number that wins (the prize stays with the house, minus that number's line price), −P per gifted number that loses. Recharges and payouts are cash: they move the player's balance, not the house result. Summaries show each part: sales, prizes paid, gifts that lost, unsold that lost, unsold that won, total. Worked examples agreed with the product owner (1 ticket, P = $10, prize $100, 10 sold, 2 gifted, 3 unsold): a sold number wins → −$50; an unsold number wins → +$150.
+- ~~Round kind (4c).~~ **Decided:** `regular` / `special` goes away; a round is its name, line price and list of prizes.
+- Check-in lock (4c): winning numbers still wait until every player with numbers is checked in (`award_prize` raises `check_in_pending`); a negative balance never blocks.
 - Recharges and payouts outside a game session: at any time, or only when a game session starts or ends? (4d)
 - Manual player statuses, if any, and who changes them. (4d)
 - Whether a player removed mid-session carries their balance to their account like everyone else. (4d)
@@ -251,23 +252,25 @@ Notes carried over from the current reducer:
 - `margin_adjustment` keeps today's rules: −P per unsold losing number, `+(prize − P)` per unsold winning number, −P per gifted losing number. Paid numbers and gifted winning numbers are already covered by check-in and `prize_won`.
 - The 10% the house keeps on gifted winning tickets is the difference between the full prize and what the player gets, so `house_balance` moves by the player's share only.
 
-**Ledger mapping v2 (draft for Phase 4c, business rules v2).** The table above describes Phases 4a–4b. From 4c, `game_session_players` has one signed `balance` instead of `positive_balance` / `negative_balance`; the final mapping (and the `house_balance` column, see "Pending design") is written into the 4c migration as a SQL comment, like the one above. `P` = the open round's `line_price`; `prize[s]` = the round's copied prize for slot `s`.
+**Ledger mapping v2 (Phase 4c, business rules v2).** The table above describes Phases 4a–4b. From 4c (`20260928215255_game_rules_v2.sql`, which carries this mapping and the reconciliation formulas as a SQL comment), `game_session_players` has one signed `balance` instead of `positive_balance` / `negative_balance`, and `house_balance` is the house result. `P` = the open round's `line_price`; `prize[s]` = the round's copied prize for slot `s`.
 
-| type | `amount` (sign) | balance |
-|---|---|---|
-| `recharge` | +x (with `payment_method`) | +x |
-| `number_purchased` | +P (charged) | −P |
-| `number_released` (paid number) | −P (refund) | +P |
-| `number_released` (gifted number) | 0 | — |
-| `number_gifted` / `number_ungifted` | −P / +P | +P / −P |
-| `number_reassigned` | refund the previous owner (unless gift), charge the new owner | as released / purchased |
-| `check_in` / `check_in_undone` | none | — (rule A) |
-| `prize_won` (one row per ticket) | paid ticket: +prize[s]; gifted ticket: +(prize[s] − P) | +amount |
-| `carryover_kept` | +P × every kept number, gifts included (they stop being gifts, rule C) | −amount |
-| `carryover_released` | 0 | — |
-| `player_removed` | 0 | unchanged |
-| `payout` | −x (with `payment_method`) | −x (limits decided in 4d) |
-| `adjustment` | ±x | ±x |
+| type | `amount` (sign) | balance | house_balance |
+|---|---|---|---|
+| `number_purchased` | +P (charged) | −P | +P |
+| `number_released` (paid / gifted number) | −P (refund) / 0 | +P / — | −P / — |
+| `number_gifted` / `number_ungifted` | −P / +P | +P / −P | −P / +P |
+| `number_reassigned` | refund the previous owner (unless gift), charge the new owner | as released / purchased | as released / purchased |
+| `carryover_kept` | +P × every kept number, gifts included (they stop being gifts, rule C) | −amount | +amount |
+| `carryover_released` | 0 | — | — |
+| `prize_won` (one row per ticket) | paid ticket: +prize[s]; gifted ticket: +max(prize[s] − P, 0) | +amount | −amount |
+| `adjustment` (unplayed round refund) | +x | +x | −x |
+| `margin_adjustment` (round close, no player) | ± gifts + unsold losing + unsold winning | — | +amount |
+| `recharge` | +x (with `payment_method`) | +x | — (cash) |
+| `payout` | −x (with `payment_method`) | −x (≤ a positive balance; redesigned in 4d) | — (cash) |
+| `check_in` / `check_in_undone` | none | — (rule A) | — |
+| `player_removed` | 0 | unchanged | — |
+
+Each closed round also keeps its margin split (`margin_gifts`, `margin_unsold_losing`, `margin_unsold_winning`) for the summaries.
 
 Phase 4d adds `game_session_players.opening_balance` (the player's balance when they join the game session, positive or negative) and the player's running balance between game sessions, kept in its own table written only by functions (never in `players`, which the admin edits directly). Reconciliation then becomes: `opening_balance + sum(ledger rows of the game session) = closing balance`, per player and per game session.
 
@@ -471,9 +474,15 @@ Decisions taken with the product owner (2026-09-24), implemented in 4a:
 Business rules v2 A, B, C, E and F, within one game session (balances still start at 0 per game session until 4d).
 - New migration (never edit 4a's): `round_templates` with a configurable number of prizes and their values (`winner_count` = length of `prizes`, which become the real paid values); `game_session_rounds` copies `prizes` and `winner_count` when the round starts; `game_session_players` gets one signed `balance` in place of `positive_balance` / `negative_balance`. Money functions rewritten with `create or replace` (purchase, release, gift, check-in, award, close, carryover, end) following the v2 ledger mapping (section 3). **Deletes every game session created before 4c** (test data only; approved by the product owner on 2026-09-28), so the new columns start clean.
 - UI: the `/rounds` form (number of prizes and each prize value), winning-number slots from the round's `winner_count`, `prize-rules.ts` and the reducer on the new rules (the optimistic UI must still match SQL), balances shown as one signed amount, check-in as "está en esta ronda" with no money and no negative-balance block, a round summary when a round closes (rule F).
-- Decide first (4c plan): house balance and round margin, round kind (see "Pending design").
+- Decided in the 4c plan: house balance and round margin, round kind, check-in lock (see "Pending design").
 
 **Acceptance:** SQL simulation like 4a's (one transaction, rolled back): a round with 3 configured prizes pays each slot its configured value; a gifted winning ticket pays prize − P; a kept gifted number is charged in the next round and is no longer a gift; check-in writes no money; balances go negative and positive and match the ledger (0 mismatches). In the browser: create a round template with its prizes, play a full game session with it, see the round summary on close, and check that editing a template's prizes mid-round doesn't change the open round.
+
+**Phase 4c status (2026-09-28): done** on branch `feat/backend-phase-4c`.
+- Migration `20260928215255_game_rules_v2.sql` (applied with the product owner's approval): deleted the test game sessions #1 and #2; `round_templates` lost `kind` / `winner_count` and holds 1–5 prizes (all > 0); `game_session_rounds` copies `prizes` and keeps the margin split at close; `game_session_players.balance` replaces the positive/negative pair; money helpers split into sales/refunds (`charge_player` / `credit_player`, which move the house result) and cash (`move_cash`); `record_check_in(p_game_session_id, p_player_id, p_request_id)` moves no money and raises `pending_carryover` before the player keeps or releases their numbers; `award_prize` pays `prizes[slot]` (a gifted ticket prize − P) and raises `check_in_pending`; `resolve_carryover` charges every kept number and clears gifts. `winner_count` / `prize_multiplier` / `round_margin` helpers dropped.
+- SQL simulation (one transaction, rolled back, as the real admin session and the observer): the agreed case A (−$50) and case B (+$150) exact, with their margin parts; a 3-prize round ($5; $60/$30/$15) paid slot values, a gifted winner prize − P ($55); a kept gifted number charged in the next round and no longer a gift; check-in wrote no money and was rejected while the carryover was pending; winning numbers rejected before every check-in; a recharge moved the balance but not the house result; payout limited to the balance; editing a template's prizes mid-round left the open round unchanged; switching the template before any sale copied the new prizes; the observer got `not_admin`; 0 player mismatches and 0 house difference against the ledger in both game sessions.
+- Browser (admin account): created "Prueba 4c" ($5, 3 prizes) on `/rounds`; played it (Ana 3 numbers with one gifted, Carlos 1), check-in with a debt asked for confirmation and left the balance as is; winners #3 (Ana's gift, $55), #4 (Carlos, $30), #15 (unsold); the round summary showed each winner as "Cartón 1 · #X" and the house result (+15 − 85 + 0 − 50 + 10 = −$110); Ana kept her play (gift charged, balance $45 → $15); "Terminar jornada" refunded the unplayed round and showed the game session summary (house −$110, $70 owed to players). SQL reconciliation of that game session: 0 differences.
+- Security advisor: the 19 expected 0029 findings (one per public function) plus the project-level leaked-password setting; nothing new.
 
 ### Phase 4d: Player account between game sessions
 Business rules v2 D and G, plus the settlement that used to be 4c (section 5b).

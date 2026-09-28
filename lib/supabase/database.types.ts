@@ -117,39 +117,36 @@ export type Database = {
       }
       game_session_players: {
         Row: {
+          balance: number
           checked_in: boolean
           created_at: string
           game_session_id: number
           house_id: number
           id: number
-          negative_balance: number
           pending_carryover: boolean
           player_id: number
-          positive_balance: number
           removed_at: string | null
         }
         Insert: {
+          balance?: number
           checked_in?: boolean
           created_at?: string
           game_session_id: number
           house_id: number
           id?: never
-          negative_balance?: number
           pending_carryover?: boolean
           player_id: number
-          positive_balance?: number
           removed_at?: string | null
         }
         Update: {
+          balance?: number
           checked_in?: boolean
           created_at?: string
           game_session_id?: number
           house_id?: number
           id?: never
-          negative_balance?: number
           pending_carryover?: boolean
           player_id?: number
-          positive_balance?: number
           removed_at?: string | null
         }
         Relationships: [
@@ -175,10 +172,13 @@ export type Database = {
           game_session_id: number
           house_id: number
           id: number
-          kind: string
           line_price: number
           margin_adjustment: number | null
+          margin_gifts: number | null
+          margin_unsold_losing: number | null
+          margin_unsold_winning: number | null
           name: string
+          prizes: number[]
           round_template_id: number | null
           seq: number
           started_at: string
@@ -190,10 +190,13 @@ export type Database = {
           game_session_id: number
           house_id: number
           id?: never
-          kind: string
           line_price: number
           margin_adjustment?: number | null
+          margin_gifts?: number | null
+          margin_unsold_losing?: number | null
+          margin_unsold_winning?: number | null
           name: string
+          prizes: number[]
           round_template_id?: number | null
           seq: number
           started_at?: string
@@ -205,10 +208,13 @@ export type Database = {
           game_session_id?: number
           house_id?: number
           id?: never
-          kind?: string
           line_price?: number
           margin_adjustment?: number | null
+          margin_gifts?: number | null
+          margin_unsold_losing?: number | null
+          margin_unsold_winning?: number | null
           name?: string
+          prizes?: number[]
           round_template_id?: number | null
           seq?: number
           started_at?: string
@@ -376,33 +382,27 @@ export type Database = {
           created_at: string
           house_id: number
           id: number
-          kind: string
           line_price: number
           name: string
           prizes: number[]
-          winner_count: number
         }
         Insert: {
           active?: boolean
           created_at?: string
           house_id: number
           id?: never
-          kind: string
           line_price: number
           name: string
           prizes?: number[]
-          winner_count: number
         }
         Update: {
           active?: boolean
           created_at?: string
           house_id?: number
           id?: never
-          kind?: string
           line_price?: number
           name?: string
           prizes?: number[]
-          winner_count?: number
         }
         Relationships: [
           {
@@ -630,7 +630,6 @@ export type Database = {
       record_check_in: {
         Args: {
           p_game_session_id: number
-          p_payment_method: string
           p_player_id: number
           p_request_id: string
         }

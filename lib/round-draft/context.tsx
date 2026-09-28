@@ -14,8 +14,13 @@ import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 
 import { fetchGameSessionState } from "./fetch-state"
-import { createGameApi, type GameSessionSummary, type NumberEdit } from "./game-api"
-import { computePerEntryPrize } from "./prize-rules"
+import {
+  createGameApi,
+  type ClosedRoundSummary,
+  type GameSessionSummary,
+  type NumberEdit,
+} from "./game-api"
+import { ticketPrize } from "./prize-rules"
 import { getWinnersForNumber } from "./selectors"
 import type { DraftPlayer, RoundDraftState } from "./types"
 
@@ -52,28 +57,32 @@ function updatePlayer(
   return players.map((p) => (p.id === playerId ? update(p) : p))
 }
 
-/** Purchases always create debt (rule 10) and undo a previous check-in. The
- *  player joins the game session if needed. */
-function chargePlayer(players: DraftPlayer[], playerId: number, amount: number) {
-  return updatePlayer(players, playerId, (p) => ({
-    ...p,
-    negativeBalance: p.negativeBalance + amount,
-    checkedIn: false,
-    inSession: true,
-    removed: false,
-  }))
+// Money moves like the SQL helpers of the game rules v2 migration: one signed
+// balance per player (rule B). A sale moves game money from the player to the
+// house result, a refund or prize the other way; recharges are cash and only
+// move the player's balance.
+
+/** A sale: the player pays `amount`. The player joins the game session if needed. */
+function chargePlayer(state: RoundDraftState, playerId: number, amount: number): RoundDraftState {
+  return {
+    ...state,
+    houseBalance: state.houseBalance + amount,
+    players: updatePlayer(state.players, playerId, (p) => ({
+      ...p,
+      balance: p.balance - amount,
+      inSession: true,
+      removed: false,
+    })),
+  }
 }
 
-/** "Pay debt first": the amount clears debt, the rest becomes credit. */
-function creditPlayer(players: DraftPlayer[], playerId: number, amount: number) {
-  return updatePlayer(players, playerId, (p) => {
-    const debtPaid = Math.min(p.negativeBalance, amount)
-    return {
-      ...p,
-      negativeBalance: p.negativeBalance - debtPaid,
-      positiveBalance: p.positiveBalance + (amount - debtPaid),
-    }
-  })
+/** A refund or a prize: the house pays `amount` to the player. */
+function creditPlayer(state: RoundDraftState, playerId: number, amount: number): RoundDraftState {
+  return {
+    ...state,
+    houseBalance: state.houseBalance - amount,
+    players: updatePlayer(state.players, playerId, (p) => ({ ...p, balance: p.balance + amount })),
+  }
 }
 
 function findEntry(state: RoundDraftState, { ticketId, number }: Position) {
@@ -115,16 +124,14 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         playerId: action.payload.playerId,
         isGift: false,
       })
-      return { ...next, players: chargePlayer(next.players, action.payload.playerId, price) }
+      return chargePlayer(next, action.payload.playerId, price)
     }
     case "RELEASE_NUMBER": {
       const entry = findEntry(state, action.payload)
       if (!entry || entry.playerId === null) return state
       const next = setEntry(state, action.payload, { playerId: null, isGift: false })
       // A gifted number was never paid for: nothing to refund.
-      return entry.isGift
-        ? next
-        : { ...next, players: creditPlayer(next.players, entry.playerId, price) }
+      return entry.isGift ? next : creditPlayer(next, entry.playerId, price)
     }
     case "SET_NUMBER_OWNER": {
       const entry = findEntry(state, action.payload)
@@ -133,14 +140,14 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         playerId: action.payload.playerId,
         isGift: false,
       })
-      let players = next.players
+      let result = next
       if (entry.playerId !== null && !entry.isGift) {
-        players = creditPlayer(players, entry.playerId, price)
+        result = creditPlayer(result, entry.playerId, price)
       }
       if (action.payload.playerId !== null) {
-        players = chargePlayer(players, action.payload.playerId, price)
+        result = chargePlayer(result, action.payload.playerId, price)
       }
-      return { ...next, players }
+      return result
     }
     case "TOGGLE_GIFT": {
       const entry = findEntry(state, action.payload)
@@ -150,28 +157,20 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         isGift: !entry.isGift,
       })
       // A gifted number costs the player nothing; un-gifting charges it again.
-      return {
-        ...next,
-        players: entry.isGift
-          ? chargePlayer(next.players, entry.playerId, price)
-          : creditPlayer(next.players, entry.playerId, price),
-      }
+      return entry.isGift
+        ? chargePlayer(next, entry.playerId, price)
+        : creditPlayer(next, entry.playerId, price)
     }
-    case "CHECK_IN": {
-      const player = state.players.find((p) => p.id === action.payload.playerId)
-      if (!player || player.checkedIn) return state
+    // Check-in (rule A): "in this round"; no money.
+    case "CHECK_IN":
       return {
         ...state,
-        houseBalance: state.houseBalance + player.negativeBalance,
-        players: updatePlayer(state.players, player.id, (p) => ({
+        players: updatePlayer(state.players, action.payload.playerId, (p) => ({
           ...p,
-          negativeBalance: 0,
           checkedIn: true,
         })),
       }
-    }
     case "UNDO_CHECK_IN":
-      // The debt paid at check-in is not restored.
       return {
         ...state,
         players: updatePlayer(state.players, action.payload.playerId, (p) => ({
@@ -182,19 +181,19 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
     case "RECHARGE_BALANCE": {
       const { playerId, amount } = action.payload
       if (amount <= 0) return state
-      const players = updatePlayer(state.players, playerId, (p) => ({
-        ...p,
-        inSession: true,
-        removed: false,
-      }))
+      // Cash: the player's balance only, not the house result.
       return {
         ...state,
-        houseBalance: state.houseBalance + amount,
-        players: creditPlayer(players, playerId, amount),
+        players: updatePlayer(state.players, playerId, (p) => ({
+          ...p,
+          balance: p.balance + amount,
+          inSession: true,
+          removed: false,
+        })),
       }
     }
     case "REMOVE_PLAYER": {
-      // Numbers are freed without refund; the balances stay for the settlement.
+      // Numbers are freed without refund; the balance stays for the settlement.
       const { playerId } = action.payload
       return {
         ...state,
@@ -216,20 +215,15 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
     case "AWARD_PRIZE": {
       const { slotIndex, number } = action.payload
       if (!state.round) return state
-      const fullPrize = computePerEntryPrize(state.round.kind, slotIndex, price)
+      const slotPrize = state.round.prizes[slotIndex] ?? 0
       let next: RoundDraftState = {
         ...state,
         winningNumbers: state.winningNumbers.map((n, i) => (i === slotIndex ? number : n)),
       }
-      // One prize per ticket: full for a paid ticket, 90% for a gifted one.
+      // One prize per ticket: the slot's prize, or prize - P for a gifted one.
       for (const winner of getWinnersForNumber(state, number)) {
         for (const entry of winner.entries) {
-          const prize = entry.isGift ? Math.round(fullPrize * 0.9 * 100) / 100 : fullPrize
-          next = {
-            ...next,
-            houseBalance: next.houseBalance - prize,
-            players: creditPlayer(next.players, winner.playerId, prize),
-          }
+          next = creditPlayer(next, winner.playerId, ticketPrize(slotPrize, entry.isGift, price))
         }
       }
       return next
@@ -237,29 +231,31 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
     case "RESOLVE_CARRYOVER": {
       const { playerId, releaseNumbers } = action.payload
       const released = new Set(releaseNumbers.map((r) => `${r.ticketId}:${r.number}`))
+      // Released numbers are freed; kept gifts become normal numbers (rule C).
       const tickets = state.tickets.map((ticket) => ({
         ...ticket,
         numbers: ticket.numbers.map((entry) =>
-          entry.playerId === playerId && released.has(`${ticket.id}:${entry.number}`)
-            ? { ...entry, playerId: null, isGift: false }
-            : entry
+          entry.playerId !== playerId
+            ? entry
+            : released.has(`${ticket.id}:${entry.number}`)
+              ? { ...entry, playerId: null, isGift: false }
+              : { ...entry, isGift: false }
         ),
       }))
-      // Each kept number is charged for the new round; gifted ones never are.
-      const kept = tickets
-        .flatMap((t) => t.numbers)
-        .filter((n) => n.playerId === playerId && !n.isGift).length
-      const charge = kept * price
-      return {
-        ...state,
-        tickets,
-        players: updatePlayer(state.players, playerId, (p) => ({
-          ...p,
-          pendingCarryOverDecision: false,
-          negativeBalance: p.negativeBalance + charge,
-          checkedIn: charge > 0 ? false : p.checkedIn,
-        })),
-      }
+      // Every kept number is charged for the new round.
+      const kept = tickets.flatMap((t) => t.numbers).filter((n) => n.playerId === playerId).length
+      return chargePlayer(
+        {
+          ...state,
+          tickets,
+          players: updatePlayer(state.players, playerId, (p) => ({
+            ...p,
+            pendingCarryOverDecision: false,
+          })),
+        },
+        playerId,
+        kept * price
+      )
     }
     default:
       return state
@@ -276,8 +272,7 @@ interface RoundDraftContextValue {
   /** Claims a free number for the active player, or releases their own. */
   assignNumber: (ticketId: number, number: number) => void
   toggleGift: (ticketId: number, number: number) => void
-  /** Check-in: the whole debt is taken as paid, with the player's default
-   *  payment method (players.payment_method, "other" when unset). */
+  /** Check-in (rule A): the player confirms they are in this round. No money. */
   checkIn: (playerId: number) => void
   undoCheckIn: (playerId: number) => void
   /** `requestKey` identifies the user's recharge (one per dialog opening), so
@@ -296,7 +291,11 @@ interface RoundDraftContextValue {
   // Structural actions: not optimistic; they resolve once saved.
   addTicket: () => Promise<boolean>
   startRound: (roundTemplateId: number) => Promise<boolean>
-  closeRound: (nextRoundTemplateId: number) => Promise<boolean>
+  /** Resolves `ok` once the round is closed, with its summary (rule F) when
+   *  it could be read. */
+  closeRound: (
+    nextRoundTemplateId: number
+  ) => Promise<{ ok: boolean; summary: ClosedRoundSummary | null }>
   endGameSession: () => Promise<GameSessionSummary | null>
   discardGameSession: () => Promise<boolean>
 }
@@ -445,12 +444,8 @@ export function RoundDraftProvider({
         )
       },
       checkIn: (playerId) => {
-        const player = stateRef.current.players.find((p) => p.id === playerId)
-        if (!player) return
-        const paymentMethod =
-          player.negativeBalance > 0 ? (player.paymentMethod ?? "other") : null
         void perform([{ type: "CHECK_IN", payload: { playerId } }], () =>
-          api.checkIn(gameSessionId, playerId, paymentMethod, requestId())
+          api.checkIn(gameSessionId, playerId, requestId())
         )
       },
       undoCheckIn: (playerId) => {
@@ -512,12 +507,14 @@ export function RoundDraftProvider({
           })
         ).ok,
       closeRound: async (nextRoundTemplateId) => {
-        if (roundId === null) return false
-        return (
-          await perform([], () => api.closeRound(roundId, nextRoundTemplateId, requestId()), {
-            resync: "await",
-          })
-        ).ok
+        if (roundId === null) return { ok: false, summary: null }
+        const closed = await perform(
+          [],
+          () => api.closeRound(roundId, nextRoundTemplateId, requestId()),
+          { resync: "await" }
+        )
+        if (!closed.ok) return { ok: false, summary: null }
+        return { ok: true, summary: await api.fetchRoundSummary(roundId) }
       },
       // No re-sync: the dialog shows the summary, then leaves the page.
       endGameSession: async () => {

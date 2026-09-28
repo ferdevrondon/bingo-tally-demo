@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { formatRelativeTime } from "@/lib/format-relative-time"
+import { signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getLastRechargeActivity } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
@@ -54,7 +55,7 @@ export function PlayerRechargeDialog({
     }
   }
 
-  const netBalance = player.positiveBalance - player.negativeBalance
+  const netBalance = player.balance
   const parsedAmount = Number.parseFloat(amount)
   const isValid = Number.isFinite(parsedAmount) && parsedAmount > 0 && paymentMethod !== null
 
@@ -156,8 +157,8 @@ export function PlayerRechargeDialog({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {player.negativeBalance > 0
-              ? "Se abonará primero a la deuda pendiente."
+            {Number.isFinite(parsedAmount) && parsedAmount > 0
+              ? `Su saldo quedará en ${signedMoney(netBalance + parsedAmount)}.`
               : "Selecciona o ingresa un monto para agregar."}
           </p>
         </div>
