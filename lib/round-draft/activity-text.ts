@@ -1,6 +1,7 @@
 import { paymentMethodLabel } from "@/lib/payment-methods"
 import { formatMoney } from "@/lib/rounds"
 
+import { signedMoney } from "./balance"
 import type { ActivityEntry, ActivityEntryType, RoundDraftState } from "./types"
 
 // activity_log rows carry structured data only (BACKEND_PLAN.md §3); the
@@ -29,6 +30,10 @@ export const ACTIVITY_LABELS: Record<ActivityEntryType, string> = {
   carryover_released: "Liberación",
   payout: "Pago",
   adjustment: "Ajuste",
+  balance_opened: "Saldo inicial",
+  balance_closed: "Saldo final",
+  credit_kept_for_play: "Saldo a favor",
+  credit_payout_pending: "Pago pendiente",
 }
 
 export function describeActivity(entry: ActivityEntry, state: RoundDraftState): string {
@@ -90,6 +95,14 @@ export function describeActivity(entry: ActivityEntry, state: RoundDraftState): 
       return `${player} liberó ${position} para la siguiente ronda`
     case "payout":
       return `Pago a ${player}: ${amount}${method}${note}`
+    case "balance_opened":
+      return `${player} entró con saldo ${signedMoney(entry.amount ?? 0)}`
+    case "balance_closed":
+      return `${player} terminó con saldo ${signedMoney(entry.amount ?? 0)}`
+    case "credit_kept_for_play":
+      return `${player} deja su saldo a favor para jugar${note}`
+    case "credit_payout_pending":
+      return `Pago pendiente a ${player}${note}`
     case "adjustment":
       return entry.note === "unplayed_round_refund"
         ? `Devolución a ${player}: ${amount} (ronda no jugada)`

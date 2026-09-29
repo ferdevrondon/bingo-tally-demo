@@ -42,9 +42,9 @@ Pending design (settled in the 4c or 4d plan):
 - ~~House balance with one signed balance (4c).~~ **Decided 2026-09-28:** `house_balance` is the **house result**: sales − prizes paid + the round margin. The house still "plays" what it didn't sell: −P per unsold number that loses, prize − P per unsold number that wins (the prize stays with the house, minus that number's line price), −P per gifted number that loses. Recharges and payouts are cash: they move the player's balance, not the house result. Summaries show each part: sales, prizes paid, gifts that lost, unsold that lost, unsold that won, total. Worked examples agreed with the product owner (1 ticket, P = $10, prize $100, 10 sold, 2 gifted, 3 unsold): a sold number wins → −$50; an unsold number wins → +$150.
 - ~~Round kind (4c).~~ **Decided:** `regular` / `special` goes away; a round is its name, line price and list of prizes.
 - Check-in lock (4c): winning numbers still wait until every player with numbers is checked in (`award_prize` raises `check_in_pending`); a negative balance never blocks.
-- Recharges and payouts outside a game session: at any time, or only when a game session starts or ends? (4d)
-- Manual player statuses, if any, and who changes them. (4d)
-- Whether a player removed mid-session carries their balance to their account like everyone else. (4d)
+- ~~Recharges and payouts outside a game session (4d).~~ **Decided 2026-09-28:** at any time, in or out of a game session. Payouts have **no limit**: paying more than a positive balance leaves it negative. A settlement screen opens after "Terminar jornada", player by player, and can be reopened later.
+- ~~Manual player statuses (4d).~~ **Decided:** the balance gives Debe / A favor / Al día. A positive balance also carries a status set at each settlement: **"Para jugar"** (left in the house to keep playing) or **"Pendiente de pago"** (should be paid but couldn't be, e.g. the player couldn't be reached; with a note). Those pending ones are what "Iniciar jornada" warns about, together with debts and positive balances not yet marked.
+- ~~Removed player's balance (4d).~~ **Decided:** it moves to their account like everyone else's.
 
 ## Architecture decisions
 
@@ -371,7 +371,7 @@ Enable Realtime publication on `activity_log` and `admin_auth_sessions` only.
 
 ## 5b. Settlement at the end of the game session
 
-> **Superseded by business rules v2 (rule D).** Settlement is no longer per game session: payouts and payments go against the player's balance, which carries over. Phase 4d redesigns this section (where payouts are recorded, whether they can happen between game sessions, the per-player status derived from the balance). `record_payout` from 4a is kept as a starting point. The text below is the original design, kept for reference.
+> **Superseded by business rules v2 (rule D), implemented in Phase 4d.** Settlement is no longer per game session: money in (`record_account_recharge`) and out (`record_account_payout`, no limit) goes against the player's balance at any time. It goes to the active game session when the player is in it, otherwise to their account (`public.player_accounts`). A positive balance is marked "Para jugar" or "Pendiente de pago" with a note (`set_credit_status`). The settlement screen (after "Terminar jornada", `/games/[id]/settlement`) and the `/players` actions come in 4d2. `record_payout` from 4a was dropped. The text below is the original design, kept for reference.
 
 Business rule: payments to players happen **outside the app** (cash or transfer). After paying, the admin records each payment manually, player by player, with the method used.
 
@@ -486,10 +486,16 @@ Business rules v2 A, B, C, E and F, within one game session (balances still star
 
 ### Phase 4d: Player account between game sessions
 Business rules v2 D and G, plus the settlement that used to be 4c (section 5b).
-- Starts with a short design session with the product owner on the "Pending design" items of 4d.
-- The player's running balance in its own table, written only by functions; `game_session_players.opening_balance` recorded when a player joins a game session, and the closing balance passed back to the player's account when it ends; payouts and payments recorded against the account (inside or outside a game session, as decided); an alert on "Iniciar jornada" listing players with credit or debt; the player status derived from the balance on `/players`.
+- Design decisions taken on 2026-09-28 (see "Pending design" under business rules v2).
+- Delivered in two branches: **4d1** the database (no screen change besides the timeline texts of the new rows, so it can be merged alone) and **4d2** the screens: the settlement at `/games/[id]/settlement` opened from the end-of-game summary, balance and status columns plus "Recibir pago" / "Registrar pago" / status actions on `/players`, the alert on "Iniciar jornada", and account balances shown in the live game before a player joins.
 
 **Acceptance:** SQL reconciliation across at least two consecutive game sessions: for each player, `opening_balance + ledger = closing balance`, and the next game session opens with that closing balance. In the browser: the alert before starting a game session lists the right players; a payout lowers the balance and appears in the timeline with its method; double-clicking the payout button records one payment.
+
+**Phase 4d1 status (2026-09-28): done** on branch `feat/backend-phase-4d1`.
+- Migration `20260928225421_player_accounts.sql` (applied with the product owner's approval): deleted the Phase 4c test game session; `public.player_accounts` (one signed balance per player, `credit_status` `play` / `pending_payout` + `credit_note`; members read, only functions write; a $0 row per existing player, created on demand for new ones); `game_session_players.opening_balance`; `activity_log.game_session_id` nullable for recharges, payouts and status changes outside a game session; new rows `balance_opened`, `balance_closed`, `credit_kept_for_play`, `credit_payout_pending`.
+- Functions: `record_account_recharge`, `record_account_payout` (no limit) and `set_credit_status` (raises `no_credit_balance` unless the balance is positive), all routed to the active game session when the player is in it; `ensure_session_player` opens with the account balance; `end_game_session` moves every final balance (removed players included) to the account and clears the status of balances that are no longer positive; `discard_game_session` also raises `game_session_has_payments`; `record_payout` dropped. The live-game timeline shows the new rows ("entró con saldo…", "terminó con saldo…").
+- SQL simulation (one transaction, rolled back, run before applying and again against the applied functions): a recharge and a payout outside a game session (a repeated request id wrote one), status refused on a negative balance and kept on a positive one; game session 1 opened each player with their account balance, a recharge and a payout for a player in it went to the game session, a removed player's balance (−$25) reached their account; after it, "Para jugar" then a full payout cleared the status and a further payout left −$10 (no limit); game session 2 opened with those balances and "Salir y borrar" was refused after a recharge (`game_session_has_payments`); 0 mismatches per game session player (opening + ledger) and per account (whole history); the observer got `not_admin`.
+- Security advisor: 21 expected 0029 findings (the 19 of 4c minus `record_payout`, plus the three new functions) and the project-level leaked-password setting; nothing else.
 
 ### Phase 5: Realtime and observer view
 - `activity_log` subscription + debounced `HYDRATE`; `useRole()` gating in every action component; "Solo lectura" badge.

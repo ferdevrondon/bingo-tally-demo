@@ -19,7 +19,7 @@ export type Database = {
           amount: number | null
           created_at: string
           created_by: string | null
-          game_session_id: number
+          game_session_id: number | null
           house_id: number
           id: number
           note: string | null
@@ -35,7 +35,7 @@ export type Database = {
           amount?: number | null
           created_at?: string
           created_by?: string | null
-          game_session_id: number
+          game_session_id?: number | null
           house_id: number
           id?: never
           note?: string | null
@@ -51,7 +51,7 @@ export type Database = {
           amount?: number | null
           created_at?: string
           created_by?: string | null
-          game_session_id?: number
+          game_session_id?: number | null
           house_id?: number
           id?: never
           note?: string | null
@@ -123,6 +123,7 @@ export type Database = {
           game_session_id: number
           house_id: number
           id: number
+          opening_balance: number
           pending_carryover: boolean
           player_id: number
           removed_at: string | null
@@ -134,6 +135,7 @@ export type Database = {
           game_session_id: number
           house_id: number
           id?: never
+          opening_balance?: number
           pending_carryover?: boolean
           player_id: number
           removed_at?: string | null
@@ -145,6 +147,7 @@ export type Database = {
           game_session_id?: number
           house_id?: number
           id?: never
+          opening_balance?: number
           pending_carryover?: boolean
           player_id?: number
           removed_at?: string | null
@@ -334,6 +337,41 @@ export type Database = {
           timezone?: string
         }
         Relationships: []
+      }
+      player_accounts: {
+        Row: {
+          balance: number
+          credit_note: string | null
+          credit_status: string | null
+          house_id: number
+          player_id: number
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          credit_note?: string | null
+          credit_status?: string | null
+          house_id: number
+          player_id: number
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          credit_note?: string | null
+          credit_status?: string | null
+          house_id?: number
+          player_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_accounts_player_id_house_id_fkey"
+            columns: ["player_id", "house_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id", "house_id"]
+          },
+        ]
       }
       players: {
         Row: {
@@ -627,20 +665,29 @@ export type Database = {
         }
         Returns: undefined
       }
-      record_check_in: {
+      record_account_payout: {
         Args: {
-          p_game_session_id: number
+          p_amount: number
+          p_note: string
+          p_payment_method: string
           p_player_id: number
           p_request_id: string
         }
         Returns: undefined
       }
-      record_payout: {
+      record_account_recharge: {
         Args: {
           p_amount: number
-          p_game_session_id: number
           p_note: string
           p_payment_method: string
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      record_check_in: {
+        Args: {
+          p_game_session_id: number
           p_player_id: number
           p_request_id: string
         }
@@ -689,6 +736,15 @@ export type Database = {
           p_player_id: number
           p_release: Json
           p_request_id: string
+        }
+        Returns: undefined
+      }
+      set_credit_status: {
+        Args: {
+          p_note: string
+          p_player_id: number
+          p_request_id: string
+          p_status: string
         }
         Returns: undefined
       }
