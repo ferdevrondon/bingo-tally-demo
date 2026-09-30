@@ -93,7 +93,7 @@ export function EndGameDialog({
               variant="link"
               className="h-auto p-0"
               nativeButton={false}
-              render={<Link href={`/games/${state.gameSessionId}`} />}
+              render={<Link href={`/reports/games/${state.gameSessionId}`} />}
             >
               {" "}
               <FileChartColumn />

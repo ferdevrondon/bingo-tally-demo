@@ -1,13 +1,5 @@
-import { LiveRefresh } from "@/components/live-refresh"
-import { ReportsPage } from "@/components/reports-page"
-import { listGameSessions } from "@/lib/data/game-sessions"
+import { redirect } from "next/navigation"
 
-export default async function Page() {
-  const games = await listGameSessions()
-  return (
-    <>
-      <ReportsPage games={games} />
-      <LiveRefresh />
-    </>
-  )
+export default function Page() {
+  redirect("/reports/games")
 }

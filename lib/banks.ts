@@ -24,6 +24,12 @@ export const BANK_LABELS: Record<Bank, string> = {
 
 export const BANK_OPTIONS = BANKS.map((value) => ({ value, label: BANK_LABELS[value] }))
 
+/** Select value for "no bank": the bank is optional. */
+export const NO_BANK = "none"
+
+/** The bank options plus "Sin banco", for selects that can clear it. */
+export const BANK_OPTIONS_WITH_NONE = [{ value: NO_BANK, label: "Sin banco" }, ...BANK_OPTIONS]
+
 export function isBank(value: unknown): value is Bank {
   return typeof value === "string" && (BANKS as readonly string[]).includes(value)
 }

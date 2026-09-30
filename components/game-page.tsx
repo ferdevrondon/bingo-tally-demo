@@ -101,7 +101,7 @@ function GameRow({ game }: { game: GameSessionListItem }) {
           className="bg-foreground text-background hover:bg-foreground/85"
           aria-label={`Ver reporte de la jornada #${game.number}`}
           nativeButton={false}
-          render={<Link href={`/games/${game.id}`} />}
+          render={<Link href={`/reports/games/${game.id}`} />}
         >
           <ArrowRightIcon />
         </Button>
@@ -110,14 +110,14 @@ function GameRow({ game }: { game: GameSessionListItem }) {
   )
 }
 
-// Reportes → Jornadas (and /games): every game session of the house, newest
-// first, each one opening its report (/games/[id]).
+// Reportes → Jornadas (/reports/games): every game session of the house, newest
+// first, each one opening its report (/reports/games/[id]).
 export default function GamePage({ games }: { games: GameSessionListItem[] }) {
   const activeGame = games.find((game) => game.status === "active")
   const previousGames = games.filter((game) => game.status !== "active")
 
   return (
-    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+    <div className="flex flex-col gap-4 md:gap-6">
       {games.length === 0 && (
         <p className="mx-4 rounded-xl border border-dashed p-6 text-sm text-muted-foreground lg:mx-6">
           Todavía no hay jornadas. Aparecen aquí desde que se inicia la primera.

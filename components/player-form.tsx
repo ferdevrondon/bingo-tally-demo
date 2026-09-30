@@ -23,12 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Toggle } from "@/components/ui/toggle"
-import { BANK_OPTIONS, isBank } from "@/lib/banks"
+import { BANK_OPTIONS, BANK_OPTIONS_WITH_NONE, isBank, NO_BANK } from "@/lib/banks"
 import { isPaymentMethod, PAYMENT_METHOD_OPTIONS } from "@/lib/payment-methods"
 import type { PlayerInput } from "@/lib/players"
-
-// Select value for "no bank" (the bank is optional).
-const NO_BANK = "none"
 
 const emptyPlayer: PlayerInput = {
   name: "",
@@ -130,7 +127,7 @@ export function PlayerForm({
           <Select
             value={player.bank ?? NO_BANK}
             onValueChange={(value) => updateField("bank", isBank(value) ? value : null)}
-            items={[{ value: NO_BANK, label: "Sin banco" }, ...BANK_OPTIONS]}
+            items={BANK_OPTIONS_WITH_NONE}
           >
             <SelectTrigger id="player-bank" className="w-full">
               <SelectValue placeholder="Seleccionar" />

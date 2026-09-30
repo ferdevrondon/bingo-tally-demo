@@ -39,7 +39,7 @@ import {
   deactivatePlayer,
   updatePlayer,
 } from "@/lib/data/player-actions"
-import { BANK_OPTIONS, bankLabel, isBank } from "@/lib/banks"
+import { BANK_OPTIONS_WITH_NONE, bankLabel, isBank, NO_BANK } from "@/lib/banks"
 import {
   isPaymentMethod,
   PAYMENT_METHOD_OPTIONS,
@@ -108,7 +108,7 @@ export default function PlayerPage({
         paymentMethod: isAdmin
           ? (player.paymentMethod ?? "")
           : paymentMethodLabel(player.paymentMethod),
-        bank: isAdmin ? (player.bank ?? "") : bankLabel(player.bank) || "—",
+        bank: isAdmin ? (player.bank ?? NO_BANK) : bankLabel(player.bank) || "—",
         isVip: player.isVip ? "VIP" : "—",
         balance: signedMoney(accountFrom(accountById, player.id).balance),
         status: accountFrom(accountById, player.id).inGame
@@ -131,7 +131,7 @@ export default function PlayerPage({
           }
         : { key: "paymentMethod", header: "Método de pago" },
       isAdmin
-        ? { key: "bank", header: "Entidad bancaria", type: "select", options: BANK_OPTIONS }
+        ? { key: "bank", header: "Entidad bancaria", type: "select", options: BANK_OPTIONS_WITH_NONE }
         : { key: "bank", header: "Entidad bancaria" },
       { key: "isVip", header: "VIP" },
       { key: "balance", header: "Saldo" },
@@ -207,9 +207,10 @@ export default function PlayerPage({
       if (value === player.paymentMethod) return
       input = { ...toInput(player), paymentMethod: value }
       message = "Método de pago actualizado"
-    } else if (key === "bank" && isBank(value)) {
-      if (value === player.bank) return
-      input = { ...toInput(player), bank: value }
+    } else if (key === "bank" && (isBank(value) || value === NO_BANK)) {
+      const bank = isBank(value) ? value : null
+      if (bank === player.bank) return
+      input = { ...toInput(player), bank }
       message = "Entidad bancaria actualizada"
     } else {
       return

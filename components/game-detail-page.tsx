@@ -254,14 +254,14 @@ function TimelineCard({ report }: { report: GameSessionReport }) {
   )
 }
 
-// /games/[id]: the full report of one game session (Phase 6a), reached from
-// Reportes → Jornadas. A game session in progress shows what happened so far.
+// /reports/games/[id]: the full report of one game session (Phase 6a), reached
+// from Reportes → Jornadas. A game session in progress shows what happened so far.
 export function GameDetailPage({ report }: { report: GameSessionReport | null }) {
   if (!report) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-sm text-muted-foreground">No se encontró la jornada.</p>
-        <Button variant="outline" nativeButton={false} render={<Link href="/reports" />}>
+        <Button variant="outline" nativeButton={false} render={<Link href="/reports/games" />}>
           <ArrowLeftIcon />
           Volver a jornadas
         </Button>
@@ -274,14 +274,14 @@ export function GameDetailPage({ report }: { report: GameSessionReport | null })
   const playersCount = report.players.filter((p) => !p.removed).length
 
   return (
-    <div className="flex flex-col gap-6 py-4 md:py-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2 px-4 lg:px-6">
         <Button
           variant="ghost"
           size="sm"
           className="-ml-2 w-fit"
           nativeButton={false}
-          render={<Link href="/reports" />}
+          render={<Link href="/reports/games" />}
         >
           <ArrowLeftIcon />
           Volver
