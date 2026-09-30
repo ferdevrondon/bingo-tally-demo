@@ -12,9 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { bankLabel } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { formatRelativeTime } from "@/lib/format-relative-time"
 import { signedMoney } from "@/lib/round-draft/balance"
@@ -49,7 +50,7 @@ export function PlayerRechargeDialog({
     setWasOpen(open)
     if (open) {
       setAmount("")
-      setPaymentMethod(player.paymentMethod)
+      setPaymentMethod(player.paymentMethod ?? "cash")
       setNote("")
       setRequestKey(crypto.randomUUID())
     }
@@ -143,6 +144,9 @@ export function PlayerRechargeDialog({
                 value={paymentMethod}
                 onChange={setPaymentMethod}
               />
+              {player.bank && (
+                <FieldDescription>Banco: {bankLabel(player.bank)}</FieldDescription>
+              )}
             </Field>
             <Field>
               <FieldLabel htmlFor="recharge-note">Nota (opcional)</FieldLabel>

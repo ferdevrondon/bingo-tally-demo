@@ -376,6 +376,7 @@ export type Database = {
       players: {
         Row: {
           active: boolean
+          bank: string | null
           created_at: string
           house_id: number
           id: number
@@ -386,6 +387,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          bank?: string | null
           created_at?: string
           house_id: number
           id?: never
@@ -396,6 +398,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          bank?: string | null
           created_at?: string
           house_id?: number
           id?: never

@@ -12,9 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { bankLabel, type Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { formatMoney } from "@/lib/rounds"
@@ -53,7 +54,12 @@ export function AccountMovementDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   direction: MovementDirection
-  player: { name: string; balance: number; paymentMethod: PaymentMethod | null }
+  player: {
+    name: string
+    balance: number
+    paymentMethod: PaymentMethod | null
+    bank?: Bank | null
+  }
   /** Resolves true when saved; the dialog closes then. */
   onConfirm: (values: MovementValues) => Promise<boolean>
 }) {
@@ -70,7 +76,7 @@ export function AccountMovementDialog({
     setWasOpen(open)
     if (open) {
       setAmount(suggestedAmount(direction, player.balance))
-      setPaymentMethod(player.paymentMethod)
+      setPaymentMethod(player.paymentMethod ?? "cash")
       setNote("")
       setRequestId(crypto.randomUUID())
     }
@@ -169,6 +175,9 @@ export function AccountMovementDialog({
                 value={paymentMethod}
                 onChange={setPaymentMethod}
               />
+              {player.bank && (
+                <FieldDescription>Banco: {bankLabel(player.bank)}</FieldDescription>
+              )}
             </Field>
             <Field>
               <FieldLabel htmlFor="movement-note">Nota (opcional)</FieldLabel>

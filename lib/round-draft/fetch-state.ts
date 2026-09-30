@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { isBank } from "@/lib/banks"
 import { toActivityEntry } from "@/lib/game-report/fetch"
 import { isPaymentMethod } from "@/lib/payment-methods"
 import type { Database } from "@/lib/supabase/database.types"
@@ -16,7 +17,7 @@ function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number
   return Promise.all([
     supabase
       .from("players")
-      .select("id, name, payment_method")
+      .select("id, name, payment_method, bank")
       .eq("house_id", houseId)
       .eq("active", true)
       .order("id"),
@@ -24,7 +25,7 @@ function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number
     supabase
       .from("game_session_players")
       .select(
-        "player_id, balance, checked_in, pending_carryover, removed_at, players(name, payment_method)"
+        "player_id, balance, checked_in, pending_carryover, removed_at, players(name, payment_method, bank)"
       )
       .eq("game_session_id", id),
     supabase.from("tickets").select("id, index").eq("game_session_id", id).order("index"),
@@ -96,6 +97,7 @@ export async function fetchGameSessionState(
         id: p.id,
         name: p.name,
         paymentMethod: isPaymentMethod(p.payment_method) ? p.payment_method : null,
+        bank: isBank(p.bank) ? p.bank : null,
         balance: accountBalance.get(p.id) ?? 0,
         checkedIn: false,
         pendingCarryOverDecision: false,
@@ -111,6 +113,7 @@ export async function fetchGameSessionState(
       paymentMethod: isPaymentMethod(row.players?.payment_method)
         ? row.players.payment_method
         : null,
+      bank: isBank(row.players?.bank) ? row.players.bank : null,
       balance: Number(row.balance),
       checkedIn: row.checked_in,
       pendingCarryOverDecision: row.pending_carryover,

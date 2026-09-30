@@ -1,4 +1,4 @@
-import type { PaymentMethod } from "@/lib/payment-methods"
+import type { RecordedPaymentMethod } from "@/lib/payment-methods"
 import type { ActivityContext } from "@/lib/round-draft/activity-text"
 import type { ActivityEntry } from "@/lib/round-draft/types"
 import type { Settlement } from "@/lib/settlement"
@@ -78,7 +78,7 @@ export interface PlayerReport {
 }
 
 export interface CashLine {
-  method: PaymentMethod | null
+  method: RecordedPaymentMethod | null
   recharges: number
   payouts: number
 }
