@@ -211,7 +211,7 @@ export default function MainPageSplit({
 
         {lastEnded && (
           <Link
-            href={`/games/${lastEnded.id}`}
+            href={`/reports/games/${lastEnded.id}`}
             className="flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm text-muted-foreground hover:text-foreground"
           >
             <span className="flex flex-wrap items-center gap-2">

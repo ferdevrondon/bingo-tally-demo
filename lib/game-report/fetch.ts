@@ -4,7 +4,7 @@ import { isRecordedPaymentMethod, type RecordedPaymentMethod } from "@/lib/payme
 import type { Database } from "@/lib/supabase/database.types"
 import type { ActivityEntry, ActivityEntryType } from "@/lib/round-draft/types"
 
-import { formatHouseDateTime } from "./format"
+import { formatHouseDateTime, houseDayRange } from "./format"
 import { houseResult, saleAmount } from "./ledger"
 import type {
   CashLine,
@@ -16,13 +16,13 @@ import type {
   PlayerRoundReport,
   RoundReport,
   RoundWinnerReport,
+  RoundsOfDay,
 } from "./types"
 
 // Reads for the game session report (BACKEND_PLAN.md Phase 6a). They take
 // the Supabase client, like lib/round-draft/fetch-state.ts, so the same code
-// runs on the server (/games, /games/[id]) and in the browser (the live
-// game's round history and "Ver rondas"). RLS limits every row to the user's
-// house.
+// runs on the server (the /reports pages) and in the browser (the live game's
+// round history and "Ver rondas"). RLS limits every row to the user's house.
 
 type Client = SupabaseClient<Database>
 
@@ -296,6 +296,45 @@ export async function fetchClosedRounds(
 ): Promise<RoundReport[]> {
   const report = await fetchGameSessionReport(supabase, gameSessionId, timeZone)
   return (report?.rounds ?? []).filter((r) => r.status === "closed").reverse()
+}
+
+/** The rounds played on a day of the house (Reportes → Rondas), grouped by
+ *  the game sessions that started that day. */
+export async function fetchRoundsOfDay(
+  supabase: Client,
+  houseId: number,
+  day: string,
+  timeZone: string
+): Promise<RoundsOfDay> {
+  const { start, end } = houseDayRange(day, timeZone)
+  const { data, error } = await supabase
+    .from("game_sessions")
+    .select("id")
+    .eq("house_id", houseId)
+    .gte("started_at", start)
+    .lt("started_at", end)
+    .order("number")
+  if (error) throw error
+
+  const reports = await Promise.all(
+    data.map((g) => fetchGameSessionReport(supabase, g.id, timeZone))
+  )
+  const gameSessions = reports
+    .filter((r): r is GameSessionReport => r !== null)
+    .map((r) => ({
+      id: r.id,
+      number: r.number,
+      rounds: r.rounds.filter((round) => round.played).reverse(),
+    }))
+    .filter((g) => g.rounds.length > 0)
+  return {
+    day,
+    gameSessions,
+    houseTotal: gameSessions.reduce(
+      (sum, g) => sum + g.rounds.reduce((s2, r) => s2 + r.house.total, 0),
+      0
+    ),
+  }
 }
 
 /** What one player did in each round of a game session ("Ver rondas"). */

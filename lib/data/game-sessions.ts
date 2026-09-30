@@ -3,8 +3,13 @@ import { cache } from "react"
 import { needsAttention } from "@/lib/accounts"
 import { accountFor, listPlayerAccounts } from "@/lib/data/accounts"
 import { getCurrentHouse } from "@/lib/data/house"
-import { fetchGameSessionList, fetchGameSessionReport } from "@/lib/game-report/fetch"
-import type { GameSessionListItem, GameSessionReport } from "@/lib/game-report/types"
+import {
+  fetchGameSessionList,
+  fetchGameSessionReport,
+  fetchRoundsOfDay,
+} from "@/lib/game-report/fetch"
+import { houseToday, isDayString } from "@/lib/game-report/format"
+import type { GameSessionListItem, GameSessionReport, RoundsOfDay } from "@/lib/game-report/types"
 import { createClient } from "@/lib/supabase/server"
 
 // Server reads of the house's game sessions (Reportes → Jornadas, the game
@@ -23,6 +28,15 @@ export const loadGameSessionReport = cache(
     return fetchGameSessionReport(await createClient(), gameSessionId, house.timezone)
   }
 )
+
+/** Reportes → Rondas for `day` ("2026-09-29"); today in the house's time
+ *  zone when the day is missing or invalid. */
+export async function loadRoundsOfDay(day: string | undefined): Promise<RoundsOfDay | null> {
+  const house = await getCurrentHouse()
+  if (!house) return null
+  const date = isDayString(day) ? day : houseToday(house.timezone)
+  return fetchRoundsOfDay(await createClient(), house.houseId, date, house.timezone)
+}
 
 export interface HomeSummary {
   /** The active game session's number, or the next one to start. */

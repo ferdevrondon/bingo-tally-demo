@@ -20,7 +20,7 @@ export interface SettlementOverview {
   paid: number
 }
 
-/** A row of Reportes → Jornadas (and /games). */
+/** A row of Reportes → Jornadas (/reports/games). */
 export interface GameSessionListItem {
   id: number
   number: number
@@ -125,4 +125,14 @@ export interface PlayerRoundReport {
   wins: (NumberPosition & { prize: number })[]
   recharges: number
   payouts: number
+}
+
+/** Reportes → Rondas: the rounds played on one day of the house. */
+export interface RoundsOfDay {
+  /** "2026-09-29", in the house's time zone. */
+  day: string
+  /** Game sessions that started that day and had played rounds, oldest first;
+   *  their rounds newest first. */
+  gameSessions: { id: number; number: number; rounds: RoundReport[] }[]
+  houseTotal: number
 }

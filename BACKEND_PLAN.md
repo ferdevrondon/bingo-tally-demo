@@ -552,7 +552,18 @@ Decided with the product owner (2026-09-30), before 6b because the cash reports 
 - **Rondas:** every round played on a chosen day (house time zone, a game session counts on its start date), with winners, prizes and house result per round and the day's total.
 - **Deudas:** pending balances today: who owes (with note), who is owed ("Pendiente de pago", "Para jugar", "Por definir"), totals, and the game session the balance comes from.
 - **Diario / Mensual:** per day or month: house result with its breakdown, cash by payment method (in game sessions, in settlements, outside game sessions), activity (game sessions, rounds played, distinct players, tickets) and top players (who played and who won the most).
-- To decide in the 6b plan: how the period is picked, telling settlement moves apart from `/players` moves, and computing totals in TypeScript vs SQL.
+- Decided in the 6b plan (2026-09-30): cash has **two origins**, "Durante la jornada" (rows with `game_session_id`) and "Fuera de jornada" (settlement and `/players` together; they aren't told apart and no migration is added); Diario picks one day, Mensual one month plus a day-by-day table; totals are computed in TypeScript from the ledger (paged), no SQL view for now. Delivered in two branches: **6b1** (routes, Rondas, Deudas, plus "Sin banco" in the `/players` table left over from 6a2) and **6b2** (Diario, Mensual).
+
+**Phase 6b1 status (2026-09-30): done** on branch `feat/backend-phase-6b1`. No migration.
+- Routes: `app/(app)/reports/layout.tsx` with `components/reports-tabs.tsx` (the tabs are links: Jornadas, Rondas, Deudas; Diario and Mensual come in 6b2); `/reports` redirects to `/reports/games`; the list and the game session report moved to `/reports/games` and `/reports/games/[id]`; `/games` and `/games/[id]` redirect there; the settlement stays at `/games/[id]/settlement`. Links updated (list rows, report "Volver", home "Ver reporte", end-of-game summary). `tabs-solid.tsx` and `reports-page.tsx` deleted.
+- Rondas (`/reports/rounds?date=YYYY-MM-DD`, today in the house time zone by default): `fetchRoundsOfDay` (`lib/game-report/fetch.ts`) takes the game sessions that started that day (`houseDayRange` / `houseToday` in `lib/game-report/format.ts`, DST-safe) and shows their played rounds per game session with the day's house result (`components/rounds-report.tsx`, reusing `RoundHistoryCard` and `RoundsDateFilter`).
+- Deudas (`/reports/debts`): `lib/data/debts.ts` (`listDebts`: active players with a non-zero live balance, their status and note, method and bank, and the last game session they played) and `components/debts-report.tsx` (totals owed to / by the house, groups Deben, Pendiente de pago, Por definir, Para jugar with their totals).
+- `/players`: "Sin banco" in the "Entidad bancaria" column clears the bank (`NO_BANK`, `BANK_OPTIONS_WITH_NONE` in `lib/banks.ts`, shared with the player form).
+- Acceptance (admin, browser): `/reports` → `/reports/games` with the Jornadas tab active; `/games/17` → `/reports/games/17`; Rondas of 2026-09-29 showed the played rounds of game sessions #1, #2 and #4 (#3 had none) and a day total of −$480 (−130 −210 −140, matching `house_balance`); the previous-day arrow moved to `?date=2026-09-28` ("No se jugaron rondas") and "back" returned to the 29th; Deudas showed Carlos (+$100, Para jugar, Zelle · Chase) and Juan (+$10, Por definir), both with last game session #4, owed by the house $110, matching `player_accounts` (no active game session); "Sin banco" set Carlos's bank to null in the database.
+
+### Phase 6b2: Diario and Mensual (next)
+See the 6b decisions above.
+
 
 ## Later (not now)
 House switcher, editing the house name/identifier from `/settings` (needs an admin-only function, since `houses` is select-only), transferring the admin role to another member, dashboard metrics, offline queue.
