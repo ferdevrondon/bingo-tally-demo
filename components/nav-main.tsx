@@ -1,5 +1,6 @@
 "use client"
 
+import { useRole } from "@/components/house-provider"
 import { Button } from "@/components/ui/button"
 import {
   SidebarGroup,
@@ -22,9 +23,12 @@ export function NavMain({
   }[]
 }) {
   const pathname = usePathname()
+  // Observers can't start a game session: no quick "Iniciar Jornada".
+  const isAdmin = useRole() === "admin"
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
+        {isAdmin && (
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center gap-2">
             <SidebarMenuButton
@@ -49,6 +53,7 @@ export function NavMain({
             </Button> */}
           </SidebarMenuItem>
         </SidebarMenu>
+        )}
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>

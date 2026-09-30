@@ -1,7 +1,10 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
+  ArrowRightIcon,
+  EyeIcon,
   FlameIcon,
   TrophyIcon,
   UsersIcon,
@@ -10,7 +13,9 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useRole } from "@/components/house-provider"
 import { StartGameSessionButton } from "@/components/start-game-session-button"
 
 const NEXT_GAME_NUMBER = 42
@@ -86,8 +91,13 @@ const stats = [
 // negro en modo oscuro), y un panel con el resumen de la jornada y
 // el CTA para iniciarla a la derecha.
 // ------------------------------------------------------------------
-export default function MainPageSplit() {
+export default function MainPageSplit({
+  hasActiveGameSession,
+}: {
+  hasActiveGameSession: boolean
+}) {
   const now = useClock()
+  const isAdmin = useRole() === "admin"
 
   const dateLabel = now
     ? capitalize(
@@ -137,7 +147,7 @@ export default function MainPageSplit() {
             <p className="text-xs font-medium tracking-widest text-foreground/50 uppercase">
               {dateLabel}
             </p>
-            <p className="text-3xl font-semibold">{getGreeting(now)}, Admin</p>
+            <p className="text-3xl font-semibold">{getGreeting(now)}, {isAdmin ? "Admin" : "Observador"}</p>
           </div>
 
           <div className="flex items-end gap-2">
@@ -188,7 +198,23 @@ export default function MainPageSplit() {
           </p>
         </div>
 
-        <StartGameSessionButton className="rounded-4xl bg-gradient-to-r from-primary to-chart-5 px-8 text-base text-primary-foreground hover:opacity-90" />
+        {/* An observer follows the active game session instead of starting one. */}
+        {isAdmin ? (
+          <StartGameSessionButton className="rounded-4xl bg-gradient-to-r from-primary to-chart-5 px-8 text-base text-primary-foreground hover:opacity-90" />
+        ) : hasActiveGameSession ? (
+          <Button
+            size="lg"
+            nativeButton={false}
+            render={<Link href="/active-round" />}
+            className="w-fit gap-2 rounded-4xl bg-gradient-to-r from-primary to-chart-5 px-8 text-base text-primary-foreground hover:opacity-90"
+          >
+            <EyeIcon className="size-5" />
+            Ver jornada en vivo
+            <ArrowRightIcon className="size-4" />
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground">No hay una jornada activa.</p>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           {stats.map((stat) => (

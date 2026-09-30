@@ -35,7 +35,7 @@ export function PlayerActiveCard({
   player: DraftPlayer
   className?: string
 }) {
-  const { state, removePlayer, resolveCarryOver } = useRoundDraft()
+  const { state, readOnly, removePlayer, resolveCarryOver } = useRoundDraft()
   const checkInToggle = useCheckInToggle()
   const linePrice = state.round?.linePrice ?? 0
   const [isEditOpen, setIsEditOpen] = React.useState(false)
@@ -102,9 +102,11 @@ export function PlayerActiveCard({
           </div>
         )}
 
-        <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-          Editar jugada
-        </Button>
+        {!readOnly && (
+          <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+            Editar jugada
+          </Button>
+        )}
         {/* After a round closes the player first keeps or releases their numbers;
             the new round's charge (and the check-in) comes after that. */}
         {player.pendingCarryOverDecision ? (
@@ -138,6 +140,7 @@ export function PlayerActiveCard({
                 </span>
               )}
             </span>
+            {!readOnly && (
             <Toggle
               pressed={player.checkedIn}
               onPressedChange={() => checkInToggle.toggle(player)}
@@ -152,6 +155,7 @@ export function PlayerActiveCard({
             >
               <CheckIcon />
             </Toggle>
+            )}
           </div>
         )}
         <Separator />
@@ -161,6 +165,7 @@ export function PlayerActiveCard({
           <span className="font-semibold">${totalPlayed}</span>
         </div>
 
+        {!readOnly && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Recarga</span>
           <Button
@@ -172,6 +177,7 @@ export function PlayerActiveCard({
             <CalculatorIcon />
           </Button>
         </div>
+        )}
 
         <button
           type="button"
@@ -182,7 +188,7 @@ export function PlayerActiveCard({
           <ChevronRightIcon className="size-4" />
         </button>
 
-        {player.pendingCarryOverDecision && (
+        {player.pendingCarryOverDecision && !readOnly && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -201,12 +207,14 @@ export function PlayerActiveCard({
           </div>
         )}
 
-        <Button
-          variant="destructive"
-          onClick={() => setIsRemoveConfirmOpen(true)}
-        >
-          Retirar jugador
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="destructive"
+            onClick={() => setIsRemoveConfirmOpen(true)}
+          >
+            Retirar jugador
+          </Button>
+        )}
       </CardContent>
 
       {checkInToggle.dialog}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import { useHouse } from "@/components/house-provider"
+import { useActivityFeed } from "@/hooks/use-activity-feed"
 import {
   GAME_ACTION_ERROR_MESSAGES,
   type GameActionResult,
@@ -32,6 +33,8 @@ import type { DraftPlayer, RoundDraftState } from "./types"
 // queue. Once the queue is idle, the game session is read again in the
 // background and replaces the local state, unless a new action started in
 // the meantime; that brings the timeline and corrects any difference.
+// Every viewer (observers, and the admin's other tabs) also re-reads when a
+// new activity row of the house arrives through Realtime (Phase 5).
 
 type Position = { ticketId: number; number: number }
 
@@ -266,6 +269,8 @@ export type { NumberEdit }
 
 interface RoundDraftContextValue {
   state: RoundDraftState
+  /** An observer: every action is a no-op and the controls are hidden. */
+  readOnly: boolean
   /** Active round templates of the house (/rounds), loaded by app/(app)/(game)/layout.tsx. */
   roundTemplates: Round[]
   setActivePlayer: (playerId: number | null) => void
@@ -306,7 +311,7 @@ function requestId() {
   return crypto.randomUUID()
 }
 
-const RESYNC_DELAY_MS = 300
+const RESYNC_DELAY_MS = 100
 
 export function RoundDraftProvider({
   children,
@@ -321,7 +326,8 @@ export function RoundDraftProvider({
   const router = useRouter()
   const house = useHouse()
   const houseId = house?.houseId ?? null
-  const api = React.useMemo(() => createGameApi(house?.role === "admin"), [house?.role])
+  const readOnly = house?.role !== "admin"
+  const api = React.useMemo(() => createGameApi(!readOnly), [readOnly])
 
   const [state, dispatch] = React.useReducer(reducer, initialState)
   const stateRef = React.useRef(state)
@@ -331,6 +337,10 @@ export function RoundDraftProvider({
   const version = React.useRef(0)
   const resyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const submittedRecharges = React.useRef(new Set<string>())
+  // This tab is ending or discarding the game session: live changes (its
+  // own echo included) must not re-read it, or the end-of-game summary would
+  // be replaced by "No hay una jornada activa" before the admin reads it.
+  const leaving = React.useRef(false)
 
   React.useEffect(() => {
     stateRef.current = state
@@ -351,10 +361,14 @@ export function RoundDraftProvider({
 
   const resync = React.useCallback(() => {
     async function attempt(n: number): Promise<void> {
-      if (houseId === null) return
+      if (houseId === null || leaving.current) return
       const startVersion = version.current
       try {
-        const saved = await fetchGameSessionState(createClient(), houseId)
+        const saved = await fetchGameSessionState(
+          createClient(),
+          houseId,
+          stateRef.current.gameSessionId
+        )
         if (inFlight.current > 0 || version.current !== startVersion) return
         if (saved) dispatch({ type: "HYDRATE", payload: saved })
         // The game session ended (or was discarded) elsewhere.
@@ -374,6 +388,14 @@ export function RoundDraftProvider({
     resyncTimer.current = setTimeout(() => void resync(), RESYNC_DELAY_MS)
   }, [resync])
 
+  // Anything new in the house (this game session, or an account move shown
+  // for a player who hasn't joined yet), or a reconnect: read again. The
+  // re-sync already yields to this tab's own actions in flight.
+  const onActivity = React.useCallback(() => {
+    if (!leaving.current) scheduleResync()
+  }, [scheduleResync])
+  useActivityFeed(onActivity)
+
   // Optimistic dispatch now, the SQL call in order after the previous ones.
   // Then a re-sync: scheduled (frequent actions), awaited (structural ones,
   // so the new ticket or round is on screen when they resolve) or none (the
@@ -384,8 +406,11 @@ export function RoundDraftProvider({
       call: () => Promise<GameActionResult<T>>,
       { resync: resyncMode = "schedule" }: { resync?: "schedule" | "await" | "none" } = {}
     ): Promise<GameActionResult<T>> => {
+      // The UI hides the controls; the database would refuse anyway.
+      if (readOnly) return { ok: false, error: "read_only" }
       version.current += 1
       inFlight.current += 1
+      if (resyncMode === "none") leaving.current = true
       optimistic.forEach(dispatch)
       const pending = queue.current.then(call, call)
       queue.current = pending.catch(() => undefined)
@@ -398,6 +423,7 @@ export function RoundDraftProvider({
       } finally {
         inFlight.current -= 1
       }
+      if (!result.ok && resyncMode === "none") leaving.current = false
       if (!result.ok && result.error !== "session_replaced") {
         toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
       }
@@ -408,7 +434,7 @@ export function RoundDraftProvider({
       }
       return result
     },
-    [resync, scheduleResync]
+    [readOnly, resync, scheduleResync]
   )
 
   const value = React.useMemo<RoundDraftContextValue>(() => {
@@ -417,6 +443,7 @@ export function RoundDraftProvider({
 
     return {
       state,
+      readOnly,
       roundTemplates,
       setActivePlayer: (playerId) => dispatch({ type: "SET_ACTIVE_PLAYER", payload: playerId }),
       assignNumber: (ticketId, number) => {
@@ -530,7 +557,7 @@ export function RoundDraftProvider({
           })
         ).ok,
     }
-  }, [state, roundTemplates, perform, api])
+  }, [state, readOnly, roundTemplates, perform, api])
 
   return <RoundDraftContext.Provider value={value}>{children}</RoundDraftContext.Provider>
 }
