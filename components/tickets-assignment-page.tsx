@@ -40,6 +40,7 @@ export function TicketsAssignmentPage() {
   const router = useRouter()
   const {
     state,
+    readOnly,
     roundTemplates,
     addTicket,
     setActivePlayer,
@@ -106,7 +107,7 @@ export function TicketsAssignmentPage() {
         <Select
           value={state.round?.templateId != null ? String(state.round.templateId) : ""}
           onValueChange={handleRoundChange}
-          disabled={isRoundPending || roundLocked}
+          disabled={readOnly || isRoundPending || roundLocked}
           items={roundTemplates.map((r) => ({ label: roundOptionLabel(r), value: String(r.id) }))}
         >
           <SelectTrigger className="w-56">
@@ -125,27 +126,29 @@ export function TicketsAssignmentPage() {
           </SelectContent>
         </Select>
 
-        <Dialog open={isAddPlayerOpen} onOpenChange={setIsAddPlayerOpen}>
-          <DialogTrigger render={<Button variant="outline" />}>
-            <PlusIcon />
-            Agregar jugador
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nuevo jugador</DialogTitle>
-              <DialogDescription>
-                Completa los datos para agregar un jugador a esta ronda.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="overflow-y-auto p-6">
-              <PlayerForm
-                variant="plain"
-                onSubmit={handleAddPlayer}
-                onCancel={() => setIsAddPlayerOpen(false)}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        {!readOnly && (
+          <Dialog open={isAddPlayerOpen} onOpenChange={setIsAddPlayerOpen}>
+            <DialogTrigger render={<Button variant="outline" />}>
+              <PlusIcon />
+              Agregar jugador
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nuevo jugador</DialogTitle>
+                <DialogDescription>
+                  Completa los datos para agregar un jugador a esta ronda.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="overflow-y-auto p-6">
+                <PlayerForm
+                  variant="plain"
+                  onSubmit={handleAddPlayer}
+                  onCancel={() => setIsAddPlayerOpen(false)}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4 @sm/main:grid-cols-4">
@@ -196,6 +199,7 @@ export function TicketsAssignmentPage() {
                     <Checkbox
                       id={`checkin-${player.id}`}
                       checked={player.checkedIn}
+                      disabled={readOnly}
                       onCheckedChange={() => checkInToggle.toggle(player)}
                     />
                     <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
@@ -214,24 +218,27 @@ export function TicketsAssignmentPage() {
             ticket={ticket}
             players={state.players}
             activePlayerId={state.activePlayerId}
+            readOnly={readOnly}
             onAssign={(number) => assignNumber(ticket.id, number)}
             onToggleGift={(number) => toggleGift(ticket.id, number)}
           />
         ))}
 
-        <button
-          type="button"
-          disabled={isTicketPending}
-          onClick={() =>
-            startTicketTransition(async () => {
-              await addTicket()
-            })
-          }
-          className="flex w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
-        >
-          <PlusIcon className="size-5" />
-          Agregar cartón
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            disabled={isTicketPending}
+            onClick={() =>
+              startTicketTransition(async () => {
+                await addTicket()
+              })
+            }
+            className="flex w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+          >
+            <PlusIcon className="size-5" />
+            Agregar cartón
+          </button>
+        )}
       </div>
 
       {checkInToggle.dialog}
@@ -244,7 +251,7 @@ export function TicketsAssignmentPage() {
           title={state.round ? undefined : "Primero elige la ronda"}
           onClick={() => router.push("/active-round")}
         >
-          Empezar ronda
+          {readOnly ? "Ver ronda activa" : "Empezar ronda"}
           <ArrowRightIcon className="size-4" />
         </Button>
       </div>

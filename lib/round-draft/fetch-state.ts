@@ -12,26 +12,9 @@ import {
   type Ticket,
 } from "./types"
 
-// The house's active game session as the live game's state, or null when
-// there is none. Takes the Supabase client so the same read runs on the
-// server (app/(app)/(game)/layout.tsx via lib/data/load-game-session.ts) and
-// in the browser (the provider's background re-sync). RLS limits it to houses
-// the user belongs to.
-export async function fetchGameSessionState(
-  supabase: SupabaseClient<Database>,
-  houseId: number
-): Promise<RoundDraftState | null> {
-  const { data: gameSession, error } = await supabase
-    .from("game_sessions")
-    .select("id, house_balance, started_at")
-    .eq("house_id", houseId)
-    .eq("status", "active")
-    .maybeSingle()
-  if (error) throw error
-  if (!gameSession) return null
-
-  const id = gameSession.id
-  const [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity] = await Promise.all([
+// Everything of game session `id` besides its own row, read in parallel.
+function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number, id: number) {
+  return Promise.all([
     supabase
       .from("players")
       .select("id, name, payment_method")
@@ -63,6 +46,40 @@ export async function fetchGameSessionState(
       .order("id", { ascending: false })
       .limit(MAX_ACTIVITY_ENTRIES),
   ])
+}
+
+// The house's active game session as the live game's state, or null when
+// there is none. Takes the Supabase client so the same read runs on the
+// server (app/(app)/(game)/layout.tsx via lib/data/load-game-session.ts) and
+// in the browser (the provider's background re-sync). RLS limits it to houses
+// the user belongs to.
+export async function fetchGameSessionState(
+  supabase: SupabaseClient<Database>,
+  houseId: number,
+  /** The game session the caller already shows (the browser re-sync): its
+   *  rows are read together with the active game session, in one round trip
+   *  instead of two. */
+  knownGameSessionId: number | null = null
+): Promise<RoundDraftState | null> {
+  const [{ data: gameSession, error }, knownRows] = await Promise.all([
+    supabase
+      .from("game_sessions")
+      .select("id, house_balance, started_at")
+      .eq("house_id", houseId)
+      .eq("status", "active")
+      .maybeSingle(),
+    knownGameSessionId === null
+      ? null
+      : readGameSessionRows(supabase, houseId, knownGameSessionId),
+  ])
+  if (error) throw error
+  if (!gameSession) return null
+
+  const id = gameSession.id
+  const [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity] =
+    knownRows !== null && knownGameSessionId === id
+      ? knownRows
+      : await readGameSessionRows(supabase, houseId, id)
   for (const result of [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity]) {
     if (result.error) throw result.error
   }

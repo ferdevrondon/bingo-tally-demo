@@ -3,9 +3,11 @@ import { Calendar, CirclePower } from "lucide-react"
 import { WinningNumbersCard } from "./winning-numbers-card"
 import React from "react"
 import { Button } from "@/components/ui/button"
+import { useRoundDraft } from "@/lib/round-draft/context"
 import { EndGameDialog } from "./end-game-dialog"
 
 export default function PageHeadingWithActions() {
+  const { readOnly } = useRoundDraft()
   const [isEndGameOpen, setIsEndGameOpen] = React.useState(false)
   return (
     <div className="container mx-auto px-4 py-4 md:px-6 2xl:max-w-[1400px]">
@@ -38,6 +40,7 @@ export default function PageHeadingWithActions() {
             <div className="text-muted-foreground">Numero ganador</div>
           </CardFooter>
         </Card> */}
+        {!readOnly && (
         <div className="flex justify-end">
           <Button
             variant="destructive"
@@ -51,6 +54,7 @@ export default function PageHeadingWithActions() {
             onOpenChange={setIsEndGameOpen}
           />
         </div>
+        )}
       </div>
     </div>
   )

@@ -12,7 +12,7 @@ import { useRoundDraft } from "@/lib/round-draft/context"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 
 export function WinningNumbersCard() {
-  const { state, awardPrize } = useRoundDraft()
+  const { state, readOnly, awardPrize } = useRoundDraft()
   const [isCloseOpen, setIsCloseOpen] = React.useState(false)
 
   if (!state.round) {
@@ -22,6 +22,11 @@ export function WinningNumbersCard() {
           <CardTitle>Números ganadores</CardTitle>
         </CardHeader>
         <CardContent>
+          {readOnly ? (
+            <p className="text-sm text-muted-foreground">
+              Todavía no se eligió la ronda.
+            </p>
+          ) : (
           <p className="text-sm text-muted-foreground">
             Selecciona una ronda en{" "}
             <Button
@@ -34,6 +39,7 @@ export function WinningNumbersCard() {
             </Button>{" "}
             para habilitar los números ganadores.
           </p>
+          )}
         </CardContent>
       </Card>
     )
@@ -61,7 +67,7 @@ export function WinningNumbersCard() {
         <div
           className={cn(
             "flex flex-wrap gap-x-6 gap-y-4 pt-2 justify-center-safe",
-            blocked && "pointer-events-none opacity-50"
+            blocked && !readOnly && "pointer-events-none opacity-50"
           )}
         >
           {state.round.prizes.map((prize, i) => (
@@ -71,13 +77,14 @@ export function WinningNumbersCard() {
               prize={prize}
               value={state.winningNumbers[i] ?? null}
               usedNumbers={usedNumbers}
+              readOnly={readOnly}
               onSubmit={(number) => awardPrize(i, number)}
             />
           ))}
          
         </div>
 
-        {allSlotsFilled && (
+        {allSlotsFilled && !readOnly && (
           <Button onClick={() => setIsCloseOpen(true)}>
             Cerrar ronda y comenzar la siguiente
           </Button>

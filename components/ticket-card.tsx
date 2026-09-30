@@ -11,6 +11,8 @@ export interface TicketCardProps {
   ticket: Ticket
   players: DraftPlayer[]
   activePlayerId: number | null
+  /** An observer: numbers and gifts are shown, not clickable. */
+  readOnly?: boolean
   onAssign: (number: number) => void
   onToggleGift: (number: number) => void
 }
@@ -19,6 +21,7 @@ export function TicketCard({
   ticket,
   players,
   activePlayerId,
+  readOnly = false,
   onAssign,
   onToggleGift,
 }: TicketCardProps) {
@@ -38,7 +41,8 @@ export function TicketCard({
             const owner = entry.playerId !== null ? playerById.get(entry.playerId) : undefined
             const isOwnedByActive =
               entry.playerId !== null && entry.playerId === activePlayerId
-            const canAssign = entry.playerId === null && activePlayerId !== null
+            const canRelease = isOwnedByActive && !readOnly
+            const canAssign = entry.playerId === null && activePlayerId !== null && !readOnly
 
             return (
               <div key={entry.number} className="relative">
@@ -49,12 +53,12 @@ export function TicketCard({
                       if (canAssign) onAssign(entry.number)
                       return
                     }
-                    if (isOwnedByActive) onAssign(entry.number)
+                    if (canRelease) onAssign(entry.number)
                   }}
-                  disabled={entry.playerId === null && !canAssign}
+                  disabled={readOnly || (entry.playerId === null && !canAssign)}
                   title={
                     entry.playerId === null
-                      ? activePlayerId === null
+                      ? activePlayerId === null && !readOnly
                         ? "Selecciona un jugador activo primero"
                         : undefined
                       : owner?.name
@@ -68,14 +72,15 @@ export function TicketCard({
                           getPlayerColorClass(playerIndexById.get(entry.playerId) ?? -1),
                           "border-transparent text-white",
                           entry.isGift && "border-2 border-dashed border-foreground/40",
-                          isOwnedByActive && "cursor-pointer",
-                          !isOwnedByActive && "cursor-default"
+                          canRelease ? "cursor-pointer" : "cursor-default"
                         )
                       : cn(
                           "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-                          canAssign
-                            ? "cursor-pointer hover:bg-amber-500/20"
-                            : "cursor-not-allowed opacity-60"
+                          readOnly
+                            ? "cursor-default"
+                            : canAssign
+                              ? "cursor-pointer hover:bg-amber-500/20"
+                              : "cursor-not-allowed opacity-60"
                         )
                   )}
                 >
@@ -86,21 +91,30 @@ export function TicketCard({
                     </span>
                   )}
                 </button>
-                {entry.playerId !== null && (
-                  <button
-                    type="button"
-                    onClick={() => onToggleGift(entry.number)}
-                    title={entry.isGift ? "Quitar regalo" : "Marcar como regalo"}
-                    className={cn(
-                      "absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors",
-                      entry.isGift
-                        ? "border-amber-500/60 text-amber-500"
-                        : "border-border text-muted-foreground hover:text-foreground"
+                {readOnly
+                  ? entry.isGift && (
+                      <span
+                        title="Regalo"
+                        className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border border-amber-500/60 bg-background text-amber-500 shadow-sm"
+                      >
+                        <GiftIcon className="size-3" />
+                      </span>
+                    )
+                  : entry.playerId !== null && (
+                      <button
+                        type="button"
+                        onClick={() => onToggleGift(entry.number)}
+                        title={entry.isGift ? "Quitar regalo" : "Marcar como regalo"}
+                        className={cn(
+                          "absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors",
+                          entry.isGift
+                            ? "border-amber-500/60 text-amber-500"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <GiftIcon className="size-3" />
+                      </button>
                     )}
-                  >
-                    <GiftIcon className="size-3" />
-                  </button>
-                )}
               </div>
             )
           })}

@@ -11,6 +11,7 @@ export function WinningNumberBall({
   prize,
   value,
   usedNumbers,
+  readOnly = false,
   onSubmit,
 }: {
   slotIndex: number
@@ -18,6 +19,8 @@ export function WinningNumberBall({
   prize: number
   value: number | null
   usedNumbers: Set<number>
+  /** An observer: an empty slot shows "?" instead of an input. */
+  readOnly?: boolean
   onSubmit: (number: number) => void
 }) {
   const [draft, setDraft] = React.useState("")
@@ -41,6 +44,10 @@ export function WinningNumberBall({
       {value !== null ? (
         <div className="relative z-10 flex size-8 items-center justify-center rounded-full bg-white text-base font-bold text-green-700 shadow-sm">
           {value}
+        </div>
+      ) : readOnly ? (
+        <div className="relative z-10 flex size-8 items-center justify-center rounded-full bg-white/80 text-base font-bold text-green-700/60 shadow-sm">
+          ?
         </div>
       ) : (
         <input
@@ -70,7 +77,7 @@ export function WinningNumberBall({
       <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full border border-green-500/50 bg-white px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap text-green-700 shadow-sm">
         {formatMoney(prize)}
       </span>
-      {value !== null ? (
+      {value !== null || readOnly ? (
         ball
       ) : (
         <form onSubmit={handleSubmit}>

@@ -17,7 +17,7 @@ function firstOpenTicketId(state: RoundDraftState, number: number): number | und
 }
 
 export function OpenNumbersCard() {
-  const { state, assignNumber } = useRoundDraft()
+  const { state, readOnly, assignNumber } = useRoundDraft()
 
   const linePrice = state.round?.linePrice ?? 0
   const openNumbers = ALL_NUMBERS.map((number) => {
@@ -50,7 +50,10 @@ export function OpenNumbersCard() {
           </div>
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
-            {openNumbers.map(({ number, amount }) => (
+            {openNumbers.map(({ number, amount }) =>
+              readOnly ? (
+                <BingoBall key={number} number={number} amount={amount} variant="pending" />
+              ) : (
               <button
                 key={number}
                 type="button"
@@ -64,7 +67,8 @@ export function OpenNumbersCard() {
               >
                 <BingoBall number={number} amount={amount} variant="pending" />
               </button>
-            ))}
+              )
+            )}
           </div>
         )}
       </CardContent>

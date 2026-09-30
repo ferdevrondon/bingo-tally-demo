@@ -26,14 +26,15 @@ import { hasRounds } from "@/lib/round-draft/selectors"
 
 // Leaving /new-game keeps the game session. While it has no rounds it can
 // also be discarded ("Salir y borrar", discard_game_session); once a round
-// exists it can only be ended from /active-round.
+// exists it can only be ended from /active-round. An observer just goes
+// back home.
 function BackToStartCrumb() {
   const router = useRouter()
-  const { state, discardGameSession } = useRoundDraft()
+  const { state, readOnly, discardGameSession } = useRoundDraft()
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
-  const canDiscard = !hasRounds(state)
+  const canDiscard = !readOnly && !hasRounds(state)
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault()
@@ -57,7 +58,7 @@ function BackToStartCrumb() {
     <>
       <BreadcrumbItem>
         <BreadcrumbLink render={<Link href="/" onClick={handleClick} />}>
-          Iniciar jornada
+          {readOnly ? "Inicio" : "Iniciar jornada"}
         </BreadcrumbLink>
       </BreadcrumbItem>
 

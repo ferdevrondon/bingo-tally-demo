@@ -17,17 +17,19 @@ import { Separator } from "./ui/separator"
 import { WinningNumbersCard } from "./winning-numbers-card"
 
 export function ActiveRoundPage() {
-  const { state } = useRoundDraft()
+  const { state, readOnly } = useRoundDraft()
   const activePlayers = getActivePlayers(state)
 
   if (!state.round) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Todavía no has elegido la ronda de esta jornada.
+          {readOnly
+            ? "Todavía no se eligió la ronda de esta jornada."
+            : "Todavía no has elegido la ronda de esta jornada."}
         </p>
         <Button nativeButton={false} render={<Link href="/new-game" />}>
-          Ir a cartones y jugadores
+          {readOnly ? "Ver cartones y jugadores" : "Ir a cartones y jugadores"}
         </Button>
       </div>
     )
@@ -41,7 +43,7 @@ export function ActiveRoundPage() {
 
       <div className="flex items-center justify-between">
         <h2 className="text-4xl font-semibold">Jugadores</h2>
-        <AddPlayerControl />
+        {!readOnly && <AddPlayerControl />}
       </div>
       <div className="flex items-center justify-between">
         <WinningNumbersCard />
