@@ -6,11 +6,13 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 // Reportes: each tab is its own route (Phase 6b), so reloading, sharing a
-// link and "back" keep the tab. Daily and monthly come in 6b2.
+// link and "back" keep the tab.
 const TABS = [
   { href: "/reports/games", label: "Jornadas" },
   { href: "/reports/rounds", label: "Rondas" },
   { href: "/reports/debts", label: "Deudas" },
+  { href: "/reports/daily", label: "Diario" },
+  { href: "/reports/monthly", label: "Mensual" },
 ]
 
 export function ReportsTabs() {
