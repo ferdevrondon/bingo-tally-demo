@@ -341,24 +341,24 @@ export type Database = {
       player_accounts: {
         Row: {
           balance: number
-          credit_note: string | null
-          credit_status: string | null
+          balance_note: string | null
+          balance_status: string | null
           house_id: number
           player_id: number
           updated_at: string
         }
         Insert: {
           balance?: number
-          credit_note?: string | null
-          credit_status?: string | null
+          balance_note?: string | null
+          balance_status?: string | null
           house_id: number
           player_id: number
           updated_at?: string
         }
         Update: {
           balance?: number
-          credit_note?: string | null
-          credit_status?: string | null
+          balance_note?: string | null
+          balance_status?: string | null
           house_id?: number
           player_id?: number
           updated_at?: string
@@ -520,6 +520,95 @@ export type Database = {
           },
         ]
       }
+      settlement_players: {
+        Row: {
+          closing_balance: number
+          final_balance: number | null
+          game_session_id: number
+          house_id: number
+          note: string | null
+          paid: number
+          player_id: number
+          received: number
+          resolution: string | null
+          resolved_at: string | null
+        }
+        Insert: {
+          closing_balance: number
+          final_balance?: number | null
+          game_session_id: number
+          house_id: number
+          note?: string | null
+          paid?: number
+          player_id: number
+          received?: number
+          resolution?: string | null
+          resolved_at?: string | null
+        }
+        Update: {
+          closing_balance?: number
+          final_balance?: number | null
+          game_session_id?: number
+          house_id?: number
+          note?: string | null
+          paid?: number
+          player_id?: number
+          received?: number
+          resolution?: string | null
+          resolved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_players_game_session_id_fkey"
+            columns: ["game_session_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["game_session_id"]
+          },
+          {
+            foreignKeyName: "settlement_players_player_id_house_id_fkey"
+            columns: ["player_id", "house_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id", "house_id"]
+          },
+        ]
+      }
+      settlements: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          game_session_id: number
+          house_id: number
+          status: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          game_session_id: number
+          house_id: number
+          status?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          game_session_id?: number
+          house_id?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlements_game_session_id_house_id_fkey"
+            columns: ["game_session_id", "house_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id", "house_id"]
+          },
+        ]
+      }
       ticket_numbers: {
         Row: {
           game_session_id: number
@@ -638,6 +727,10 @@ export type Database = {
         }
         Returns: number
       }
+      close_settlement: {
+        Args: { p_game_session_id: number; p_request_id: string }
+        Returns: undefined
+      }
       discard_game_session: {
         Args: { p_game_session_id: number; p_request_id: string }
         Returns: undefined
@@ -739,12 +832,44 @@ export type Database = {
         }
         Returns: undefined
       }
-      set_credit_status: {
+      set_balance_status: {
         Args: {
           p_note: string
           p_player_id: number
           p_request_id: string
           p_status: string
+        }
+        Returns: undefined
+      }
+      settlement_mark: {
+        Args: {
+          p_game_session_id: number
+          p_note: string
+          p_player_id: number
+          p_request_id: string
+          p_resolution: string
+        }
+        Returns: undefined
+      }
+      settlement_payout: {
+        Args: {
+          p_amount: number
+          p_game_session_id: number
+          p_note: string
+          p_payment_method: string
+          p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      settlement_receive: {
+        Args: {
+          p_amount: number
+          p_game_session_id: number
+          p_note: string
+          p_payment_method: string
+          p_player_id: number
+          p_request_id: string
         }
         Returns: undefined
       }

@@ -31,6 +31,7 @@ import {
   ChevronRightIcon,
 
   FileChartColumn,
+  WalletIcon,
 } from "lucide-react"
 import { Climate_Crisis } from "next/font/google"
 import Image from "next/image"
@@ -63,6 +64,11 @@ const data = {
     //   icon: <PlayingCardsFan />,
     // },
 
+    {
+      title: "Liquidación",
+      url: "/settlement",
+      icon: <WalletIcon />,
+    },
     {
       title: "Reportes",
       url: "/reports",

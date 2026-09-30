@@ -31,13 +31,14 @@ export async function fetchGameSessionState(
   if (!gameSession) return null
 
   const id = gameSession.id
-  const [catalog, sessionPlayers, tickets, numbers, rounds, activity] = await Promise.all([
+  const [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity] = await Promise.all([
     supabase
       .from("players")
       .select("id, name, payment_method")
       .eq("house_id", houseId)
       .eq("active", true)
       .order("id"),
+    supabase.from("player_accounts").select("player_id, balance").eq("house_id", houseId),
     supabase
       .from("game_session_players")
       .select(
@@ -62,12 +63,16 @@ export async function fetchGameSessionState(
       .order("id", { ascending: false })
       .limit(MAX_ACTIVITY_ENTRIES),
   ])
-  for (const result of [catalog, sessionPlayers, tickets, numbers, rounds, activity]) {
+  for (const result of [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity]) {
     if (result.error) throw result.error
   }
 
-  // Catalog players (balance 0 until they join) plus every player of this
-  // game session, including ones deactivated in the catalog since.
+  // Catalog players (with their account balance, which becomes their opening
+  // balance when they join) plus every player of this game session,
+  // including ones deactivated in the catalog since.
+  const accountBalance = new Map(
+    (accounts.data ?? []).map((a) => [a.player_id, Number(a.balance)])
+  )
   const playersById = new Map<number, DraftPlayer>(
     (catalog.data ?? []).map((p) => [
       p.id,
@@ -75,7 +80,7 @@ export async function fetchGameSessionState(
         id: p.id,
         name: p.name,
         paymentMethod: isPaymentMethod(p.payment_method) ? p.payment_method : null,
-        balance: 0,
+        balance: accountBalance.get(p.id) ?? 0,
         checkedIn: false,
         pendingCarryOverDecision: false,
         inSession: false,
