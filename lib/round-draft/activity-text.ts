@@ -38,7 +38,15 @@ export const ACTIVITY_LABELS: Record<ActivityEntryType, string> = {
   settlement_closed: "Liquidación",
 }
 
-export function describeActivity(entry: ActivityEntry, state: RoundDraftState): string {
+/** Names and labels a sentence needs: the live game state, or a game
+ *  session report (lib/game-report). */
+export type ActivityContext = {
+  players: Pick<RoundDraftState["players"][number], "id" | "name">[]
+  tickets: Pick<RoundDraftState["tickets"][number], "id" | "index">[]
+  rounds: RoundDraftState["rounds"]
+}
+
+export function describeActivity(entry: ActivityEntry, state: ActivityContext): string {
   const player = state.players.find((p) => p.id === entry.playerId)?.name ?? "Jugador"
   const ticketIndex = state.tickets.find((t) => t.id === entry.ticketId)?.index
   const position = `Cartón ${ticketIndex ?? "?"} · #${entry.number ?? "?"}`

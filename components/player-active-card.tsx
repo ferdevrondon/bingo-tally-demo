@@ -229,7 +229,9 @@ export function PlayerActiveCard({
         onOpenChange={setIsRechargeOpen}
       />
       <PlayerRoundsDialog
-        player={player}
+        gameSessionId={state.gameSessionId}
+        playerId={player.id}
+        playerName={player.name}
         open={isRoundsOpen}
         onOpenChange={setIsRoundsOpen}
       />

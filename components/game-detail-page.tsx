@@ -5,69 +5,37 @@ import Link from "next/link"
 import {
   ArrowLeftIcon,
   CalendarIcon,
-  ChevronRightIcon,
   DicesIcon,
-  GiftIcon,
+  PlayIcon,
+  TicketIcon,
   TrendingDownIcon,
   TrendingUpIcon,
   UsersIcon,
   WalletIcon,
 } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { useHouse } from "@/components/house-provider"
+import { HouseResultBreakdown } from "@/components/house-result-breakdown"
+import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
+import { RoundHistoryCard } from "@/components/round-history-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardAction,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { GamePlayerRoundsDialog } from "@/components/game-player-rounds-dialog"
-import { games } from "@/components/game-page"
-
-interface GameEntry {
-  playerId: number
-  playerName: string
-  roundId: number
-  roundName: string
-  numbersPlayed: number[]
-  cost: number
-  recharge: number
-  wonPrize: boolean
-  prizeAmount?: number
-  hadGiftedNumber: boolean
-}
-
-const gameEntries: Record<number, GameEntry[]> = {
-  42: [
-    { playerId: 1, playerName: "Ana Torres", roundId: 1, roundName: "Ronda 1", numbersPlayed: [1, 6, 9], cost: 30, recharge: 0, wonPrize: false, hadGiftedNumber: false },
-    { playerId: 2, playerName: "Luis Gómez", roundId: 1, roundName: "Ronda 1", numbersPlayed: [4, 7, 9], cost: 30, recharge: 20, wonPrize: false, hadGiftedNumber: true },
-    { playerId: 3, playerName: "Maria Fernanda", roundId: 2, roundName: "Ronda 2", numbersPlayed: [2, 5], cost: 20, recharge: 0, wonPrize: false, hadGiftedNumber: false },
-    { playerId: 4, playerName: "Carlos Ruiz", roundId: 2, roundName: "Ronda 2", numbersPlayed: [3, 8, 12], cost: 30, recharge: 0, wonPrize: true, prizeAmount: 40, hadGiftedNumber: false },
-    { playerId: 1, playerName: "Ana Torres", roundId: 3, roundName: "Ronda 3", numbersPlayed: [10, 13], cost: 20, recharge: 50, wonPrize: false, hadGiftedNumber: false },
-    { playerId: 2, playerName: "Luis Gómez", roundId: 3, roundName: "Ronda 3", numbersPlayed: [14, 15, 1], cost: 30, recharge: 0, wonPrize: true, prizeAmount: 20, hadGiftedNumber: false },
-  ],
-  41: [
-    { playerId: 5, playerName: "Pedro Sánchez", roundId: 1, roundName: "Ronda 1", numbersPlayed: [2, 5, 11], cost: 30, recharge: 0, wonPrize: true, prizeAmount: 150, hadGiftedNumber: false },
-    { playerId: 6, playerName: "Laura Jiménez", roundId: 2, roundName: "Ronda 2", numbersPlayed: [3, 9], cost: 20, recharge: 0, wonPrize: false, hadGiftedNumber: true },
-    { playerId: 7, playerName: "Jorge Medina", roundId: 3, roundName: "Ronda 3", numbersPlayed: [1, 4, 7, 10], cost: 40, recharge: 30, wonPrize: true, prizeAmount: 200, hadGiftedNumber: false },
-    { playerId: 8, playerName: "Sofía Herrera", roundId: 4, roundName: "Ronda 4", numbersPlayed: [6, 12], cost: 20, recharge: 0, wonPrize: false, hadGiftedNumber: false },
-    { playerId: 5, playerName: "Pedro Sánchez", roundId: 5, roundName: "Ronda 5", numbersPlayed: [8, 13, 15], cost: 30, recharge: 20, wonPrize: false, hadGiftedNumber: false },
-  ],
-  40: [
-    { playerId: 9, playerName: "Elena Castro", roundId: 1, roundName: "Ronda 1", numbersPlayed: [1, 2, 3], cost: 30, recharge: 0, wonPrize: false, hadGiftedNumber: false },
-    { playerId: 10, playerName: "Ricardo Vega", roundId: 2, roundName: "Ronda 2", numbersPlayed: [5, 9], cost: 20, recharge: 10, wonPrize: false, hadGiftedNumber: false },
-    { playerId: 9, playerName: "Elena Castro", roundId: 3, roundName: "Ronda 3", numbersPlayed: [7, 11, 14], cost: 30, recharge: 0, wonPrize: true, prizeAmount: 50, hadGiftedNumber: true },
-    { playerId: 11, playerName: "Mónica Díaz", roundId: 4, roundName: "Ronda 4", numbersPlayed: [4, 8], cost: 20, recharge: 0, wonPrize: false, hadGiftedNumber: false },
-  ],
-}
-
-function formatAmount(amount: number) {
-  const sign = amount < 0 ? "-" : ""
-  return `${sign}$${Math.abs(amount).toLocaleString("en-US")}`
-}
+import { useNow } from "@/hooks/use-now"
+import { formatDuration } from "@/lib/game-report/format"
+import type { GameSessionReport, PlayerReport } from "@/lib/game-report/types"
+import { paymentMethodLabel } from "@/lib/payment-methods"
+import { ACTIVITY_LABELS, describeActivity } from "@/lib/round-draft/activity-text"
+import { signedMoney } from "@/lib/round-draft/balance"
+import { formatMoney } from "@/lib/rounds"
+import { cn } from "@/lib/utils"
 
 function StatCard({
   label,
@@ -85,10 +53,7 @@ function StatCard({
       <CardHeader>
         <CardDescription>{label}</CardDescription>
         <CardTitle
-          className={cn(
-            "text-2xl font-semibold tabular-nums @[250px]/card:text-3xl",
-            valueClassName
-          )}
+          className={cn("text-2xl font-semibold tabular-nums @[250px]/card:text-3xl", valueClassName)}
         >
           {value}
         </CardTitle>
@@ -100,127 +65,202 @@ function StatCard({
   )
 }
 
-interface PlayerGameSummary {
-  playerId: number
-  playerName: string
-  entries: GameEntry[]
-}
-
-function groupEntriesByPlayer(entries: GameEntry[]): PlayerGameSummary[] {
-  const byPlayer = new Map<number, PlayerGameSummary>()
-  entries.forEach((entry) => {
-    const existing = byPlayer.get(entry.playerId)
-    if (existing) {
-      existing.entries.push(entry)
-    } else {
-      byPlayer.set(entry.playerId, {
-        playerId: entry.playerId,
-        playerName: entry.playerName,
-        entries: [entry],
-      })
-    }
-  })
-  return [...byPlayer.values()]
-}
-
-function playerHandle(name: string) {
+function Money({ value, signed = false }: { value: number; signed?: boolean }) {
+  if (value === 0) return <span className="text-muted-foreground">—</span>
   return (
-    "@" +
-    name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/\s+/g, "_")
+    <span
+      className={cn(
+        "tabular-nums",
+        signed && (value > 0 ? "text-green-600" : "text-destructive")
+      )}
+    >
+      {signed ? signedMoney(value) : formatMoney(value)}
+    </span>
   )
 }
 
-function PlayerGameCard({ player }: { player: PlayerGameSummary }) {
-  const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
-
-  const roundsCount = player.entries.length
-  const giftedCount = player.entries.filter((entry) => entry.hadGiftedNumber).length
-  const saldo = player.entries.reduce(
-    (sum, entry) =>
-      sum + (entry.wonPrize ? (entry.prizeAmount ?? 0) : 0) - entry.cost - entry.recharge,
-    0
-  )
-  const saldoIsPositive = saldo >= 0
-
+function PlayersCard({ gameSessionId, players }: { gameSessionId: number; players: PlayerReport[] }) {
+  const [roundsOf, setRoundsOf] = React.useState<PlayerReport | null>(null)
   return (
-    <Card className="gap-3 bg-ball/5 px-4 py-3 ring-ball/20 dark:bg-ball/10">
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-ball/60 text-sm font-bold text-ball">
-          {player.playerName.charAt(0).toUpperCase()}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-bold">{player.playerName}</div>
-          <div className="truncate text-xs text-muted-foreground">
-            {playerHandle(player.playerName)}
+    <Card>
+      <CardHeader>
+        <CardTitle>Jugadores</CardTitle>
+        <CardDescription>
+          Entró con + premios + recargas − lo que jugó − pagos = terminó con.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {players.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nadie jugó en esta jornada.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr className="border-b">
+                  <th className="py-2 pr-3 font-medium">Jugador</th>
+                  <th className="px-3 py-2 text-right font-medium">Entró con</th>
+                  <th className="px-3 py-2 text-right font-medium">Jugó</th>
+                  <th className="px-3 py-2 text-right font-medium">Premios</th>
+                  <th className="px-3 py-2 text-right font-medium">Recargas</th>
+                  <th className="px-3 py-2 text-right font-medium">Pagos</th>
+                  <th className="px-3 py-2 text-right font-medium">Terminó con</th>
+                  <th className="py-2 pl-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {players.map((p) => (
+                  <tr key={p.id} className="border-b last:border-b-0">
+                    <td className="py-2 pr-3 font-medium">
+                      {p.name}
+                      {p.removed && (
+                        <Badge variant="outline" className="ml-2">
+                          Retirado
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Money value={p.opening} signed />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Money value={p.played} />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Money value={p.prizes} />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Money value={p.recharges} />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Money value={p.payouts} />
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold">
+                      <Money value={p.closing} signed />
+                    </td>
+                    <td className="py-2 pl-3 text-right">
+                      <Button variant="ghost" size="sm" onClick={() => setRoundsOf(p)}>
+                        Ver rondas
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          className="shrink-0 rounded-full"
-          onClick={() => setIsRoundsOpen(true)}
-          aria-label={`Ver rondas de ${player.playerName}`}
-        >
-          <ChevronRightIcon />
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="outline" className="gap-1 border-transparent bg-background/70">
-          <DicesIcon className="size-3" />
-          {roundsCount} rondas
-        </Badge>
-        <Badge variant="outline" className="gap-1 border-transparent bg-background/70">
-          <GiftIcon className="size-3" />
-          {giftedCount} regalado
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn(
-            "gap-1",
-            saldoIsPositive
-              ? "border-green-600/30 bg-green-50 text-green-700 dark:border-green-500/30 dark:bg-green-950 dark:text-green-400"
-              : "border-red-600/30 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-950 dark:text-red-400"
-          )}
-        >
-          <WalletIcon className="size-3" />
-          {formatAmount(saldo)}
-        </Badge>
-      </div>
-
-      <GamePlayerRoundsDialog
-        playerName={player.playerName}
-        rounds={player.entries.map((entry) => ({
-          id: entry.roundId,
-          roundName: entry.roundName,
-          numbersPlayed: entry.numbersPlayed,
-          cost: entry.cost,
-          recharge: entry.recharge,
-          wonPrize: entry.wonPrize,
-          prizeAmount: entry.prizeAmount,
-          hadGiftedNumber: entry.hadGiftedNumber,
-        }))}
-        open={isRoundsOpen}
-        onOpenChange={setIsRoundsOpen}
-      />
+        )}
+      </CardContent>
+      {roundsOf && (
+        <PlayerRoundsDialog
+          gameSessionId={gameSessionId}
+          playerId={roundsOf.id}
+          playerName={roundsOf.name}
+          open
+          onOpenChange={(open) => !open && setRoundsOf(null)}
+        />
+      )}
     </Card>
   )
 }
 
-export function GameDetailPage({ id }: { id: number }) {
-  const game = games.find((g) => g.id === id)
-  const entries = gameEntries[id] ?? []
+function CashCard({ report }: { report: GameSessionReport }) {
+  const recharges = report.cash.reduce((sum, c) => sum + c.recharges, 0)
+  const payouts = report.cash.reduce((sum, c) => sum + c.payouts, 0)
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Caja</CardTitle>
+        <CardDescription>
+          Dinero que entró (recargas) y salió (pagos) durante la jornada, por método de pago. No es
+          parte del resultado de la casa.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {report.cash.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hubo recargas ni pagos en la jornada.</p>
+        ) : (
+          <dl className="flex flex-col gap-1.5 text-sm">
+            {report.cash.map((c) => (
+              <div key={c.method ?? "none"} className="flex items-center justify-between gap-4">
+                <dt className="text-muted-foreground">
+                  {c.method ? paymentMethodLabel(c.method) : "Sin método"}
+                </dt>
+                <dd className="flex gap-4 tabular-nums">
+                  <span>Recargas {formatMoney(c.recharges)}</span>
+                  <span>Pagos {formatMoney(c.payouts)}</span>
+                </dd>
+              </div>
+            ))}
+            <div className="mt-1 flex items-center justify-between gap-4 border-t pt-2 font-semibold">
+              <dt>Total</dt>
+              <dd className="flex gap-4 tabular-nums">
+                <span>Recargas {formatMoney(recharges)}</span>
+                <span>Pagos {formatMoney(payouts)}</span>
+              </dd>
+            </div>
+          </dl>
+        )}
+        {report.settlement && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm">
+            <span>
+              Liquidación:{" "}
+              {report.settlement.status === "closed"
+                ? "cerrada"
+                : report.settlement.unresolved > 0
+                  ? `abierta · ${report.settlement.unresolved} por resolver`
+                  : "abierta · todo resuelto"}{" "}
+              · cobrado {formatMoney(report.settlement.received)} · pagado{" "}
+              {formatMoney(report.settlement.paid)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/games/${report.id}/settlement`} />}
+            >
+              Ver liquidación
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
-  if (!game) {
+function TimelineCard({ report }: { report: GameSessionReport }) {
+  const timeZone = useHouse()?.timezone
+  // Times are formatted on the client only, so the server HTML can't differ.
+  const mounted = useNow() !== null
+  const formatTime = (timestamp: number) =>
+    new Intl.DateTimeFormat("es-MX", { timeStyle: "short", timeZone }).format(timestamp)
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Historial</CardTitle>
+        <CardDescription>Cada movimiento de la jornada, del más reciente al primero.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex max-h-[560px] flex-col gap-3 overflow-y-auto">
+        {report.activity.map((entry) => (
+          <div key={entry.id} className="flex items-start gap-3 text-sm">
+            <span className="w-16 shrink-0 text-xs text-muted-foreground tabular-nums">
+              {mounted ? formatTime(entry.timestamp) : " "}
+            </span>
+            <Badge variant="outline" className="shrink-0">
+              {ACTIVITY_LABELS[entry.type]}
+            </Badge>
+            <span>{describeActivity(entry, report.labels)}</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
+// /games/[id]: the full report of one game session (Phase 6a), reached from
+// Reportes → Jornadas. A game session in progress shows what happened so far.
+export function GameDetailPage({ report }: { report: GameSessionReport | null }) {
+  if (!report) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="text-sm text-muted-foreground">
-          No se encontró la jornada #{id}.
-        </p>
+        <p className="text-sm text-muted-foreground">No se encontró la jornada.</p>
         <Button variant="outline" nativeButton={false} render={<Link href="/reports" />}>
           <ArrowLeftIcon />
           Volver a jornadas
@@ -229,15 +269,12 @@ export function GameDetailPage({ id }: { id: number }) {
     )
   }
 
-  const houseResult = entries.reduce(
-    (sum, entry) => sum + entry.cost + entry.recharge - (entry.wonPrize ? (entry.prizeAmount ?? 0) : 0),
-    0
-  )
-  const isPositive = houseResult >= 0
-  const playerSummaries = groupEntriesByPlayer(entries)
+  const isActive = report.status === "active"
+  const house = report.house.total
+  const playersCount = report.players.filter((p) => !p.removed).length
 
   return (
-    <div className="flex flex-col gap-6 py-4 md:gap-6 md:py-6">
+    <div className="flex flex-col gap-6 py-4 md:py-6">
       <div className="flex flex-col gap-2 px-4 lg:px-6">
         <Button
           variant="ghost"
@@ -249,24 +286,45 @@ export function GameDetailPage({ id }: { id: number }) {
           <ArrowLeftIcon />
           Volver
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Jornada #{String(game.number).padStart(3, "0")}
-        </h1>
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <CalendarIcon className="size-4" />
-          <span>{game.dateLabel}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">Jornada #{report.number}</h1>
+          {isActive ? (
+            <Badge className="bg-green-500/15 text-green-700 dark:text-green-400">En curso</Badge>
+          ) : (
+            <Badge variant="secondary">Terminada</Badge>
+          )}
         </div>
+        <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+          <CalendarIcon className="size-4" aria-hidden="true" />
+          <span>
+            Empezó el {report.startedAtLabel}
+            {report.endedAtLabel && ` · terminó el ${report.endedAtLabel}`}
+            {!isActive && ` · ${formatDuration(report.durationMs)}`}
+          </span>
+        </div>
+        {isActive && (
+          <Button
+            size="sm"
+            className="w-fit"
+            nativeButton={false}
+            render={<Link href="/active-round" />}
+          >
+            <PlayIcon />
+            Ir a la ronda activa
+          </Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 px-4 @xl/main:grid-cols-3 lg:px-6">
-        <StatCard label="Rondas" value={game.roundsCount} icon={<DicesIcon />} />
-        <StatCard label="Jugadores" value={game.playersCount} icon={<UsersIcon />} />
+      <div className="grid grid-cols-1 gap-4 px-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4 lg:px-6">
+        <StatCard label="Rondas jugadas" value={report.roundsPlayed} icon={<DicesIcon />} />
+        <StatCard label="Jugadores" value={playersCount} icon={<UsersIcon />} />
+        <StatCard label="Cartones" value={report.ticketsCount} icon={<TicketIcon />} />
         <StatCard
-          label="Ganancia"
-          value={formatAmount(houseResult)}
-          valueClassName={isPositive ? "text-green-700 dark:text-green-400" : "text-destructive"}
+          label="Resultado de la casa"
+          value={signedMoney(house)}
+          valueClassName={house >= 0 ? "text-green-700 dark:text-green-400" : "text-destructive"}
           icon={
-            isPositive ? (
+            house >= 0 ? (
               <TrendingUpIcon className="text-green-600 dark:text-green-500" />
             ) : (
               <TrendingDownIcon className="text-destructive" />
@@ -275,19 +333,31 @@ export function GameDetailPage({ id }: { id: number }) {
         />
       </div>
 
-      <div className="flex flex-col gap-3 px-4 lg:px-6">
-        <h2 className="text-sm font-medium text-muted-foreground">Jugadores</h2>
-        {playerSummaries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No hay datos de jugadores para esta jornada.
-          </p>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
-            {playerSummaries.map((player) => (
-              <PlayerGameCard key={player.playerId} player={player} />
-            ))}
-          </div>
-        )}
+      <div className="grid gap-4 px-4 @4xl/main:grid-cols-2 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <WalletIcon className="size-4" aria-hidden="true" />
+              Resultado de la casa
+            </CardTitle>
+            <CardDescription>
+              Ventas − premios + lo que la casa juega con los números regalados y sin vender.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <HouseResultBreakdown house={report.house} />
+          </CardContent>
+        </Card>
+        <CashCard report={report} />
+      </div>
+
+      <div className="flex flex-col gap-4 px-4 lg:px-6">
+        <RoundHistoryCard
+          rounds={[...report.rounds].reverse()}
+          emptyText="Todavía no se eligió ninguna ronda."
+        />
+        <PlayersCard gameSessionId={report.id} players={report.players} />
+        <TimelineCard report={report} />
       </div>
     </div>
   )

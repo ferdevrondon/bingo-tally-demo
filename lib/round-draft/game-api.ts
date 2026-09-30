@@ -6,9 +6,12 @@ import {
   type GameActionError,
   type GameActionResult,
 } from "@/lib/data/game-action-result"
+import { houseResult, SALE_TYPES, saleAmount, type HouseResult } from "@/lib/game-report/ledger"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/lib/supabase/database.types"
+
+export type { HouseResult }
 
 // Live game writes, straight from the browser to the SQL functions of the
 // game session functions migration with supabase.rpc() (BACKEND_PLAN.md
@@ -28,23 +31,6 @@ export interface NumberEdit {
   isGift: boolean
   /** Owner the screen showed, for numbers taken from another player. */
   expectedOwnerId: number | null
-}
-
-/** The house result (decided with the product owner on 2026-09-28): sales
- *  - prizes paid + the margin of each played round, where the house "plays"
- *  what it didn't sell. Recharges and payouts are cash, not part of it. */
-export interface HouseResult {
-  /** Numbers sold, net of refunds (unplayed round refunds included). */
-  sales: number
-  /** Prizes paid to players (positive amount). */
-  prizes: number
-  /** -P per gifted number that didn't win. */
-  gifts: number
-  /** -P per unsold number that didn't win. */
-  unsoldLosing: number
-  /** prize - P per unsold number that won. */
-  unsoldWinning: number
-  total: number
 }
 
 export interface GameSessionSummary {
@@ -74,24 +60,6 @@ export interface ClosedRoundSummary {
   winningNumbers: (number | null)[]
   winners: RoundWinnerEntry[]
   house: HouseResult
-}
-
-// activity_log rows that move game money between a player and the house.
-const SALE_TYPES = [
-  "number_purchased",
-  "number_released",
-  "number_reassigned",
-  "number_gifted",
-  "number_ungifted",
-  "carryover_kept",
-]
-
-function houseResult(parts: Omit<HouseResult, "total">): HouseResult {
-  return {
-    ...parts,
-    total:
-      parts.sales - parts.prizes + parts.gifts + parts.unsoldLosing + parts.unsoldWinning,
-  }
 }
 
 type Position = { ticketId: number; number: number }
@@ -324,10 +292,7 @@ export function createGameApi(isAdmin: boolean) {
         winningNumbers: round.data.winning_numbers,
         winners: winnerRows,
         house: houseResult({
-          sales: sales.data.reduce(
-            (sum, a) => sum + (a.type === "adjustment" ? -1 : 1) * Number(a.amount ?? 0),
-            0
-          ),
+          sales: sales.data.reduce((sum, a) => sum + saleAmount(a.type, a.amount), 0),
           prizes: winnerRows.reduce((sum, w) => sum + w.prize, 0),
           gifts: Number(round.data.margin_gifts ?? 0),
           unsoldLosing: Number(round.data.margin_unsold_losing ?? 0),
