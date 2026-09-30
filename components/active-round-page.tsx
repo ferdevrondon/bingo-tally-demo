@@ -6,9 +6,9 @@ import Link from "next/link"
 import { ActivityLogCard } from "@/components/activity-log-card"
 import { AddPlayerControl } from "@/components/add-player-control"
 import { CheckInBalanceAlert } from "@/components/check-in-balance-alert"
+import { LiveRoundHistory } from "@/components/live-round-history"
 import { OpenNumbersCard } from "@/components/open-numbers-card"
 import { PlayerActiveCard } from "@/components/player-active-card"
-import { RoundHistoryCard } from "@/components/round-history-card"
 import { Button } from "@/components/ui/button"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
@@ -61,7 +61,7 @@ export function ActiveRoundPage() {
           ))}
         </div>
       )}
-      <RoundHistoryCard selectedDate={new Date()} />
+      <LiveRoundHistory />
       <ActivityLogCard />
     </div>
   )

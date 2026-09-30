@@ -93,11 +93,11 @@ export function EndGameDialog({
               variant="link"
               className="h-auto p-0"
               nativeButton={false}
-              render={<Link href="/reports" />}
+              render={<Link href={`/games/${state.gameSessionId}`} />}
             >
               {" "}
               <FileChartColumn />
-              Ver reporte del día
+              Ver reporte de la jornada
             </Button>
           </div>
         </div>

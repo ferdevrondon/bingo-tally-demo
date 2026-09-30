@@ -5,10 +5,9 @@ import Link from "next/link"
 import {
   ArrowRightIcon,
   EyeIcon,
-  FlameIcon,
-  TrophyIcon,
+  TrendingDownIcon,
+  TrendingUpIcon,
   UsersIcon,
-  WalletIcon,
   ZapIcon,
 } from "lucide-react"
 
@@ -17,9 +16,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useRole } from "@/components/house-provider"
 import { StartGameSessionButton } from "@/components/start-game-session-button"
-
-const NEXT_GAME_NUMBER = 42
-const READINESS_PERCENT = 86
+import type { HomeSummary } from "@/lib/data/game-sessions"
+import { signedMoney } from "@/lib/round-draft/balance"
 
 function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1)
@@ -57,33 +55,6 @@ function getGreeting(now: Date | null) {
   return "Buenas noches"
 }
 
-const stats = [
-  {
-    icon: UsersIcon,
-    label: "Jugadores",
-    value: "42",
-    caption: "+6 vs ayer",
-  },
-  {
-    icon: WalletIcon,
-    label: "Bolsa",
-    value: "$1,260",
-    caption: "acumulada",
-  },
-  {
-    icon: FlameIcon,
-    label: "Racha",
-    value: "7 días",
-    caption: "sin fallas",
-  },
-  {
-    icon: TrophyIcon,
-    label: "Cierre récord",
-    value: "00:42",
-    caption: "tiempo mínimo",
-  },
-]
-
 // ------------------------------------------------------------------
 // Variante "split" del main page: un panel de marca con el reloj en
 // vivo a la izquierda (gradiente con los colores del tema activo:
@@ -92,10 +63,11 @@ const stats = [
 // el CTA para iniciarla a la derecha.
 // ------------------------------------------------------------------
 export default function MainPageSplit({
-  hasActiveGameSession,
+  summary,
 }: {
-  hasActiveGameSession: boolean
+  summary: HomeSummary
 }) {
+  const { gameNumber, hasActiveGameSession, lastEnded, pendingPlayers } = summary
   const now = useClock()
   const isAdmin = useRole() === "admin"
 
@@ -160,23 +132,6 @@ export default function MainPageSplit({
             </span>
           </div>
 
-          {/* <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between text-xs text-foreground/60">
-              <span>
-                Preparación de la jornada #
-                {String(NEXT_GAME_NUMBER).padStart(3, "0")}
-              </span>
-              <span className="font-medium text-foreground">
-                {READINESS_PERCENT}%
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-foreground/10">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${READINESS_PERCENT}%` }}
-              />
-            </div>
-          </div> */}
         </div>
 
         <p className="relative text-sm text-foreground/50">
@@ -187,14 +142,15 @@ export default function MainPageSplit({
       <div className="flex flex-col justify-center gap-6 bg-background p-8">
         <div className="flex flex-col gap-3">
           <Badge className="w-fit bg-primary/10 text-primary" variant="outline">
-            Jornada #{String(NEXT_GAME_NUMBER).padStart(3, "0")}
+            Jornada #{gameNumber}
           </Badge>
           <h1 className="text-3xl font-bold tracking-tight">
-            Todo listo para comenzar
+            {hasActiveGameSession ? "Jornada en curso" : "Todo listo para comenzar"}
           </h1>
           <p className="max-w-md text-sm text-muted-foreground">
-            42 jugadores confirmados y la bolsa está cargada. Solo falta tu
-            arranque.
+            {pendingPlayers === 0
+              ? "Nadie tiene saldos pendientes de jornadas anteriores."
+              : `${pendingPlayers} jugador${pendingPlayers === 1 ? "" : "es"} con saldo pendiente de jornadas anteriores.`}
           </p>
         </div>
 
@@ -216,35 +172,58 @@ export default function MainPageSplit({
           <p className="text-sm text-muted-foreground">No hay una jornada activa.</p>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          {stats.map((stat) => (
-            <Card key={stat.label}>
+        {lastEnded && (
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
               <CardContent className="flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  <stat.icon className="size-3.5" />
-                  {stat.label}
+                  <UsersIcon className="size-3.5" />
+                  Jugadores
                 </div>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-xs text-muted-foreground">
-                  {stat.caption}
-                </div>
+                <div className="text-2xl font-bold">{lastEnded.playersCount}</div>
+                <div className="text-xs text-muted-foreground">en la última jornada</div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between border-t pt-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">
-              Última jornada #041
-            </span>
-            <span>·</span>
-            <span>42 jugadores</span>
-            <span>·</span>
-            <span>$1,260</span>
+            <Card>
+              <CardContent className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  {lastEnded.houseTotal >= 0 ? (
+                    <TrendingUpIcon className="size-3.5" />
+                  ) : (
+                    <TrendingDownIcon className="size-3.5" />
+                  )}
+                  Resultado de la casa
+                </div>
+                <div
+                  className={
+                    lastEnded.houseTotal >= 0
+                      ? "text-2xl font-bold text-green-600"
+                      : "text-2xl font-bold text-destructive"
+                  }
+                >
+                  {signedMoney(lastEnded.houseTotal)}
+                </div>
+                <div className="text-xs text-muted-foreground">en la última jornada</div>
+              </CardContent>
+            </Card>
           </div>
-          <Badge variant="outline">Finalizada</Badge>
-        </div>
+        )}
+
+        {lastEnded && (
+          <Link
+            href={`/games/${lastEnded.id}`}
+            className="flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">
+                Última jornada #{lastEnded.number}
+              </span>
+              <span>·</span>
+              <span>{lastEnded.startedAtLabel}</span>
+            </span>
+            <Badge variant="outline">Ver reporte</Badge>
+          </Link>
+        )}
       </div>
     </div>
   )

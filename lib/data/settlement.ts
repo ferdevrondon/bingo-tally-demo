@@ -2,6 +2,7 @@ import { cache } from "react"
 
 import { accountFor, listPlayerAccounts } from "@/lib/data/accounts"
 import { getCurrentHouse } from "@/lib/data/house"
+import { SALE_TYPES } from "@/lib/game-report/ledger"
 import { isPaymentMethod } from "@/lib/payment-methods"
 import {
   isSettlementResolution,
@@ -12,15 +13,6 @@ import {
 import { createClient } from "@/lib/supabase/server"
 
 // Reads for the settlement screens. RLS limits every row to the user's house.
-
-const SALE_TYPES = new Set([
-  "number_purchased",
-  "number_released",
-  "number_reassigned",
-  "number_gifted",
-  "number_ungifted",
-  "carryover_kept",
-])
 
 const PAGE_SIZE = 1000
 

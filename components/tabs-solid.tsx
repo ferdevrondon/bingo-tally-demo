@@ -5,8 +5,7 @@ import { ConstructionIcon } from "lucide-react"
 
 import GamePage from "@/components/game-page"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RoundHistoryCard } from "./round-history-card"
-import { RoundsDateFilter, startOfDay } from "./rounds-date-filter"
+import type { GameSessionListItem } from "@/lib/game-report/types"
 
 const tabs = [
   { name: "Jornadas", value: "games" },
@@ -30,9 +29,8 @@ function ComingSoonPanel({ label }: { label: string }) {
   )
 }
 
-function ReportsTabs() {
-  const [roundsDate, setRoundsDate] = React.useState(() => startOfDay(new Date()))
-
+// Rounds by date, debts, daily and monthly reports come in Phase 6b.
+function ReportsTabs({ games }: { games: GameSessionListItem[] }) {
   return (
     <Tabs defaultValue="games" className="w-full gap-4">
       <TabsList className="mx-4 bg-background lg:mx-6">
@@ -48,11 +46,10 @@ function ReportsTabs() {
       </TabsList>
 
       <TabsContent value="games">
-        <GamePage />
+        <GamePage games={games} />
       </TabsContent>
-      <TabsContent value="rondas" className="flex flex-col gap-4 px-4 lg:px-6">
-        <RoundsDateFilter date={roundsDate} onDateChange={setRoundsDate} />
-        <RoundHistoryCard selectedDate={roundsDate} />
+      <TabsContent value="rondas" className="px-4 lg:px-6">
+        <ComingSoonPanel label="Rondas" />
       </TabsContent>
       <TabsContent value="deudas" className="px-4 lg:px-6">
         <ComingSoonPanel label="Deudas" />

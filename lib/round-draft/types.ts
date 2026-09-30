@@ -101,6 +101,8 @@ export interface RoundSummary {
 
 export interface RoundDraftState {
   gameSessionId: number
+  /** "Jornada #N" (game_sessions.number). */
+  gameNumber: number
   tickets: Ticket[]
   players: DraftPlayer[]
   /** UI only: the player numbers are assigned to. Not persisted. */

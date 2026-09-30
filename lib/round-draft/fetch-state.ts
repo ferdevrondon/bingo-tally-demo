@@ -1,12 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { toActivityEntry } from "@/lib/game-report/fetch"
 import { isPaymentMethod } from "@/lib/payment-methods"
 import type { Database } from "@/lib/supabase/database.types"
 
 import {
   MAX_ACTIVITY_ENTRIES,
-  type ActivityEntry,
-  type ActivityEntryType,
   type DraftPlayer,
   type RoundDraftState,
   type Ticket,
@@ -64,7 +63,7 @@ export async function fetchGameSessionState(
   const [{ data: gameSession, error }, knownRows] = await Promise.all([
     supabase
       .from("game_sessions")
-      .select("id, house_balance, started_at")
+      .select("id, number, house_balance, started_at")
       .eq("house_id", houseId)
       .eq("status", "active")
       .maybeSingle(),
@@ -133,6 +132,7 @@ export async function fetchGameSessionState(
 
   return {
     gameSessionId: id,
+    gameNumber: gameSession.number,
     tickets: (tickets.data ?? []).map((t) => ({
       id: t.id,
       index: t.index,
@@ -140,20 +140,7 @@ export async function fetchGameSessionState(
     })),
     players: [...playersById.values()],
     activePlayerId: null,
-    activity: (activity.data ?? []).map(
-      (a): ActivityEntry => ({
-        id: a.id,
-        timestamp: Date.parse(a.created_at),
-        type: a.type as ActivityEntryType,
-        playerId: a.player_id,
-        roundId: a.round_id,
-        ticketId: a.ticket_id,
-        number: a.number,
-        amount: a.amount === null ? null : Number(a.amount),
-        paymentMethod: isPaymentMethod(a.payment_method) ? a.payment_method : null,
-        note: a.note,
-      })
-    ),
+    activity: (activity.data ?? []).map(toActivityEntry),
     round: open
       ? {
           roundId: open.id,

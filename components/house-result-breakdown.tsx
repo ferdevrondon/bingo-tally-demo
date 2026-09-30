@@ -1,5 +1,5 @@
 import { signedMoney } from "@/lib/round-draft/balance"
-import type { HouseResult } from "@/lib/round-draft/game-api"
+import type { HouseResult } from "@/lib/game-report/ledger"
 import { cn } from "@/lib/utils"
 
 // The house result of a round or a game session, line by line (decided with
