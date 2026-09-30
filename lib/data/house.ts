@@ -7,6 +7,8 @@ export type HouseRole = "admin" | "observer"
 export interface CurrentHouse {
   houseId: number
   houseName: string
+  /** IANA time zone for dates shown to the house (houses.timezone). */
+  timezone: string
   role: HouseRole
 }
 
@@ -30,7 +32,7 @@ export const getCurrentHouse = cache(async (): Promise<CurrentHouse | null> => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("house_members")
-    .select("house_id, role, houses(name)")
+    .select("house_id, role, houses(name, timezone)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -42,6 +44,7 @@ export const getCurrentHouse = cache(async (): Promise<CurrentHouse | null> => {
   return {
     houseId: data.house_id,
     houseName: data.houses.name,
+    timezone: data.houses.timezone,
     role: data.role === "admin" ? "admin" : "observer",
   }
 })

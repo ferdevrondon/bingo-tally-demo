@@ -34,6 +34,8 @@ export const ACTIVITY_LABELS: Record<ActivityEntryType, string> = {
   balance_closed: "Saldo final",
   credit_kept_for_play: "Saldo a favor",
   credit_payout_pending: "Pago pendiente",
+  debt_noted: "Deuda",
+  settlement_closed: "Liquidación",
 }
 
 export function describeActivity(entry: ActivityEntry, state: RoundDraftState): string {
@@ -103,6 +105,10 @@ export function describeActivity(entry: ActivityEntry, state: RoundDraftState): 
       return `${player} deja su saldo a favor para jugar${note}`
     case "credit_payout_pending":
       return `Pago pendiente a ${player}${note}`
+    case "debt_noted":
+      return `${player} queda debiendo${note}`
+    case "settlement_closed":
+      return "Se cerró la liquidación"
     case "adjustment":
       return entry.note === "unplayed_round_refund"
         ? `Devolución a ${player}: ${amount} (ronda no jugada)`

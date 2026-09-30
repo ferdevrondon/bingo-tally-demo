@@ -1,7 +1,8 @@
 import type { PaymentMethod } from "@/lib/payment-methods"
 
 /** A player as seen by the live game: catalog data plus their balance in
- *  this game session (game_session_players; 0 when not in it yet). */
+ *  this game session (game_session_players), or their account balance when
+ *  they haven't joined yet. */
 export interface DraftPlayer {
   id: number
   name: string
@@ -58,6 +59,8 @@ export type ActivityEntryType =
   | "balance_closed"
   | "credit_kept_for_play"
   | "credit_payout_pending"
+  | "debt_noted"
+  | "settlement_closed"
 
 /** One activity_log row: structured data only. The UI builds the sentence
  *  (components/activity-log-card.tsx). */

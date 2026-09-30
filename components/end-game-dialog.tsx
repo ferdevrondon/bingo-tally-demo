@@ -33,7 +33,7 @@ export function EndGameDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { endGameSession } = useRoundDraft()
+  const { state, endGameSession } = useRoundDraft()
   const router = useRouter()
   const [summary, setSummary] = React.useState<GameSessionSummary | null>(null)
   const [isPending, startTransition] = React.useTransition()
@@ -147,7 +147,12 @@ export function EndGameDialog({
         </div>
 
         <DialogFooter className="flex-row justify-end gap-2 bg-muted/50 p-3">
-          <Button onClick={handleGoHome}>Ir al inicio</Button>
+          <Button variant="outline" onClick={handleGoHome}>
+            Ir al inicio
+          </Button>
+          <Button onClick={() => router.push(`/games/${state.gameSessionId}/settlement`)}>
+            Ir a liquidación
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

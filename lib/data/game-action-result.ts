@@ -1,6 +1,6 @@
 // Result of a game session action (lib/round-draft/game-api.ts). The
-// error is the code raised by the SQL function (the game session functions
-// and game rules v2 migrations), or a generic one. Plain data so Client Components can import it.
+// error is the code raised by the SQL function (the game session, game rules
+// v2, player accounts and settlements migrations), or a generic one. Plain data so Client Components can import it.
 
 export type GameActionError =
   | "read_only"
@@ -26,6 +26,14 @@ export type GameActionError =
   | "invalid_amount"
   | "payout_exceeds_balance"
   | "game_session_has_rounds"
+  | "game_session_has_payments"
+  | "no_credit_balance"
+  | "no_debt_balance"
+  | "invalid_status"
+  | "note_required"
+  | "settlement_closed"
+  | "settlement_not_found"
+  | "player_not_in_settlement"
 
 export type GameActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -56,6 +64,14 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   invalid_amount: "El monto debe ser mayor a 0.",
   payout_exceeds_balance: "El pago no puede ser mayor al saldo a favor del jugador.",
   game_session_has_rounds: "La jornada ya tiene rondas; no se puede borrar.",
+  game_session_has_payments: "La jornada ya tiene recargas o pagos registrados; no se puede borrar.",
+  no_credit_balance: "El jugador no tiene saldo a favor.",
+  no_debt_balance: "El jugador no tiene deuda.",
+  invalid_status: "Elige un estado válido.",
+  note_required: "Agrega una nota (por ejemplo, por qué no se pudo pagar).",
+  settlement_closed: "Esta liquidación ya está cerrada.",
+  settlement_not_found: "No se encontró la liquidación de esta jornada.",
+  player_not_in_settlement: "Ese jugador no está en esta liquidación.",
 }
 
 const KNOWN_CODES = new Set<string>(Object.keys(GAME_ACTION_ERROR_MESSAGES))
