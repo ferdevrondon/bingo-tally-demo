@@ -23,6 +23,7 @@ export type GameActionError =
   | "pending_carryover"
   | "check_in_pending"
   | "payment_method_required"
+  | "payment_method_retired"
   | "invalid_amount"
   | "payout_exceeds_balance"
   | "game_session_has_rounds"
@@ -61,6 +62,7 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   pending_carryover: "Primero decide si el jugador mantiene o libera su jugada.",
   check_in_pending: "Todos los jugadores con números deben hacer check-in antes de anotar ganadores.",
   payment_method_required: "Elige el método de pago.",
+  payment_method_retired: "Ese método de pago ya no se usa. Elige otro.",
   invalid_amount: "El monto debe ser mayor a 0.",
   payout_exceeds_balance: "El pago no puede ser mayor al saldo a favor del jugador.",
   game_session_has_rounds: "La jornada ya tiene rondas; no se puede borrar.",

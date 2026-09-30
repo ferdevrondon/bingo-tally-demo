@@ -1,5 +1,6 @@
 import { cache } from "react"
 
+import { isBank } from "@/lib/banks"
 import { accountFor, listPlayerAccounts } from "@/lib/data/accounts"
 import { getCurrentHouse } from "@/lib/data/house"
 import { SALE_TYPES } from "@/lib/game-report/ledger"
@@ -71,7 +72,7 @@ export const loadSettlement = cache(async (gameSessionId: number): Promise<Settl
     supabase
       .from("settlement_players")
       .select(
-        "player_id, closing_balance, received, paid, resolution, note, resolved_at, final_balance, players(name, payment_method)"
+        "player_id, closing_balance, received, paid, resolution, note, resolved_at, final_balance, players(name, payment_method, bank)"
       )
       .eq("game_session_id", gameSessionId),
     supabase
@@ -97,6 +98,7 @@ export const loadSettlement = cache(async (gameSessionId: number): Promise<Settl
         paymentMethod: isPaymentMethod(row.players?.payment_method)
           ? row.players.payment_method
           : null,
+        bank: isBank(row.players?.bank) ? row.players.bank : null,
         openingBalance: opening.get(row.player_id) ?? 0,
         ...t,
         closingBalance: Number(row.closing_balance),

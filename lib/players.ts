@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { BANKS, type Bank } from "@/lib/banks"
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/payment-methods"
 
 // A house player from the catalog (public.players). Balances are not here:
@@ -9,6 +10,8 @@ export interface Player {
   name: string
   username: string
   paymentMethod: PaymentMethod | null
+  /** The player's bank (Phase 6a2), optional. */
+  bank: Bank | null
   isVip: boolean
 }
 
@@ -20,5 +23,6 @@ export const playerInputSchema = z.object({
   name: z.string().trim().min(1, "Ingresa un nombre"),
   username: z.string().trim(),
   paymentMethod: z.enum(PAYMENT_METHODS).nullable(),
+  bank: z.enum(BANKS).nullable(),
   isVip: z.boolean(),
 })

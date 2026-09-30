@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/rounds"
+import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 
 // The settlement of an ended game session (public.settlements /
@@ -33,6 +34,7 @@ export interface SettlementPlayer {
   playerId: number
   name: string
   paymentMethod: PaymentMethod | null
+  bank: Bank | null
   /** How the game session went for the player. */
   openingBalance: number
   /** Numbers bought, net of refunds (negative). */

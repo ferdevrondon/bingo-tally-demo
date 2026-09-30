@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-import { isPaymentMethod, type PaymentMethod } from "@/lib/payment-methods"
+import { isRecordedPaymentMethod, type RecordedPaymentMethod } from "@/lib/payment-methods"
 import type { Database } from "@/lib/supabase/database.types"
 import type { ActivityEntry, ActivityEntryType } from "@/lib/round-draft/types"
 
@@ -55,7 +55,7 @@ export function toActivityEntry(row: LedgerRow): ActivityEntry {
     ticketId: row.ticket_id,
     number: row.number,
     amount: row.amount === null ? null : Number(row.amount),
-    paymentMethod: isPaymentMethod(row.payment_method) ? row.payment_method : null,
+    paymentMethod: isRecordedPaymentMethod(row.payment_method) ? row.payment_method : null,
     note: row.note,
   }
 }
@@ -174,14 +174,14 @@ export async function fetchGameSessionReport(
   // Per player and per round, what the ledger moved.
   const totals = new Map<number, Omit<PlayerReport, "id" | "name" | "removed" | "opening" | "closing">>()
   const salesByRound = new Map<number, number>()
-  const cash = new Map<PaymentMethod | null, CashLine>()
+  const cash = new Map<RecordedPaymentMethod | null, CashLine>()
   for (const row of ledger) {
     const sale = saleAmount(row.type, row.amount)
     if (row.round_id !== null && sale !== 0) {
       salesByRound.set(row.round_id, (salesByRound.get(row.round_id) ?? 0) + sale)
     }
     if (row.type === "recharge" || row.type === "payout") {
-      const method = isPaymentMethod(row.payment_method) ? row.payment_method : null
+      const method = isRecordedPaymentMethod(row.payment_method) ? row.payment_method : null
       const line = cash.get(method) ?? { method, recharges: 0, payouts: 0 }
       if (row.type === "recharge") line.recharges += Number(row.amount ?? 0)
       else line.payouts += -Number(row.amount ?? 0)

@@ -39,6 +39,7 @@ import {
   deactivatePlayer,
   updatePlayer,
 } from "@/lib/data/player-actions"
+import { BANK_OPTIONS, bankLabel, isBank } from "@/lib/banks"
 import {
   isPaymentMethod,
   PAYMENT_METHOD_OPTIONS,
@@ -53,6 +54,7 @@ function toInput(player: Player): PlayerInput {
     name: player.name,
     username: player.username,
     paymentMethod: player.paymentMethod,
+    bank: player.bank,
     isVip: player.isVip,
   }
 }
@@ -106,6 +108,7 @@ export default function PlayerPage({
         paymentMethod: isAdmin
           ? (player.paymentMethod ?? "")
           : paymentMethodLabel(player.paymentMethod),
+        bank: isAdmin ? (player.bank ?? "") : bankLabel(player.bank) || "—",
         isVip: player.isVip ? "VIP" : "—",
         balance: signedMoney(accountFrom(accountById, player.id).balance),
         status: accountFrom(accountById, player.id).inGame
@@ -127,6 +130,9 @@ export default function PlayerPage({
             options: PAYMENT_METHOD_OPTIONS,
           }
         : { key: "paymentMethod", header: "Método de pago" },
+      isAdmin
+        ? { key: "bank", header: "Entidad bancaria", type: "select", options: BANK_OPTIONS }
+        : { key: "bank", header: "Entidad bancaria" },
       { key: "isVip", header: "VIP" },
       { key: "balance", header: "Saldo" },
       { key: "status", header: "Estado" },
@@ -194,17 +200,22 @@ export default function PlayerPage({
     value: string
   ) {
     const player = findPlayer(rowId)
-    if (!player || key !== "paymentMethod" || !isPaymentMethod(value)) return
-    if (value === player.paymentMethod) return
-    if (
-      writeSucceeded(
-        await updatePlayer(player.id, {
-          ...toInput(player),
-          paymentMethod: value,
-        })
-      )
-    ) {
-      toast.success("Método de pago actualizado")
+    if (!player) return
+    let input: PlayerInput
+    let message: string
+    if (key === "paymentMethod" && isPaymentMethod(value)) {
+      if (value === player.paymentMethod) return
+      input = { ...toInput(player), paymentMethod: value }
+      message = "Método de pago actualizado"
+    } else if (key === "bank" && isBank(value)) {
+      if (value === player.bank) return
+      input = { ...toInput(player), bank: value }
+      message = "Entidad bancaria actualizada"
+    } else {
+      return
+    }
+    if (writeSucceeded(await updatePlayer(player.id, input))) {
+      toast.success(message)
     } else {
       // The table already shows the new value; reload the saved one.
       router.refresh()
@@ -320,6 +331,7 @@ export default function PlayerPage({
             name: accountDialog.player.name,
             balance: accountDialog.account.balance,
             paymentMethod: accountDialog.player.paymentMethod,
+            bank: accountDialog.player.bank,
           }}
           onConfirm={handleMovement}
         />

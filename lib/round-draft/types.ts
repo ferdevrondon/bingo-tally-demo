@@ -1,4 +1,5 @@
-import type { PaymentMethod } from "@/lib/payment-methods"
+import type { Bank } from "@/lib/banks"
+import type { PaymentMethod, RecordedPaymentMethod } from "@/lib/payment-methods"
 
 /** A player as seen by the live game: catalog data plus their balance in
  *  this game session (game_session_players), or their account balance when
@@ -8,6 +9,8 @@ export interface DraftPlayer {
   name: string
   /** From the catalog; prefills the recharge payment method. */
   paymentMethod: PaymentMethod | null
+  /** From the catalog; shown next to the recharge payment method. */
+  bank: Bank | null
   /** Signed (business rule B): negative = owes the house, positive = the
    *  house owes them. */
   balance: number
@@ -73,7 +76,7 @@ export interface ActivityEntry {
   ticketId: number | null
   number: number | null
   amount: number | null
-  paymentMethod: PaymentMethod | null
+  paymentMethod: RecordedPaymentMethod | null
   note: string | null
 }
 

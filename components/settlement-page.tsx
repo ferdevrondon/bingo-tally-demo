@@ -389,6 +389,7 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
             name: dialog.player.name,
             balance: dialog.player.currentBalance,
             paymentMethod: dialog.player.paymentMethod,
+            bank: dialog.player.bank,
           }}
           onConfirm={handleMovement}
         />

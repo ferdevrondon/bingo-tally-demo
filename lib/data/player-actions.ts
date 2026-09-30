@@ -22,6 +22,7 @@ function toRow(input: z.infer<typeof playerInputSchema>) {
     name: input.name,
     username: input.username || null,
     payment_method: input.paymentMethod,
+    bank: input.bank,
     is_vip: input.isVip,
   }
 }

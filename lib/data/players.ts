@@ -1,5 +1,6 @@
 import { cache } from "react"
 
+import { isBank } from "@/lib/banks"
 import { getCurrentHouse } from "@/lib/data/house"
 import { isPaymentMethod } from "@/lib/payment-methods"
 import type { Player } from "@/lib/players"
@@ -8,10 +9,10 @@ import { createClient } from "@/lib/supabase/server"
 
 type PlayerRow = Database["public"]["Tables"]["players"]["Row"]
 
-export const PLAYER_COLUMNS = "id, name, username, payment_method, is_vip"
+export const PLAYER_COLUMNS = "id, name, username, payment_method, bank, is_vip"
 
 export function toPlayer(
-  row: Pick<PlayerRow, "id" | "name" | "username" | "payment_method" | "is_vip">
+  row: Pick<PlayerRow, "id" | "name" | "username" | "payment_method" | "bank" | "is_vip">
 ): Player {
   return {
     id: row.id,
@@ -20,6 +21,7 @@ export function toPlayer(
     paymentMethod: isPaymentMethod(row.payment_method)
       ? row.payment_method
       : null,
+    bank: isBank(row.bank) ? row.bank : null,
     isVip: row.is_vip,
   }
 }
