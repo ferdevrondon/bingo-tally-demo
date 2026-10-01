@@ -8,8 +8,14 @@ import {
   fetchGameSessionReport,
   fetchRoundsOfDay,
 } from "@/lib/game-report/fetch"
-import { houseToday, isDayString } from "@/lib/game-report/format"
-import type { GameSessionListItem, GameSessionReport, RoundsOfDay } from "@/lib/game-report/types"
+import { houseToday, isDayString, isMonthString, monthDays } from "@/lib/game-report/format"
+import { fetchPeriodReport } from "@/lib/game-report/period"
+import type {
+  GameSessionListItem,
+  GameSessionReport,
+  PeriodReport,
+  RoundsOfDay,
+} from "@/lib/game-report/types"
 import { createClient } from "@/lib/supabase/server"
 
 // Server reads of the house's game sessions (Reportes → Jornadas, the game
@@ -36,6 +42,30 @@ export async function loadRoundsOfDay(day: string | undefined): Promise<RoundsOf
   if (!house) return null
   const date = isDayString(day) ? day : houseToday(house.timezone)
   return fetchRoundsOfDay(await createClient(), house.houseId, date, house.timezone)
+}
+
+/** Reportes → Diario: one day of the house (today when missing or invalid). */
+export async function loadDailyReport(day: string | undefined): Promise<PeriodReport | null> {
+  const house = await getCurrentHouse()
+  if (!house) return null
+  const date = isDayString(day) ? day : houseToday(house.timezone)
+  return fetchPeriodReport(await createClient(), house.houseId, date, date, house.timezone)
+}
+
+/** Reportes → Mensual: one month of the house ("2026-09"; the current one
+ *  when missing or invalid). */
+export async function loadMonthlyReport(month: string | undefined): Promise<PeriodReport | null> {
+  const house = await getCurrentHouse()
+  if (!house) return null
+  const value = isMonthString(month) ? month : houseToday(house.timezone).slice(0, 7)
+  const days = monthDays(value)
+  return fetchPeriodReport(
+    await createClient(),
+    house.houseId,
+    days[0],
+    days[days.length - 1],
+    house.timezone
+  )
 }
 
 export interface HomeSummary {

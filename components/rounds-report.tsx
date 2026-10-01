@@ -6,19 +6,10 @@ import { useRouter } from "next/navigation"
 import { RoundHistoryCard } from "@/components/round-history-card"
 import { RoundsDateFilter } from "@/components/rounds-date-filter"
 import { Badge } from "@/components/ui/badge"
+import { dateToDay, dayToDate } from "@/lib/day-param"
 import type { RoundsOfDay } from "@/lib/game-report/types"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { cn } from "@/lib/utils"
-
-function toDate(day: string) {
-  const [y, m, d] = day.split("-").map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function toDay(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
 
 // Reportes → Rondas: every round played on the chosen day (house time zone),
 // grouped by game session. The day lives in the URL (?date=), so reloading
@@ -48,8 +39,8 @@ export function RoundsReport({ report }: { report: RoundsOfDay }) {
           )}
         </div>
         <RoundsDateFilter
-          date={toDate(report.day)}
-          onDateChange={(date) => router.push(`/reports/rounds?date=${toDay(date)}`)}
+          date={dayToDate(report.day)}
+          onDateChange={(date) => router.push(`/reports/rounds?date=${dateToDay(date)}`)}
         />
       </div>
 

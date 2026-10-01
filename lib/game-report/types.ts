@@ -136,3 +136,43 @@ export interface RoundsOfDay {
   gameSessions: { id: number; number: number; rounds: RoundReport[] }[]
   houseTotal: number
 }
+
+/** Cash moved in a period by one payment method, by origin. */
+export interface PeriodCashLine {
+  method: RecordedPaymentMethod | null
+  /** Rows with a game session. */
+  inGame: { recharges: number; payouts: number }
+  /** Rows without one: settlement and /players moves. */
+  outside: { recharges: number; payouts: number }
+}
+
+export interface PeriodDay {
+  /** "2026-09-29" */
+  day: string
+  /** "mar 29" */
+  label: string
+  gameSessions: number
+  /** House result of the game sessions that started that day. */
+  houseTotal: number
+  /** Recharges − payouts registered that day. */
+  netCash: number
+}
+
+/** Reportes → Diario / Mensual: a period of the house (Phase 6b2). */
+export interface PeriodReport {
+  /** Inclusive days, in the house's time zone. */
+  from: string
+  to: string
+  /** "29 de septiembre de 2026" or "septiembre de 2026", formatted on the server. */
+  label: string
+  house: HouseResult
+  cash: PeriodCashLine[]
+  activity: { gameSessions: number; roundsPlayed: number; players: number; tickets: number }
+  topPlayers: {
+    played: { playerId: number; name: string; amount: number }[]
+    won: { playerId: number; name: string; amount: number }[]
+  }
+  /** One entry per day of the period, with or without movement. */
+  days: PeriodDay[]
+  gameSessions: { id: number; number: number; startedAtLabel: string }[]
+}
