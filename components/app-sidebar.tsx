@@ -16,20 +16,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
-
-  CameraIcon,
-  FileTextIcon,
   Settings2Icon,
-  DatabaseIcon,
-  FileChartColumnIcon,
-  FileIcon,
-
   Users,
   Target,
   ActivityIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-
   FileChartColumn,
   WalletIcon,
 } from "lucide-react"
@@ -48,22 +40,11 @@ const data = {
       url: "/rounds",
       icon: <Target />,
     },
-    // {
-    //   title: "Jornadas",
-    //   url: "/games",
-    //   icon: <ListIcon />,
-    // },
     {
       title: "Jugadores",
       url: "/players",
       icon: <Users />,
     },
-    // {
-    //   title: "Cartones",
-    //   url: "#",
-    //   icon: <PlayingCardsFan />,
-    // },
-
     {
       title: "Liquidación",
       url: "/settlement",
@@ -75,76 +56,11 @@ const data = {
       icon: <FileChartColumn />,
     },
   ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: <CameraIcon />,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: <FileTextIcon />,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: <FileTextIcon />,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
   navSecondary: [
     {
-      title: "Settings",
+      title: "Configuración",
       url: "/settings",
       icon: <Settings2Icon />,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: <DatabaseIcon />,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: <FileChartColumnIcon />,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: <FileIcon />,
     },
   ],
 }
@@ -204,7 +120,6 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        {/* <NavDocuments items={data.documents} /> */}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

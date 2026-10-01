@@ -308,7 +308,13 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
           </Button>
           <h1 className="text-2xl font-semibold">Liquidación · Jornada #{settlement.number}</h1>
           <p className="text-sm text-muted-foreground">
-            Terminó el {settlement.endedAtLabel} · {settlement.players.length} jugadores
+            Terminó el {settlement.endedAtLabel} · {settlement.players.length} jugadores ·{" "}
+            <Link
+              href={`/reports/games/${settlement.gameSessionId}`}
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              Ver reporte de la jornada
+            </Link>
           </p>
         </div>
         {isOpen ? (

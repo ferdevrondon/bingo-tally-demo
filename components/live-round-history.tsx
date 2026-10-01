@@ -15,19 +15,35 @@ export function LiveRoundHistory() {
   const { state } = useRoundDraft()
   const timeZone = useHouse()?.timezone ?? "UTC"
   const [rounds, setRounds] = React.useState<RoundReport[]>([])
+  const [failed, setFailed] = React.useState(false)
   const { gameSessionId, roundsPlayed } = state
 
   React.useEffect(() => {
     let cancelled = false
     fetchClosedRounds(createClient(), gameSessionId, timeZone)
       .then((closed) => {
-        if (!cancelled) setRounds(closed)
+        if (cancelled) return
+        setRounds(closed)
+        setFailed(false)
       })
-      .catch((error) => console.error("round history read failed", error))
+      .catch((error) => {
+        console.error("round history read failed", error)
+        if (!cancelled) setFailed(true)
+      })
     return () => {
       cancelled = true
     }
   }, [gameSessionId, roundsPlayed, timeZone])
 
-  return <RoundHistoryCard rounds={rounds} description={`Jornada #${state.gameNumber}`} />
+  return (
+    <RoundHistoryCard
+      rounds={rounds}
+      description={`Jornada #${state.gameNumber}`}
+      emptyText={
+        failed
+          ? "No se pudo cargar el historial. Recarga la página."
+          : "Todavía no se cerró ninguna ronda."
+      }
+    />
+  )
 }
