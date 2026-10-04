@@ -1,5 +1,6 @@
 "use client"
 
+import type * as React from "react"
 import { GiftIcon } from "lucide-react"
 
 import type { PlayerNumberSummary } from "@/lib/round-draft/selectors"
@@ -11,16 +12,19 @@ function plural(count: number, one: string, many: string) {
 
 // What a player holds in /new-game without looking at the tickets: each
 // number once ("4 ×2" when it is on more than one ticket), its gifts and the
-// total of plays.
+// total of plays, followed by `trailing` (the balance on /new-game).
 export function PlayerNumbersSummary({
   numbers,
   colorClass,
+  trailing,
 }: {
   numbers: PlayerNumberSummary[]
   /** The player's color on the tickets (getPlayerColorClass). */
   colorClass: string
+  /** Shown after the total, e.g. the player's balance ("Debe $10"). */
+  trailing?: React.ReactNode
 }) {
-  if (numbers.length === 0) return null
+  if (numbers.length === 0 && !trailing) return null
   const plays = numbers.reduce((total, n) => total + n.count, 0)
   const gifts = numbers.reduce((total, n) => total + n.gifts, 0)
 
@@ -55,10 +59,13 @@ export function PlayerNumbersSummary({
           )}
         </span>
       ))}
-      <span className="ml-1 text-xs whitespace-nowrap text-muted-foreground">
-        {plural(plays, "jugada", "jugadas")}
-        {gifts > 0 && ` · ${plural(gifts, "regalo", "regalos")}`}
-      </span>
+      {plays > 0 && (
+        <span className="ml-1 text-xs whitespace-nowrap text-muted-foreground">
+          {plural(plays, "jugada", "jugadas")}
+          {gifts > 0 && ` · ${plural(gifts, "regalo", "regalos")}`}
+        </span>
+      )}
+      {trailing && <span className="ml-1 whitespace-nowrap">{trailing}</span>}
     </div>
   )
 }
