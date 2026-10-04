@@ -103,7 +103,7 @@ export default function MainPageSplit({
             <div className="flex size-9 items-center justify-center rounded-xl bg-foreground/10">
               <ZapIcon className="size-4" />
             </div>
-            <span className="text-sm font-medium">Jornada Live</span>
+            <span className="text-sm font-medium">Jornada en vivo</span>
           </div>
           {/* <Badge
             variant="outline"

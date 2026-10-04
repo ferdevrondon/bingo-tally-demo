@@ -57,7 +57,9 @@ export async function loadDailyReport(day: string | undefined): Promise<PeriodRe
 export async function loadMonthlyReport(month: string | undefined): Promise<PeriodReport | null> {
   const house = await getCurrentHouse()
   if (!house) return null
-  const value = isMonthString(month) ? month : houseToday(house.timezone).slice(0, 7)
+  const current = houseToday(house.timezone).slice(0, 7)
+  // A future month (typed in the URL) shows the current one.
+  const value = isMonthString(month) && month <= current ? month : current
   const days = monthDays(value)
   return fetchPeriodReport(
     await createClient(),
