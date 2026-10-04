@@ -14,6 +14,7 @@ import type { PaymentMethod } from "@/lib/payment-methods"
 import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 
+import { assignTicket, compactLine, movedPlays } from "./assign-ticket"
 import { fetchGameSessionState } from "./fetch-state"
 import {
   createGameApi,
@@ -51,6 +52,8 @@ type Action =
   | { type: "REMOVE_PLAYER"; payload: { playerId: number } }
   | { type: "AWARD_PRIZE"; payload: { slotIndex: number; number: number } }
   | { type: "RESOLVE_CARRYOVER"; payload: { playerId: number; releaseNumbers: Position[] } }
+  // Rule 2: after plays were freed, the rows of these numbers move up.
+  | { type: "COMPACT_LINES"; payload: { numbers: number[] } }
 
 function updatePlayer(
   players: DraftPlayer[],
@@ -260,6 +263,16 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         kept * price
       )
     }
+    case "COMPACT_LINES": {
+      // Nothing moves once a winning number was entered in the open round
+      // (same rule as private.compact_line).
+      if (!state.round || state.winningNumbers.some((n) => n !== null)) return state
+      const tickets = [...new Set(action.payload.numbers)].reduce(
+        (all, number) => compactLine(number, all, false),
+        state.tickets
+      )
+      return { ...state, tickets }
+    }
     default:
       return state
   }
@@ -274,7 +287,9 @@ interface RoundDraftContextValue {
   /** Active round templates of the house (/rounds), loaded by app/(app)/(game)/layout.tsx. */
   roundTemplates: Round[]
   setActivePlayer: (playerId: number | null) => void
-  /** Claims a free number for the active player, or releases their own. */
+  /** Buys a free number for the active player (the ticket is chosen by the
+   *  database: lowest index with the number free; `ticketId` is ignored for a
+   *  free number), or releases their own number on that ticket. */
   assignNumber: (ticketId: number, number: number) => void
   toggleGift: (ticketId: number, number: number) => void
   /** Check-in (rule A): the player confirms they are in this round. No money. */
@@ -441,6 +456,30 @@ export function RoundDraftProvider({
     const gameSessionId = state.gameSessionId
     const roundId = state.round?.roundId ?? null
 
+    // An action that frees plays (rule 2): same as perform, and when the
+    // freed rows reshuffle other plays, tell the host once it was saved.
+    function performFreeing(
+      optimistic: Action[],
+      call: () => Promise<GameActionResult<undefined>>
+    ) {
+      const numbers = optimistic.flatMap((a) => (a.type === "COMPACT_LINES" ? a.payload.numbers : []))
+      const without = optimistic.filter((a) => a.type !== "COMPACT_LINES")
+      const freed = without.reduce(reducer, stateRef.current)
+      const hasAwards = !freed.round || freed.winningNumbers.some((n) => n !== null)
+      const lines = [...new Set(numbers)]
+        .filter((n) => movedPlays(n, freed.tickets, hasAwards) > 0)
+        .sort((a, b) => a - b)
+      void perform(optimistic, call).then((result) => {
+        if (!result.ok || lines.length === 0) return
+        toast.info(
+          lines.length === 1
+            ? `Se reacomodó la línea ${lines[0]}`
+            : `Se reacomodaron las líneas ${lines.join(", ")}`,
+          { id: "reshuffle" }
+        )
+      })
+    }
+
     return {
       state,
       readOnly,
@@ -449,18 +488,41 @@ export function RoundDraftProvider({
       assignNumber: (ticketId, number) => {
         const current = stateRef.current
         const playerId = current.activePlayerId
-        if (playerId === null) return
-        const position = { ticketId, number }
-        const entry = findEntry(current, position)
-        if (entry?.playerId === null) {
-          void perform([{ type: "CLAIM_NUMBER", payload: { ...position, playerId } }], () =>
-            api.purchaseNumber(position, playerId, requestId())
+        if (playerId === null || readOnly) return
+        const tapped = findEntry(current, { ticketId, number })
+        if (tapped?.playerId === playerId) {
+          // Releasing is positional: it frees the player's own number there.
+          const position = { ticketId, number }
+          performFreeing(
+            [
+              { type: "RELEASE_NUMBER", payload: position },
+              { type: "COMPACT_LINES", payload: { numbers: [number] } },
+            ],
+            () => api.releaseNumber(position, playerId, requestId())
           )
-        } else if (entry?.playerId === playerId) {
-          void perform([{ type: "RELEASE_NUMBER", payload: position }], () =>
-            api.releaseNumber(position, playerId, requestId())
-          )
+          return
         }
+        if (tapped?.playerId !== null) return
+        // A purchase only triggers the action: the ticket is the lowest-index
+        // one with this number free (decided by record_purchase; this just
+        // predicts it). The tapped ticket is ignored.
+        const assignedTicketId = assignTicket(number, current.tickets)
+        if (assignedTicketId === null) {
+          toast.error(GAME_ACTION_ERROR_MESSAGES.no_free_ticket)
+          return
+        }
+        const position = { ticketId: assignedTicketId, number }
+        void perform([{ type: "CLAIM_NUMBER", payload: { ...position, playerId } }], () =>
+          api.purchaseNumber(gameSessionId, number, playerId, requestId())
+        ).then((result) => {
+          if (!result.ok) return
+          const index = stateRef.current.tickets.find((t) => t.id === result.data)?.index
+          toast.success(
+            index === undefined ? "Jugada asignada" : `Asignado al cartón ${index}`,
+            // One at a time: a new purchase replaces the previous notice.
+            { id: "assigned" }
+          )
+        })
       },
       toggleGift: (ticketId, number) => {
         const position = { ticketId, number }
@@ -488,8 +550,16 @@ export function RoundDraftProvider({
         )
       },
       removePlayer: (playerId) => {
-        void perform([{ type: "REMOVE_PLAYER", payload: { playerId } }], () =>
-          api.removePlayer(gameSessionId, playerId, requestId())
+        const owned = stateRef.current.tickets
+          .flatMap((t) => t.numbers)
+          .filter((n) => n.playerId === playerId)
+          .map((n) => n.number)
+        performFreeing(
+          [
+            { type: "REMOVE_PLAYER", payload: { playerId } },
+            { type: "COMPACT_LINES", payload: { numbers: owned } },
+          ],
+          () => api.removePlayer(gameSessionId, playerId, requestId())
         )
       },
       editPlayerNumbers: (playerId, changes) => {
@@ -509,7 +579,10 @@ export function RoundDraftProvider({
             ? [...own, { type: "TOGGLE_GIFT", payload: position }]
             : own
         })
-        void perform(optimistic, () =>
+        // The numbers freed by the edit are compacted once, after all changes.
+        const freed = changes.filter((c) => !c.owned).map((c) => c.number)
+        if (freed.length > 0) optimistic.push({ type: "COMPACT_LINES", payload: { numbers: freed } })
+        performFreeing(optimistic, () =>
           api.editPlayerNumbers(gameSessionId, playerId, changes, requestId())
         )
       },
@@ -520,8 +593,12 @@ export function RoundDraftProvider({
         )
       },
       resolveCarryOver: (playerId, releaseNumbers) => {
-        void perform([{ type: "RESOLVE_CARRYOVER", payload: { playerId, releaseNumbers } }], () =>
-          api.resolveCarryover(gameSessionId, playerId, releaseNumbers, requestId())
+        performFreeing(
+          [
+            { type: "RESOLVE_CARRYOVER", payload: { playerId, releaseNumbers } },
+            { type: "COMPACT_LINES", payload: { numbers: releaseNumbers.map((r) => r.number) } },
+          ],
+          () => api.resolveCarryover(gameSessionId, playerId, releaseNumbers, requestId())
         )
       },
       addTicket: async () =>

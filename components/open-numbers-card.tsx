@@ -5,16 +5,11 @@ import { CheckCircle2Icon } from "lucide-react"
 import { BingoBall } from "@/components/bingo-ball"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { assignTicket } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import type { RoundDraftState } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
 const ALL_NUMBERS = Array.from({ length: 15 }, (_, i) => i + 1)
-
-function firstOpenTicketId(state: RoundDraftState, number: number): number | undefined {
-  return state.tickets.find((t) => t.numbers.find((n) => n.number === number)?.playerId === null)
-    ?.id
-}
 
 export function OpenNumbersCard() {
   const { state, readOnly, assignNumber } = useRoundDraft()
@@ -60,8 +55,8 @@ export function OpenNumbersCard() {
                 disabled={!canAssign}
                 title={canAssign ? undefined : "Selecciona un jugador primero"}
                 onClick={() => {
-                  const ticketId = firstOpenTicketId(state, number)
-                  if (ticketId !== undefined) assignNumber(ticketId, number)
+                  const ticketId = assignTicket(number, state.tickets)
+                  if (ticketId !== null) assignNumber(ticketId, number)
                 }}
                 className={cn(canAssign ? "cursor-pointer" : "cursor-not-allowed opacity-60")}
               >

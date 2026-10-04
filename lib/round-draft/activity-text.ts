@@ -17,6 +17,7 @@ export const ACTIVITY_LABELS: Record<ActivityEntryType, string> = {
   number_purchased: "Compra",
   number_released: "Liberación",
   number_reassigned: "Cambio",
+  number_moved: "Reacomodo",
   number_gifted: "Regalo",
   number_ungifted: "Regalo",
   recharge: "Recarga",
@@ -77,6 +78,9 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
       return (entry.amount ?? 0) > 0
         ? `${position} pasó a ${player} (${amount})`
         : `${player} cedió ${position}`
+    case "number_moved":
+      // The origin ticket index is in the note; no money moves.
+      return `${player}: #${entry.number ?? "?"} pasó del cartón ${entry.note ?? "?"} al cartón ${ticketIndex ?? "?"}`
     case "number_gifted":
       return `${position} regalado a ${player}`
     case "number_ungifted":

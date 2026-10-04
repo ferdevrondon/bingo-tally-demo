@@ -107,11 +107,18 @@ export function createGameApi(isAdmin: boolean) {
         })
       ),
 
-    purchaseNumber: (position: Position, playerId: number, requestId: string) =>
+    // The database picks the ticket (lowest index with the number free) and
+    // returns its id.
+    purchaseNumber: (
+      gameSessionId: number,
+      number: number,
+      playerId: number,
+      requestId: string
+    ) =>
       run((s) =>
         s.rpc("record_purchase", {
-          p_ticket_id: position.ticketId,
-          p_number: position.number,
+          p_game_session_id: gameSessionId,
+          p_number: number,
           p_player_id: playerId,
           p_request_id: requestId,
         })
