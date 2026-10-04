@@ -14,7 +14,7 @@ import type { PaymentMethod } from "@/lib/payment-methods"
 import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 
-import { assignTicket } from "./assign-ticket"
+import { assignTicket, compactLine } from "./assign-ticket"
 import { fetchGameSessionState } from "./fetch-state"
 import {
   createGameApi,
@@ -52,6 +52,8 @@ type Action =
   | { type: "REMOVE_PLAYER"; payload: { playerId: number } }
   | { type: "AWARD_PRIZE"; payload: { slotIndex: number; number: number } }
   | { type: "RESOLVE_CARRYOVER"; payload: { playerId: number; releaseNumbers: Position[] } }
+  // Rule 2: after plays were freed, the rows of these numbers move up.
+  | { type: "COMPACT_LINES"; payload: { numbers: number[] } }
 
 function updatePlayer(
   players: DraftPlayer[],
@@ -261,6 +263,16 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
         kept * price
       )
     }
+    case "COMPACT_LINES": {
+      // Nothing moves once a winning number was entered in the open round
+      // (same rule as private.compact_line).
+      if (!state.round || state.winningNumbers.some((n) => n !== null)) return state
+      const tickets = [...new Set(action.payload.numbers)].reduce(
+        (all, number) => compactLine(number, all, false),
+        state.tickets
+      )
+      return { ...state, tickets }
+    }
     default:
       return state
   }
@@ -457,8 +469,12 @@ export function RoundDraftProvider({
         if (tapped?.playerId === playerId) {
           // Releasing is positional: it frees the player's own number there.
           const position = { ticketId, number }
-          void perform([{ type: "RELEASE_NUMBER", payload: position }], () =>
-            api.releaseNumber(position, playerId, requestId())
+          void perform(
+            [
+              { type: "RELEASE_NUMBER", payload: position },
+              { type: "COMPACT_LINES", payload: { numbers: [number] } },
+            ],
+            () => api.releaseNumber(position, playerId, requestId())
           )
           return
         }
@@ -508,8 +524,16 @@ export function RoundDraftProvider({
         )
       },
       removePlayer: (playerId) => {
-        void perform([{ type: "REMOVE_PLAYER", payload: { playerId } }], () =>
-          api.removePlayer(gameSessionId, playerId, requestId())
+        const owned = stateRef.current.tickets
+          .flatMap((t) => t.numbers)
+          .filter((n) => n.playerId === playerId)
+          .map((n) => n.number)
+        void perform(
+          [
+            { type: "REMOVE_PLAYER", payload: { playerId } },
+            { type: "COMPACT_LINES", payload: { numbers: owned } },
+          ],
+          () => api.removePlayer(gameSessionId, playerId, requestId())
         )
       },
       editPlayerNumbers: (playerId, changes) => {
@@ -529,6 +553,9 @@ export function RoundDraftProvider({
             ? [...own, { type: "TOGGLE_GIFT", payload: position }]
             : own
         })
+        // The numbers freed by the edit are compacted once, after all changes.
+        const freed = changes.filter((c) => !c.owned).map((c) => c.number)
+        if (freed.length > 0) optimistic.push({ type: "COMPACT_LINES", payload: { numbers: freed } })
         void perform(optimistic, () =>
           api.editPlayerNumbers(gameSessionId, playerId, changes, requestId())
         )
@@ -540,8 +567,12 @@ export function RoundDraftProvider({
         )
       },
       resolveCarryOver: (playerId, releaseNumbers) => {
-        void perform([{ type: "RESOLVE_CARRYOVER", payload: { playerId, releaseNumbers } }], () =>
-          api.resolveCarryover(gameSessionId, playerId, releaseNumbers, requestId())
+        void perform(
+          [
+            { type: "RESOLVE_CARRYOVER", payload: { playerId, releaseNumbers } },
+            { type: "COMPACT_LINES", payload: { numbers: releaseNumbers.map((r) => r.number) } },
+          ],
+          () => api.resolveCarryover(gameSessionId, playerId, releaseNumbers, requestId())
         )
       },
       addTicket: async () =>

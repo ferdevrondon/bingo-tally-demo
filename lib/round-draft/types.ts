@@ -45,6 +45,7 @@ export type ActivityEntryType =
   | "number_purchased"
   | "number_released"
   | "number_reassigned"
+  | "number_moved"
   | "number_gifted"
   | "number_ungifted"
   | "recharge"

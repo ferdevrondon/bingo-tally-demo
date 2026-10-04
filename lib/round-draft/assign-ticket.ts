@@ -32,3 +32,32 @@ export function assignTicket(lineNumber: number, tickets: Ticket[]): number | nu
   )
   return free?.id ?? null
 }
+
+/** Mirrors private.compact_line (compact-ticket-rows migration): the plays of
+ *  one number move to the lowest tickets, keeping their order, so freeing a
+ *  play leaves no hole in front of later ones. Only the ticket changes: the
+ *  number, the player and the gift flag travel together. `hasAwards`: the open
+ *  round already has winning numbers, so nothing moves (the hole stays).
+ *  Returns the tickets in the order they came in. */
+export function compactLine(lineNumber: number, tickets: Ticket[], hasAwards: boolean): Ticket[] {
+  if (!isValidLineNumber(lineNumber)) {
+    throw new RangeError(`Line number must be an integer between 1 and ${LINE_COUNT}`)
+  }
+  if (hasAwards) return tickets
+  const ordered = ticketsByIndex(tickets)
+  const plays = ordered.flatMap((ticket) => {
+    const entry = ticket.numbers.find((n) => n.number === lineNumber)
+    return entry && entry.playerId !== null
+      ? [{ playerId: entry.playerId, isGift: entry.isGift }]
+      : []
+  })
+  const slotOf = new Map(ordered.map((ticket, i) => [ticket.id, plays[i] ?? null]))
+  return tickets.map((ticket) => ({
+    ...ticket,
+    numbers: ticket.numbers.map((n) => {
+      if (n.number !== lineNumber) return n
+      const play = slotOf.get(ticket.id) ?? null
+      return { ...n, playerId: play?.playerId ?? null, isGift: play?.isGift ?? false }
+    }),
+  }))
+}
