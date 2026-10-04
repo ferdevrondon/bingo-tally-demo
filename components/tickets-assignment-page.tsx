@@ -12,6 +12,7 @@ import {
 import { TicketCard } from "@/components/ticket-card"
 import { TicketListColumn } from "@/components/ticket-list-column"
 import { PlayerForm } from "@/components/player-form"
+import { PlayerNumbersSummary } from "@/components/player-numbers-summary"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -39,7 +40,11 @@ import { balanceLabel } from "@/lib/round-draft/balance"
 import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
-import { getActivePlayers } from "@/lib/round-draft/selectors"
+import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import {
+  getActivePlayers,
+  getPlayerNumberSummary,
+} from "@/lib/round-draft/selectors"
 import { roundOptionLabel } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 import { writeSucceeded } from "@/lib/write-feedback"
@@ -289,9 +294,9 @@ export function TicketsAssignmentPage() {
             {activePlayers.map((player) => (
               <div
                 key={player.id}
-                className="flex flex-wrap items-center justify-between gap-3"
+                className="flex flex-wrap items-center gap-x-4 gap-y-2"
               >
-                <div className="flex items-center gap-2">
+                <div className="order-1 flex shrink-0 items-center gap-2">
                   <span className="text-sm font-medium">{player.name}</span>
                   {player.balance !== 0 && !player.pendingCarryOverDecision && (
                     <span
@@ -305,12 +310,18 @@ export function TicketsAssignmentPage() {
                     </span>
                   )}
                 </div>
+                <PlayerNumbersSummary
+                  numbers={getPlayerNumberSummary(state, player.id)}
+                  colorClass={getPlayerColorClass(
+                    state.players.findIndex((p) => p.id === player.id)
+                  )}
+                />
                 {player.pendingCarryOverDecision ? (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="order-2 ml-auto text-xs text-muted-foreground @2xl/main:order-3">
                     Decide su jugada
                   </span>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="order-2 ml-auto flex items-center gap-2 @2xl/main:order-3">
                     <Checkbox
                       id={`checkin-${player.id}`}
                       checked={player.checkedIn}
