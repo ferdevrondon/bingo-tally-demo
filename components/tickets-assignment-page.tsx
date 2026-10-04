@@ -2,9 +2,15 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRightIcon, PlusIcon } from "lucide-react"
+import {
+  ArrowRightIcon,
+  LayoutGridIcon,
+  ListIcon,
+  PlusIcon,
+} from "lucide-react"
 
 import { TicketCard } from "@/components/ticket-card"
+import { TicketListColumn } from "@/components/ticket-list-column"
 import { PlayerForm } from "@/components/player-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useCheckInToggle } from "@/components/check-in-dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { balanceLabel } from "@/lib/round-draft/balance"
@@ -34,7 +41,51 @@ import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
 import { roundOptionLabel } from "@/lib/rounds"
+import { cn } from "@/lib/utils"
 import { writeSucceeded } from "@/lib/write-feedback"
+
+type TicketsView = "tickets" | "list"
+
+// Cartones (grid) or Lista (columns): a per-browser display preference.
+const VIEW_STORAGE_KEY = "new-game-view"
+
+const viewListeners = new Set<() => void>()
+// Fallback when storage is blocked: the choice lasts until the page reloads.
+let memoryView: TicketsView = "tickets"
+
+function readView(): TicketsView {
+  try {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY)
+    return saved === "list" || saved === "tickets" ? saved : memoryView
+  } catch {
+    return memoryView
+  }
+}
+
+function subscribeView(listener: () => void) {
+  viewListeners.add(listener)
+  return () => {
+    viewListeners.delete(listener)
+  }
+}
+
+function useTicketsView() {
+  // The server (and the first render) shows Cartones; the browser then reads
+  // the saved choice.
+  const view = React.useSyncExternalStore(
+    subscribeView,
+    readView,
+    () => "tickets" as const
+  )
+  function change(next: TicketsView) {
+    memoryView = next
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, next)
+    } catch {}
+    viewListeners.forEach((listener) => listener())
+  }
+  return [view, change] as const
+}
 
 export function TicketsAssignmentPage() {
   const router = useRouter()
@@ -52,6 +103,7 @@ export function TicketsAssignmentPage() {
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
   const [isRoundPending, startRoundTransition] = React.useTransition()
   const [isTicketPending, startTicketTransition] = React.useTransition()
+  const [view, setView] = useTicketsView()
 
   const activePlayers = getActivePlayers(state)
   // start_round only swaps the picked round while nothing has happened in it
@@ -60,14 +112,17 @@ export function TicketsAssignmentPage() {
     state.round !== null &&
     (state.winningNumbers.some((n) => n !== null) ||
       state.tickets.some((t) => t.numbers.some((n) => n.playerId !== null)) ||
-      state.activity.some((a) => a.roundId === state.round?.roundId && a.type !== "round_started"))
+      state.activity.some(
+        (a) => a.roundId === state.round?.roundId && a.type !== "round_started"
+      ))
 
   // The player is saved in the catalog first; the refreshed game session
   // brings them in with their database id.
   async function handleAddPlayer(input: PlayerInput) {
     const result = await createPlayer(input)
     if (!writeSucceeded(result)) return
-    setActivePlayer(result.data.id)
+    // Numbers need an open round: the player becomes active once one is picked.
+    if (state.round) setActivePlayer(result.data.id)
     setIsAddPlayerOpen(false)
   }
 
@@ -82,33 +137,35 @@ export function TicketsAssignmentPage() {
     })
   }
 
+  function handleAddTicket() {
+    startTicketTransition(async () => {
+      await addTicket()
+    })
+  }
+
+  const ticketProps = (ticketId: number) => ({
+    players: state.players,
+    activePlayerId: state.activePlayerId,
+    readOnly,
+    onAssign: (number: number) => assignNumber(ticketId, number),
+    onToggleGift: (number: number) => toggleGift(ticketId, number),
+  })
+
   return (
-    <div className="@container/main flex flex-1 flex-col gap-6 p-4 lg:p-6">
+    <div className="@container/main flex min-w-0 flex-1 flex-col gap-6 p-4 lg:p-6">
       <div className="flex flex-wrap items-center gap-3">
         <Select
-          value={state.activePlayerId != null ? String(state.activePlayerId) : ""}
-          onValueChange={(value) => setActivePlayer(value ? Number(value) : null)}
-          items={state.players.map((p) => ({ label: p.name, value: String(p.id) }))}
-        >
-          <SelectTrigger className="w-56">
-            <SelectValue placeholder="Selecciona un jugador activo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {state.players.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={state.round?.templateId != null ? String(state.round.templateId) : ""}
+          value={
+            state.round?.templateId != null
+              ? String(state.round.templateId)
+              : ""
+          }
           onValueChange={handleRoundChange}
           disabled={readOnly || isRoundPending || roundLocked}
-          items={roundTemplates.map((r) => ({ label: roundOptionLabel(r), value: String(r.id) }))}
+          items={roundTemplates.map((r) => ({
+            label: roundOptionLabel(r),
+            value: String(r.id),
+          }))}
         >
           <SelectTrigger className="w-56">
             <SelectValue
@@ -120,6 +177,39 @@ export function TicketsAssignmentPage() {
               {roundTemplates.map((r) => (
                 <SelectItem key={r.id} value={String(r.id)}>
                   {roundOptionLabel(r)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={
+            state.activePlayerId != null ? String(state.activePlayerId) : ""
+          }
+          onValueChange={(value) =>
+            setActivePlayer(value ? Number(value) : null)
+          }
+          disabled={!state.round}
+          items={state.players.map((p) => ({
+            label: p.name,
+            value: String(p.id),
+          }))}
+        >
+          <SelectTrigger className="w-56">
+            <SelectValue
+              placeholder={
+                state.round
+                  ? "Selecciona un jugador activo"
+                  : "Primero elige la ronda"
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {state.players.map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  {p.name}
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -149,6 +239,26 @@ export function TicketsAssignmentPage() {
             </DialogContent>
           </Dialog>
         )}
+
+        <ToggleGroup
+          variant="outline"
+          spacing={0}
+          className="ml-auto"
+          value={[view]}
+          onValueChange={(value: string[]) => {
+            const next = value[0]
+            if (next === "tickets" || next === "list") setView(next)
+          }}
+        >
+          <ToggleGroupItem value="tickets" aria-label="Ver por cartones">
+            <LayoutGridIcon />
+            Cartones
+          </ToggleGroupItem>
+          <ToggleGroupItem value="list" aria-label="Ver por lista">
+            <ListIcon />
+            Lista
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       <div className="grid grid-cols-2 gap-4 @sm/main:grid-cols-4">
@@ -177,7 +287,10 @@ export function TicketsAssignmentPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {activePlayers.map((player) => (
-              <div key={player.id} className="flex flex-wrap items-center justify-between gap-3">
+              <div
+                key={player.id}
+                className="flex flex-wrap items-center justify-between gap-3"
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{player.name}</span>
                   {player.balance !== 0 && !player.pendingCarryOverDecision && (
@@ -193,7 +306,9 @@ export function TicketsAssignmentPage() {
                   )}
                 </div>
                 {player.pendingCarryOverDecision ? (
-                  <span className="text-xs text-muted-foreground">Decide su jugada</span>
+                  <span className="text-xs text-muted-foreground">
+                    Decide su jugada
+                  </span>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -211,35 +326,41 @@ export function TicketsAssignmentPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-4">
-        {state.tickets.map((ticket) => (
-          <TicketCard
-            key={ticket.id}
-            ticket={ticket}
-            players={state.players}
-            activePlayerId={state.activePlayerId}
-            readOnly={readOnly}
-            onAssign={(number) => assignNumber(ticket.id, number)}
-            onToggleGift={(number) => toggleGift(ticket.id, number)}
-          />
-        ))}
-
-        {!readOnly && (
-          <button
-            type="button"
-            disabled={isTicketPending}
-            onClick={() =>
-              startTicketTransition(async () => {
-                await addTicket()
-              })
-            }
-            className="flex w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
-          >
-            <PlusIcon className="size-5" />
-            Agregar cartón
-          </button>
-        )}
-      </div>
+      {view === "tickets" ? (
+        <div className="flex flex-wrap gap-4">
+          {state.tickets.map((ticket) => (
+            <TicketCard
+              key={ticket.id}
+              ticket={ticket}
+              {...ticketProps(ticket.id)}
+            />
+          ))}
+          {!readOnly && (
+            <AddTicketButton
+              disabled={isTicketPending}
+              onClick={handleAddTicket}
+              className="w-full max-w-sm"
+            />
+          )}
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {state.tickets.map((ticket) => (
+            <TicketListColumn
+              key={ticket.id}
+              ticket={ticket}
+              {...ticketProps(ticket.id)}
+            />
+          ))}
+          {!readOnly && (
+            <AddTicketButton
+              disabled={isTicketPending}
+              onClick={handleAddTicket}
+              className="mt-7 w-40 shrink-0"
+            />
+          )}
+        </div>
+      )}
 
       {checkInToggle.dialog}
 
@@ -256,5 +377,30 @@ export function TicketsAssignmentPage() {
         </Button>
       </div>
     </div>
+  )
+}
+
+function AddTicketButton({
+  disabled,
+  onClick,
+  className,
+}: {
+  disabled: boolean
+  onClick: () => void
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50",
+        className
+      )}
+    >
+      <PlusIcon className="size-5" />
+      Agregar cartón
+    </button>
   )
 }
