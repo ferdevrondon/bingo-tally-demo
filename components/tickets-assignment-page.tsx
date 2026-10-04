@@ -12,8 +12,9 @@ import {
 import { TicketCard } from "@/components/ticket-card"
 import { TicketListColumn } from "@/components/ticket-list-column"
 import { PlayerForm } from "@/components/player-form"
+import { PlayerNumbersSummary } from "@/components/player-numbers-summary"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
@@ -39,7 +40,11 @@ import { balanceLabel } from "@/lib/round-draft/balance"
 import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
-import { getActivePlayers } from "@/lib/round-draft/selectors"
+import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import {
+  getActivePlayers,
+  getPlayerNumberSummary,
+} from "@/lib/round-draft/selectors"
 import { roundOptionLabel } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 import { writeSucceeded } from "@/lib/write-feedback"
@@ -281,49 +286,58 @@ export function TicketsAssignmentPage() {
       </div>
 
       {activePlayers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Jugadores</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {activePlayers.map((player) => (
-              <div
-                key={player.id}
-                className="flex flex-wrap items-center justify-between gap-3"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{player.name}</span>
-                  {player.balance !== 0 && !player.pendingCarryOverDecision && (
-                    <span
-                      className={
-                        player.balance < 0
-                          ? "text-xs font-medium text-destructive"
-                          : "text-xs font-medium text-green-600"
-                      }
-                    >
-                      {balanceLabel(player.balance)}
+        <section className="flex flex-col gap-3">
+          <h2 className="font-heading text-base font-medium">Jugadores</h2>
+          <Card>
+            <CardContent className="flex flex-col gap-3">
+              {activePlayers.map((player) => (
+                <div
+                  key={player.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2"
+                >
+                  <div className="order-1 flex shrink-0 items-center gap-2">
+                    <span className="text-sm font-medium">{player.name}</span>
+                  </div>
+                  <PlayerNumbersSummary
+                    numbers={getPlayerNumberSummary(state, player.id)}
+                    colorClass={getPlayerColorClass(
+                      state.players.findIndex((p) => p.id === player.id)
+                    )}
+                    trailing={
+                      player.balance !== 0 &&
+                      !player.pendingCarryOverDecision && (
+                        <span
+                          className={
+                            player.balance < 0
+                              ? "text-xs font-medium text-destructive"
+                              : "text-xs font-medium text-green-600"
+                          }
+                        >
+                          {balanceLabel(player.balance)}
+                        </span>
+                      )
+                    }
+                  />
+                  {player.pendingCarryOverDecision ? (
+                    <span className="order-2 ml-auto text-xs text-muted-foreground @2xl/main:order-3">
+                      Decide su jugada
                     </span>
+                  ) : (
+                    <div className="order-2 ml-auto flex items-center gap-2 @2xl/main:order-3">
+                      <Checkbox
+                        id={`checkin-${player.id}`}
+                        checked={player.checkedIn}
+                        disabled={readOnly}
+                        onCheckedChange={() => checkInToggle.toggle(player)}
+                      />
+                      <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
+                    </div>
                   )}
                 </div>
-                {player.pendingCarryOverDecision ? (
-                  <span className="text-xs text-muted-foreground">
-                    Decide su jugada
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`checkin-${player.id}`}
-                      checked={player.checkedIn}
-                      disabled={readOnly}
-                      onCheckedChange={() => checkInToggle.toggle(player)}
-                    />
-                    <Label htmlFor={`checkin-${player.id}`}>Check-in</Label>
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
       )}
 
       {view === "tickets" ? (

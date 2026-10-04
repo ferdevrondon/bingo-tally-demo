@@ -25,6 +25,7 @@ import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import { useCheckInToggle } from "@/components/check-in-dialog"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { getPlayerNumberSummary } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
@@ -46,26 +47,13 @@ export function PlayerActiveCard({
 
   const balance = player.balance
 
-  const countsByNumber = new Map<number, number>()
-  const giftByNumber = new Map<number, boolean>()
-  state.tickets.forEach((ticket) => {
-    ticket.numbers.forEach((entry) => {
-      if (entry.playerId === player.id) {
-        countsByNumber.set(
-          entry.number,
-          (countsByNumber.get(entry.number) ?? 0) + 1
-        )
-        if (entry.isGift) giftByNumber.set(entry.number, true)
-      }
-    })
-  })
-  const numbers = [...countsByNumber.entries()]
-    .map(([number, count]) => ({
+  const numbers = getPlayerNumberSummary(state, player.id).map(
+    ({ number, count, gifts }) => ({
       number,
       amount: count * linePrice,
-      isGift: giftByNumber.get(number) ?? false,
-    }))
-    .sort((a, b) => a.number - b.number)
+      isGift: gifts > 0,
+    })
+  )
   const totalPlayed = numbers.reduce((sum, n) => sum + n.amount, 0)
 
   return (
@@ -141,20 +129,20 @@ export function PlayerActiveCard({
               )}
             </span>
             {!readOnly && (
-            <Toggle
-              pressed={player.checkedIn}
-              onPressedChange={() => checkInToggle.toggle(player)}
-              size="sm"
-              aria-label="Check-in"
-              className={cn(
-                "border transition-all duration-300",
-                player.checkedIn
-                  ? "animate-in zoom-in-50 border-green-600 bg-green-600 text-white hover:bg-green-600/90 aria-pressed:bg-green-600 aria-pressed:text-white"
-                  : "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
-              )}
-            >
-              <CheckIcon />
-            </Toggle>
+              <Toggle
+                pressed={player.checkedIn}
+                onPressedChange={() => checkInToggle.toggle(player)}
+                size="sm"
+                aria-label="Check-in"
+                className={cn(
+                  "border transition-all duration-300",
+                  player.checkedIn
+                    ? "animate-in zoom-in-50 border-green-600 bg-green-600 text-white hover:bg-green-600/90 aria-pressed:bg-green-600 aria-pressed:text-white"
+                    : "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+                )}
+              >
+                <CheckIcon />
+              </Toggle>
             )}
           </div>
         )}
@@ -166,17 +154,17 @@ export function PlayerActiveCard({
         </div>
 
         {!readOnly && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Recarga</span>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setIsRechargeOpen(true)}
-            title="Recargar saldo"
-          >
-            <CalculatorIcon />
-          </Button>
-        </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Recarga</span>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setIsRechargeOpen(true)}
+              title="Recargar saldo"
+            >
+              <CalculatorIcon />
+            </Button>
+          </div>
         )}
 
         <button
