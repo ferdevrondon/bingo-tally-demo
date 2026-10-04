@@ -14,6 +14,7 @@ import type { PaymentMethod } from "@/lib/payment-methods"
 import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 
+import { assignTicket } from "./assign-ticket"
 import { fetchGameSessionState } from "./fetch-state"
 import {
   createGameApi,
@@ -274,7 +275,9 @@ interface RoundDraftContextValue {
   /** Active round templates of the house (/rounds), loaded by app/(app)/(game)/layout.tsx. */
   roundTemplates: Round[]
   setActivePlayer: (playerId: number | null) => void
-  /** Claims a free number for the active player, or releases their own. */
+  /** Buys a free number for the active player (the ticket is chosen by the
+   *  database: lowest index with the number free; `ticketId` is ignored for a
+   *  free number), or releases their own number on that ticket. */
   assignNumber: (ticketId: number, number: number) => void
   toggleGift: (ticketId: number, number: number) => void
   /** Check-in (rule A): the player confirms they are in this round. No money. */
@@ -449,18 +452,35 @@ export function RoundDraftProvider({
       assignNumber: (ticketId, number) => {
         const current = stateRef.current
         const playerId = current.activePlayerId
-        if (playerId === null) return
-        const position = { ticketId, number }
-        const entry = findEntry(current, position)
-        if (entry?.playerId === null) {
-          void perform([{ type: "CLAIM_NUMBER", payload: { ...position, playerId } }], () =>
-            api.purchaseNumber(position, playerId, requestId())
-          )
-        } else if (entry?.playerId === playerId) {
+        if (playerId === null || readOnly) return
+        const tapped = findEntry(current, { ticketId, number })
+        if (tapped?.playerId === playerId) {
+          // Releasing is positional: it frees the player's own number there.
+          const position = { ticketId, number }
           void perform([{ type: "RELEASE_NUMBER", payload: position }], () =>
             api.releaseNumber(position, playerId, requestId())
           )
+          return
         }
+        if (tapped?.playerId !== null) return
+        // A purchase only triggers the action: the ticket is the lowest-index
+        // one with this number free (decided by record_purchase; this just
+        // predicts it). The tapped ticket is ignored.
+        const assignedTicketId = assignTicket(number, current.tickets)
+        if (assignedTicketId === null) {
+          toast.error(GAME_ACTION_ERROR_MESSAGES.no_free_ticket)
+          return
+        }
+        const position = { ticketId: assignedTicketId, number }
+        void perform([{ type: "CLAIM_NUMBER", payload: { ...position, playerId } }], () =>
+          api.purchaseNumber(gameSessionId, number, playerId, requestId())
+        ).then((result) => {
+          if (!result.ok) return
+          const index = stateRef.current.tickets.find((t) => t.id === result.data)?.index
+          toast.success(
+            index === undefined ? "Jugada asignada" : `Asignado al cartón ${index}`
+          )
+        })
       },
       toggleGift: (ticketId, number) => {
         const position = { ticketId, number }

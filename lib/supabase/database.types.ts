@@ -791,12 +791,12 @@ export type Database = {
       }
       record_purchase: {
         Args: {
+          p_game_session_id: number
           p_number: number
           p_player_id: number
           p_request_id: string
-          p_ticket_id: number
         }
-        Returns: undefined
+        Returns: number
       }
       record_recharge: {
         Args: {

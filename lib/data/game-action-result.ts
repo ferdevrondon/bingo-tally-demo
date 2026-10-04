@@ -10,6 +10,8 @@ export type GameActionError =
   | "game_session_not_active"
   | "no_open_round"
   | "number_taken"
+  | "no_free_ticket"
+  | "invalid_number"
   | "number_not_owned"
   | "number_owner_changed"
   | "player_not_in_session"
@@ -48,6 +50,8 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   game_session_not_active: "La jornada ya no está activa.",
   no_open_round: "Primero elige la ronda.",
   number_taken: "Ese número ya fue asignado.",
+  no_free_ticket: "Ese número está ocupado en todos los cartones. Agrega un cartón para seguir.",
+  invalid_number: "El número debe estar entre 1 y 15.",
   number_not_owned: "Ese número ya no es de este jugador.",
   number_owner_changed: "Ese número cambió de dueño. Revisa el cartón e inténtalo de nuevo.",
   player_not_in_session: "Ese jugador no está en la jornada.",
