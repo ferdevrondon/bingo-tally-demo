@@ -14,7 +14,7 @@ import type { PaymentMethod } from "@/lib/payment-methods"
 import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 
-import { assignTicket, compactLine } from "./assign-ticket"
+import { assignTicket, compactLine, movedPlays } from "./assign-ticket"
 import { fetchGameSessionState } from "./fetch-state"
 import {
   createGameApi,
@@ -456,6 +456,30 @@ export function RoundDraftProvider({
     const gameSessionId = state.gameSessionId
     const roundId = state.round?.roundId ?? null
 
+    // An action that frees plays (rule 2): same as perform, and when the
+    // freed rows reshuffle other plays, tell the host once it was saved.
+    function performFreeing(
+      optimistic: Action[],
+      call: () => Promise<GameActionResult<undefined>>
+    ) {
+      const numbers = optimistic.flatMap((a) => (a.type === "COMPACT_LINES" ? a.payload.numbers : []))
+      const without = optimistic.filter((a) => a.type !== "COMPACT_LINES")
+      const freed = without.reduce(reducer, stateRef.current)
+      const hasAwards = !freed.round || freed.winningNumbers.some((n) => n !== null)
+      const lines = [...new Set(numbers)]
+        .filter((n) => movedPlays(n, freed.tickets, hasAwards) > 0)
+        .sort((a, b) => a - b)
+      void perform(optimistic, call).then((result) => {
+        if (!result.ok || lines.length === 0) return
+        toast.info(
+          lines.length === 1
+            ? `Se reacomodó la línea ${lines[0]}`
+            : `Se reacomodaron las líneas ${lines.join(", ")}`,
+          { id: "reshuffle" }
+        )
+      })
+    }
+
     return {
       state,
       readOnly,
@@ -469,7 +493,7 @@ export function RoundDraftProvider({
         if (tapped?.playerId === playerId) {
           // Releasing is positional: it frees the player's own number there.
           const position = { ticketId, number }
-          void perform(
+          performFreeing(
             [
               { type: "RELEASE_NUMBER", payload: position },
               { type: "COMPACT_LINES", payload: { numbers: [number] } },
@@ -494,7 +518,9 @@ export function RoundDraftProvider({
           if (!result.ok) return
           const index = stateRef.current.tickets.find((t) => t.id === result.data)?.index
           toast.success(
-            index === undefined ? "Jugada asignada" : `Asignado al cartón ${index}`
+            index === undefined ? "Jugada asignada" : `Asignado al cartón ${index}`,
+            // One at a time: a new purchase replaces the previous notice.
+            { id: "assigned" }
           )
         })
       },
@@ -528,7 +554,7 @@ export function RoundDraftProvider({
           .flatMap((t) => t.numbers)
           .filter((n) => n.playerId === playerId)
           .map((n) => n.number)
-        void perform(
+        performFreeing(
           [
             { type: "REMOVE_PLAYER", payload: { playerId } },
             { type: "COMPACT_LINES", payload: { numbers: owned } },
@@ -556,7 +582,7 @@ export function RoundDraftProvider({
         // The numbers freed by the edit are compacted once, after all changes.
         const freed = changes.filter((c) => !c.owned).map((c) => c.number)
         if (freed.length > 0) optimistic.push({ type: "COMPACT_LINES", payload: { numbers: freed } })
-        void perform(optimistic, () =>
+        performFreeing(optimistic, () =>
           api.editPlayerNumbers(gameSessionId, playerId, changes, requestId())
         )
       },
@@ -567,7 +593,7 @@ export function RoundDraftProvider({
         )
       },
       resolveCarryOver: (playerId, releaseNumbers) => {
-        void perform(
+        performFreeing(
           [
             { type: "RESOLVE_CARRYOVER", payload: { playerId, releaseNumbers } },
             { type: "COMPACT_LINES", payload: { numbers: releaseNumbers.map((r) => r.number) } },

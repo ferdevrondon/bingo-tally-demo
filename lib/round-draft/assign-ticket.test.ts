@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { assignTicket, compactLine } from "./assign-ticket"
+import { assignTicket, compactLine, movedPlays } from "./assign-ticket"
 import type { Ticket } from "./types"
 
 // Ticket ids are 100 + index so they can't be confused with the index.
@@ -185,5 +185,20 @@ describe("compactLine and assignTicket together", () => {
     tickets = withLine(tickets, 6, [null, 3, 4, null])
     tickets = compactLine(6, tickets, false)
     expect(lineHolders(tickets, 6)).toEqual([3, 4, null, null])
+  })
+})
+
+describe("movedPlays", () => {
+  it("counts the plays that change ticket", () => {
+    expect(movedPlays(6, withLine(makeTickets(4), 6, [null, 2, 3, 4]), false)).toBe(3)
+  })
+
+  it("is 0 when nothing is in front of a hole", () => {
+    expect(movedPlays(6, withLine(makeTickets(4), 6, [1, 2, null, null]), false)).toBe(0)
+    expect(movedPlays(6, makeTickets(3), false)).toBe(0)
+  })
+
+  it("is 0 once the round has winning numbers", () => {
+    expect(movedPlays(6, withLine(makeTickets(4), 6, [null, 2, 3, 4]), true)).toBe(0)
   })
 })

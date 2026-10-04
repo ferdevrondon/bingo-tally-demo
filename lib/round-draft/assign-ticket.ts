@@ -61,3 +61,17 @@ export function compactLine(lineNumber: number, tickets: Ticket[], hasAwards: bo
     }),
   }))
 }
+
+/** How many plays of `lineNumber` change ticket when its row is compacted
+ *  (0 when the row has no hole in front of a play). Used to tell the host that
+ *  freeing a play reshuffled the row. */
+export function movedPlays(lineNumber: number, tickets: Ticket[], hasAwards: boolean): number {
+  const after = compactLine(lineNumber, tickets, hasAwards)
+  const holderAfter = new Map(
+    after.map((t) => [t.id, t.numbers.find((n) => n.number === lineNumber)?.playerId ?? null])
+  )
+  return tickets.filter((t) => {
+    const next = holderAfter.get(t.id) ?? null
+    return next !== null && next !== (t.numbers.find((n) => n.number === lineNumber)?.playerId ?? null)
+  }).length
+}
