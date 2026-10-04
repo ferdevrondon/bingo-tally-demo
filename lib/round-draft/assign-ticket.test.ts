@@ -126,3 +126,64 @@ describe("compactLine", () => {
     expect(() => compactLine(0, makeTickets(2), false)).toThrow(RangeError)
   })
 })
+
+describe("compactLine and assignTicket together", () => {
+  it("compacting twice is the same as compacting once", () => {
+    const tickets = withLine(makeTickets(5), 6, [null, 2, null, 4, 5])
+    const once = compactLine(6, tickets, false)
+    expect(compactLine(6, once, false)).toEqual(once)
+    expect(lineHolders(once, 6)).toEqual([2, 4, 5, null, null])
+  })
+
+  it("closes old holes (a free ticket in front of later plays)", () => {
+    const tickets = withLine(makeTickets(4), 6, [null, null, 3, 4])
+    expect(lineHolders(compactLine(6, tickets, false), 6)).toEqual([3, 4, null, null])
+  })
+
+  it("keeps the order of the plays by ticket index, not by array order", () => {
+    const tickets = withLine(makeTickets(4), 6, [null, 2, 3, 4]).reverse()
+    expect(lineHolders(compactLine(6, tickets, false), 6)).toEqual([2, 3, 4, null])
+  })
+
+  it("returns tickets in the same array order and with the same ids", () => {
+    const tickets = withLine(makeTickets(3), 6, [null, 2, 3]).reverse()
+    expect(compactLine(6, tickets, false).map((t) => t.id)).toEqual(tickets.map((t) => t.id))
+  })
+
+  it("never changes the number or other lines of any ticket", () => {
+    const base = withLine(withLine(makeTickets(4), 2, [1, null, 3, 4]), 6, [null, 2, 3, 4])
+    const result = compactLine(6, base, false)
+    for (const line of [1, 2, 3, 4, 5, 7, 15]) expect(lineHolders(result, line)).toEqual(lineHolders(base, line))
+    expect(result.every((t) => t.numbers.map((n) => n.number).join() === base[0].numbers.map((n) => n.number).join())).toBe(true)
+  })
+
+  it("keeps the number of plays on the line", () => {
+    const tickets = withLine(makeTickets(6), 6, [null, 2, null, 4, 5, null])
+    const count = (ts: Ticket[]) => lineHolders(ts, 6).filter((p) => p !== null).length
+    expect(count(compactLine(6, tickets, false))).toBe(count(tickets))
+  })
+
+  it("a purchase after compacting lands in the first free ticket", () => {
+    const tickets = withLine(makeTickets(4), 6, [null, 2, 3, null])
+    const compacted = compactLine(6, tickets, false)
+    expect(assignTicket(6, compacted)).toBe(103)
+  })
+
+  it("with awards, the hole stays and a purchase fills it", () => {
+    const tickets = withLine(makeTickets(4), 6, [null, 2, 3, 4])
+    const same = compactLine(6, tickets, true)
+    expect(lineHolders(same, 6)).toEqual([null, 2, 3, 4])
+    expect(assignTicket(6, same)).toBe(101)
+  })
+
+  it("the Ana/Beto/Caro/Dani example, step by step", () => {
+    // Ana (1) frees ticket 1, then Beto (2), now on ticket 1, frees it too.
+    let tickets = withLine(makeTickets(4), 6, [1, 2, 3, 4])
+    tickets = withLine(tickets, 6, [null, 2, 3, 4])
+    tickets = compactLine(6, tickets, false)
+    expect(lineHolders(tickets, 6)).toEqual([2, 3, 4, null])
+    tickets = withLine(tickets, 6, [null, 3, 4, null])
+    tickets = compactLine(6, tickets, false)
+    expect(lineHolders(tickets, 6)).toEqual([3, 4, null, null])
+  })
+})
