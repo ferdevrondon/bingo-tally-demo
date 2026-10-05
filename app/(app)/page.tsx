@@ -1,14 +1,18 @@
-import MainPageSplit from "@/components/main-page-split"
+import { HomePage } from "@/components/home-page"
 import { LiveRefresh } from "@/components/live-refresh"
-import { loadHomeSummary } from "@/lib/data/game-sessions"
+import { loadHome } from "@/lib/data/game-sessions"
 
 export default async function Page() {
-  const summary = await loadHomeSummary()
+  const home = await loadHome()
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2">
-        <MainPageSplit summary={summary} />
-      </div>
+    <div className="@container/main flex flex-1 flex-col">
+      {home ? (
+        <HomePage home={home} />
+      ) : (
+        <p className="p-6 text-sm text-muted-foreground">
+          Tu usuario todavía no pertenece a ninguna casa.
+        </p>
+      )}
       <LiveRefresh />
     </div>
   )

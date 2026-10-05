@@ -1,8 +1,10 @@
 import { cache } from "react"
 
 import { needsAttention } from "@/lib/accounts"
-import { accountFor, listPlayerAccounts } from "@/lib/data/accounts"
-import { getCurrentHouse } from "@/lib/data/house"
+import { listDebts } from "@/lib/data/debts"
+import { getCurrentHouse, getCurrentUser } from "@/lib/data/house"
+import { loadActiveGameSession } from "@/lib/data/load-game-session"
+import { listSettlements } from "@/lib/data/settlement"
 import {
   fetchGameSessionList,
   fetchGameSessionReport,
@@ -16,7 +18,9 @@ import type {
   PeriodReport,
   RoundsOfDay,
 } from "@/lib/game-report/types"
+import { getActivePlayers } from "@/lib/round-draft/selectors"
 import { createClient } from "@/lib/supabase/server"
+import { toAppUser } from "@/lib/supabase/types"
 
 // Server reads of the house's game sessions (Reportes → Jornadas, the game
 // session report, home). RLS limits every row to the user's house.
@@ -70,39 +74,100 @@ export async function loadMonthlyReport(month: string | undefined): Promise<Peri
   )
 }
 
-export interface HomeSummary {
-  /** The active game session's number, or the next one to start. */
-  gameNumber: number
-  hasActiveGameSession: boolean
-  lastEnded: Pick<
-    GameSessionListItem,
-    "id" | "number" | "startedAtLabel" | "playersCount" | "houseTotal"
-  > | null
-  /** Players who owe, are pending a payout or have a positive balance nobody
-   *  decided on (what "Iniciar jornada" warns about). */
-  pendingPlayers: number
+/** Inicio (/): the house, the active game session and what needs attention,
+ *  for admins and observers alike. */
+export interface HomeData {
+  houseName: string
+  role: "admin" | "observer"
+  /** The signed-in person (their name, or their email). */
+  userName: string
+  /** The active game session, or null with the number the next one gets. */
+  game:
+    | {
+        active: true
+        number: number
+        /** The open round, or null while it is being picked. */
+        round: { name: string; linePrice: number } | null
+        roundsPlayed: number
+        players: number
+        tickets: number
+        houseBalance: number
+      }
+    | { active: false; nextNumber: number }
+  /** Reportes → Diario of today; null without a house. */
+  today: {
+    house: number
+    gameSessions: number
+    roundsPlayed: number
+    /** Recharges minus payouts, every origin. */
+    netCash: number
+  } | null
+  pending: {
+    owe: { players: number; total: number }
+    owed: { players: number; total: number }
+    /** Open settlements with someone still unresolved. */
+    openSettlements: number
+  }
 }
 
-export async function loadHomeSummary(): Promise<HomeSummary> {
-  const house = await getCurrentHouse()
-  if (!house) return { gameNumber: 1, hasActiveGameSession: false, lastEnded: null, pendingPlayers: 0 }
-  const supabase = await createClient()
-  const [sessions, accounts, players] = await Promise.all([
+export async function loadHome(): Promise<HomeData | null> {
+  const [house, user] = await Promise.all([getCurrentHouse(), getCurrentUser()])
+  if (!house || !user) return null
+  const [game, sessions, daily, debts, settlements] = await Promise.all([
+    loadActiveGameSession(),
     listGameSessions(),
-    listPlayerAccounts(),
-    supabase.from("players").select("id").eq("house_id", house.houseId).eq("active", true),
+    loadDailyReport(undefined),
+    listDebts(),
+    listSettlements(),
   ])
-  if (players.error) throw players.error
 
-  const active = sessions.find((s) => s.status === "active") ?? null
-  const lastEnded = sessions.find((s) => s.status === "ended") ?? null
+  // During a game session every balance counts as it is right now; before
+  // one, only what "Iniciar jornada" warns about (a positive balance kept
+  // "Para jugar" is not pending).
+  const pending = game ? debts : debts.filter(needsAttention)
+  const owe = pending.filter((d) => d.balance < 0)
+  const owed = pending.filter((d) => d.balance > 0)
+  const sum = (rows: typeof debts) =>
+    rows.reduce((total, d) => total + Math.abs(d.balance), 0)
+
   return {
-    gameNumber: active?.number ?? (sessions[0]?.number ?? 0) + 1,
-    hasActiveGameSession: active !== null,
-    lastEnded,
-    pendingPlayers: players.data.filter((p) => {
-      const account = accountFor(accounts, p.id)
-      return !account.inGame && needsAttention(account)
-    }).length,
+    houseName: house.houseName,
+    role: house.role,
+    userName: toAppUser(user).name,
+    game: game
+      ? {
+          active: true,
+          number: game.gameNumber,
+          round: game.round
+            ? { name: game.round.name, linePrice: game.round.linePrice }
+            : null,
+          roundsPlayed: game.roundsPlayed,
+          players: getActivePlayers(game).length,
+          tickets: game.tickets.length,
+          houseBalance: game.houseBalance,
+        }
+      : // Sessions are newest first.
+        { active: false, nextNumber: (sessions[0]?.number ?? 0) + 1 },
+    today: daily && {
+      house: daily.house.total,
+      gameSessions: daily.activity.gameSessions,
+      roundsPlayed: daily.activity.roundsPlayed,
+      netCash: daily.cash.reduce(
+        (total, line) =>
+          total +
+          line.inGame.recharges +
+          line.outside.recharges -
+          line.inGame.payouts -
+          line.outside.payouts,
+        0
+      ),
+    },
+    pending: {
+      owe: { players: owe.length, total: sum(owe) },
+      owed: { players: owed.length, total: sum(owed) },
+      openSettlements: settlements.filter(
+        (s) => s.status === "open" && s.unresolved > 0
+      ).length,
+    },
   }
 }

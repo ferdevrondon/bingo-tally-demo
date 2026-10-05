@@ -24,12 +24,19 @@ import {
   ChevronRightIcon,
   FileChartColumn,
   WalletIcon,
+  HomeIcon,
 } from "lucide-react"
 import { Climate_Crisis } from "next/font/google"
 import Image from "next/image"
 
 const data = {
   navMain: [
+    // The home of both roles; the admin starts a game session from there.
+    {
+      title: "Inicio",
+      url: "/",
+      icon: <HomeIcon />,
+    },
     {
       title: "Ronda activa",
       url: "/active-round",
