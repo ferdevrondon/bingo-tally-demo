@@ -1,5 +1,6 @@
 import { cache } from "react"
 
+import { needsAttention } from "@/lib/accounts"
 import { listDebts } from "@/lib/data/debts"
 import { getCurrentHouse, getCurrentUser } from "@/lib/data/house"
 import { loadActiveGameSession } from "@/lib/data/load-game-session"
@@ -120,8 +121,12 @@ export async function loadHome(): Promise<HomeData | null> {
     listSettlements(),
   ])
 
-  const owe = debts.filter((d) => d.balance < 0)
-  const owed = debts.filter((d) => d.balance > 0)
+  // During a game session every balance counts as it is right now; before
+  // one, only what "Iniciar jornada" warns about (a positive balance kept
+  // "Para jugar" is not pending).
+  const pending = game ? debts : debts.filter(needsAttention)
+  const owe = pending.filter((d) => d.balance < 0)
+  const owed = pending.filter((d) => d.balance > 0)
   const sum = (rows: typeof debts) =>
     rows.reduce((total, d) => total + Math.abs(d.balance), 0)
 

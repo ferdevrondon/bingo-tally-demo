@@ -11,6 +11,7 @@ import {
   ZapIcon,
 } from "lucide-react"
 
+import { useHouse } from "@/components/house-provider"
 import { StartGameSessionButton } from "@/components/start-game-session-button"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -54,12 +55,32 @@ function useClock() {
   )
 }
 
-function getGreeting(now: Date | null) {
+// The hour of the day in a time zone (0-23).
+function hourIn(now: Date, timeZone: string | undefined) {
+  return Number(
+    new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hourCycle: "h23",
+      timeZone,
+    }).format(now)
+  )
+}
+
+function getGreeting(now: Date | null, timeZone: string | undefined) {
   if (!now) return "Hola"
-  const hour = now.getHours()
+  const hour = hourIn(now, timeZone)
   if (hour < 12) return "Buenos días"
   if (hour < 19) return "Buenas tardes"
   return "Buenas noches"
+}
+
+function formatTime(now: Date, timeZone: string | undefined) {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone,
+  }).format(now)
 }
 
 function capitalize(text: string) {
@@ -78,31 +99,36 @@ function moneyClass(value: number) {
       : undefined
 }
 
+// Greeting, time and date in the house's time zone, like "Hoy" and the
+// reports. When the device is elsewhere its own time is shown too.
 function Greeting({ home }: { home: HomeData }) {
   const now = useClock()
+  const timeZone = useHouse()?.timezone
+  const deviceZone = now
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : undefined
   const date = now
     ? capitalize(
         new Intl.DateTimeFormat("es-ES", {
           weekday: "long",
           day: "numeric",
           month: "long",
+          timeZone,
         }).format(now)
       )
     : ""
-  const time = now
-    ? new Intl.DateTimeFormat("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      }).format(now)
-    : "--:--"
+  const time = now ? formatTime(now, timeZone) : "--:--"
+  const deviceTime =
+    now && timeZone && deviceZone && deviceZone !== timeZone
+      ? formatTime(now, deviceZone)
+      : null
 
   return (
     <div className="relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-2xl border bg-card p-6">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent" />
       <div className="relative flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">
-          {getGreeting(now)}, {home.userName}
+          {getGreeting(now, timeZone)}, {home.userName}
         </h1>
         <p className="text-sm text-muted-foreground">
           {home.houseName} ·{" "}
@@ -112,6 +138,11 @@ function Greeting({ home }: { home: HomeData }) {
       <div className="relative flex flex-col items-end gap-0.5">
         <span className="text-3xl font-bold tabular-nums">{time}</span>
         <span className="text-xs text-muted-foreground">{date}</span>
+        {deviceTime && (
+          <span className="text-xs text-muted-foreground">
+            Hora de la casa · tu hora: {deviceTime}
+          </span>
+        )}
       </div>
     </div>
   )
