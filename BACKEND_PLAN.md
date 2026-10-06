@@ -516,6 +516,10 @@ Decided with the product owner after a double charge found in the data (a number
 - **Automatic check-in:** `resolve_carryover` sets `checked_in` and logs a `check_in` row with note `auto` when the player still holds at least one number after the decision. Releasing everything leaves them without check-in; buying again brings the regular check-in.
 - Charges already made twice before this change are not corrected.
 
+### Fix: adding a new player through the edit dialog (2026-10-06)
+
+`edit_player_numbers` handed `p_request_id` itself to `ensure_session_player`, which logs `player_added` with that id and `balance_opened` with `request_id_for(id, 1)`; the first purchase of the loop used the same derived id, so a player **new to the game session** failed with `activity_log_request_id_key` ("Agregar jugador" on `/active-round`). Players already in the session (or coming back) skipped that insert and worked. Migration `*_edit_player_numbers_new_player.sql` passes `request_id_for(p_request_id, 5000)` instead; test `supabase/tests/edit_player_numbers_new_player.sql` (new player, gift, already in session, removed player coming back, another player pending).
+
 ### Phase 5: Realtime and observer view
 - `activity_log` subscription + debounced `HYDRATE`; `useRole()` gating in every action component; "Solo lectura" badge.
 
