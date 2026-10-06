@@ -11,6 +11,7 @@ export function WinningNumberBall({
   value,
   usedNumbers,
   readOnly = false,
+  winners = null,
   onSubmit,
 }: {
   slotIndex: number
@@ -20,6 +21,9 @@ export function WinningNumberBall({
   usedNumbers: Set<number>
   /** An observer: an empty slot shows "?" instead of an input. */
   readOnly?: boolean
+  /** Who has won this number so far: players with what they were paid, `[]`
+   *  when nobody had it, null when unknown or not drawn yet. */
+  winners?: { name: string; amount: number }[] | null
   onSubmit: (number: number) => void
 }) {
   const [draft, setDraft] = React.useState("")
@@ -69,7 +73,7 @@ export function WinningNumberBall({
     </div>
   )
 
-  return (
+  const slot = (
     <div className="relative">
       <Crown className="absolute -top-4 left-1/2 z-30 -translate-x-1/2 size-4 fill-green-400 text-green-600" />
       <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full border border-green-500/50 bg-white px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap text-green-700 shadow-sm">
@@ -91,6 +95,35 @@ export function WinningNumberBall({
           )}
         </form>
       )}
+    </div>
+  )
+
+  if (value === null || winners === null) return slot
+  return (
+    <div className="flex items-center gap-3">
+      {slot}
+      <div className="flex flex-col gap-1">
+        {winners.length === 0 ? (
+          <span className="inline-flex h-6 items-center rounded-full border border-dashed px-2 text-xs text-muted-foreground">
+            nadie · casa
+          </span>
+        ) : (
+          winners.map((w) => (
+            <span
+              key={w.name}
+              className="inline-flex h-6 items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-100 pr-2 pl-0.5 text-xs font-semibold text-amber-950 dark:bg-amber-500/15 dark:text-amber-100"
+            >
+              <span className="flex size-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950">
+                {w.name.charAt(0).toUpperCase()}
+              </span>
+              {w.name}
+              <span className="text-green-700 tabular-nums dark:text-green-400">
+                +{formatMoney(w.amount)}
+              </span>
+            </span>
+          ))
+        )}
+      </div>
     </div>
   )
 }
