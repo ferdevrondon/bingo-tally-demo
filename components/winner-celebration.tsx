@@ -1,0 +1,109 @@
+"use client"
+
+import { CrownIcon, TrophyIcon } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import type { AwardSummary } from "@/lib/round-draft/award-summary"
+import { signedMoney } from "@/lib/round-draft/balance"
+import { formatMoney } from "@/lib/rounds"
+
+// Shown when the admin declares winning numbers: who won with which number,
+// how much, and the balance before and after. It stays until the admin
+// closes it (Continuar), and numbers declared meanwhile pile up in it.
+export function WinnerCelebration({
+  awards,
+  allSlotsFilled,
+  onContinue,
+  onCloseRound,
+}: {
+  awards: AwardSummary[]
+  allSlotsFilled: boolean
+  onContinue: () => void
+  onCloseRound: () => void
+}) {
+  return (
+    <Dialog
+      open={awards.length > 0}
+      onOpenChange={(next, details) => {
+        // Only the buttons and Esc close it, never a stray click outside.
+        if (!next && details?.reason !== "outside-press") onContinue()
+      }}
+    >
+      <DialogContent className="max-h-[90vh] w-[95%] sm:max-w-3xl">
+        <DialogHeader className="items-center text-center">
+          <TrophyIcon className="size-10 text-amber-500 motion-safe:animate-bounce" />
+          <DialogTitle className="text-3xl">
+            {awards.some((a) => a.winners.length > 0) ? "¡Tenemos ganadores!" : "Número declarado"}
+          </DialogTitle>
+          <DialogDescription>Así queda el pago de cada número ganador.</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-6 overflow-y-auto p-6">
+          {awards.map((award) => (
+            <section key={award.slotIndex} className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="relative flex size-14 items-center justify-center rounded-full border-2 border-green-500/50 bg-gradient-to-br from-green-300 to-green-600 shadow-inner">
+                  <CrownIcon className="absolute -top-4 size-5 fill-green-400 text-green-600" />
+                  <div className="flex size-10 items-center justify-center rounded-full bg-white text-lg font-bold text-green-700">
+                    {award.number}
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Premio por cartón {formatMoney(award.prize)}
+                </div>
+              </div>
+
+              {award.winners.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nadie tenía el #{award.number}: el premio queda para la casa.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {award.winners.map((winner, i) => (
+                    <div
+                      key={winner.playerId}
+                      style={{ animationDelay: `${i * 150}ms` }}
+                      className="rounded-2xl border bg-gradient-to-br from-amber-100 to-background p-4 fill-mode-both motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:fade-in motion-safe:duration-500 dark:from-amber-500/15"
+                    >
+                      <div className="text-xl font-bold">{winner.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        con el #{award.number}
+                        {winner.plays > 1 && ` en ${winner.plays} cartones`}
+                        {winner.gifts > 0 &&
+                          ` (${winner.gifts} regalo${winner.gifts === 1 ? "" : "s"})`}
+                      </div>
+                      <div className="mt-2 text-3xl font-bold text-green-600 tabular-nums">
+                        gana {formatMoney(winner.amount)}
+                      </div>
+                      <div className="text-sm tabular-nums">
+                        saldo de {signedMoney(winner.balanceBefore)} a{" "}
+                        <strong>{signedMoney(winner.balanceAfter)}</strong>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+        </div>
+
+        <DialogFooter className="flex-row justify-end gap-2 bg-muted p-5">
+          <Button variant="outline" onClick={onContinue}>
+            Continuar
+          </Button>
+          {allSlotsFilled && (
+            <Button onClick={onCloseRound}>Cerrar ronda y comenzar la siguiente</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

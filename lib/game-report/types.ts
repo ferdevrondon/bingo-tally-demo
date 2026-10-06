@@ -115,11 +115,27 @@ export interface PlayerRoundReport {
   /** 0 for movements outside any round. */
   seq: number
   name: string
+  /** Price of one number in the round (0 outside any round). */
+  linePrice: number
   winningNumbers: (number | null)[]
   /** Net charges in the round (numbers bought and kept, minus refunds). */
   played: number
+  /** Purchases, released ones included (see `released`). */
   bought: NumberPosition[]
   gifted: NumberPosition[]
+  /** Numbers bought and given back in the same round (number_released). */
+  released: NumberPosition[]
+  /** Ledger sums of the round, all positive: they add up to `played` with
+   *  `otherAmount` (reassignments, un-gifts, unplayed refunds). */
+  purchasedAmount: number
+  giftedAmount: number
+  releasedAmount: number
+  /** Charged for the numbers kept from the previous round. */
+  keptAmount: number
+  otherAmount: number
+  /** The numbers kept from the previous round, derived from what the player
+   *  held when the round opened (the ledger logs the keep as one amount). */
+  keptNumbers: number[]
   /** Numbers kept from the previous round (charged again). */
   keptCount: number
   wins: (NumberPosition & { prize: number })[]

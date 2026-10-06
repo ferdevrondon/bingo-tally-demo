@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeftIcon, ChevronRightIcon, GiftIcon } from "lucide-react"
+import { GiftIcon } from "lucide-react"
 
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import { orderTicketsByFreeNumbers } from "@/lib/round-draft/selectors"
 import type { Ticket, DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
@@ -33,6 +34,92 @@ function cloneTickets(tickets: Ticket[]): Ticket[] {
 
 function ticketsDiffer(a: Ticket[], b: Ticket[]): boolean {
   return JSON.stringify(a) !== JSON.stringify(b)
+}
+
+function EditableTicket({
+  ticket,
+  playerId,
+  playerIndexById,
+  playerById,
+  onCellClick,
+  onToggleGift,
+}: {
+  ticket: Ticket
+  playerId: number
+  playerIndexById: Map<number, number>
+  playerById: Map<number, DraftPlayer>
+  onCellClick: (number: number) => void
+  onToggleGift: (number: number) => void
+}) {
+  const free = ticket.numbers.filter((n) => n.playerId === null).length
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border p-3">
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-semibold">Cartón {ticket.index}</span>
+        <span className="text-muted-foreground">
+          {free === 0 ? "Completo" : `${free} libre${free === 1 ? "" : "s"}`}
+        </span>
+      </div>
+      <div className="grid grid-cols-5 gap-2">
+        {ticket.numbers.map((entry) => {
+          const owner = entry.playerId !== null ? playerById.get(entry.playerId) : undefined
+          const isThisPlayer = entry.playerId === playerId
+
+          return (
+            <div key={entry.number} className="relative">
+              <button
+                type="button"
+                onClick={() => onCellClick(entry.number)}
+                className={cn(
+                  "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 text-sm font-medium transition-colors",
+                  entry.playerId !== null
+                    ? cn(
+                        getPlayerColorClass(playerIndexById.get(entry.playerId) ?? -1),
+                        "border-transparent text-white",
+                        isThisPlayer && "ring-2 ring-primary ring-offset-1",
+                        entry.isGift && "border-2 border-dashed border-foreground/40"
+                      )
+                    : "cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+                )}
+              >
+                <span>{entry.number}</span>
+                {owner && (
+                  <span className="max-w-full truncate text-[10px] leading-none opacity-90">
+                    {owner.name.split(" ")[0]}
+                  </span>
+                )}
+              </button>
+              {(isThisPlayer || entry.playerId === null) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleGift(entry.number)
+                  }}
+                  title={
+                    entry.playerId === null
+                      ? "Tomar como regalo"
+                      : entry.isGift
+                        ? "Quitar regalo"
+                        : "Marcar como regalo"
+                  }
+                  className={cn(
+                    "absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors",
+                    entry.isGift
+                      ? "border-red-500/60 bg-amber-400 text-red-700"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <GiftIcon className="size-3.5" />
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function PlayerEditNumbersDialog({
@@ -46,9 +133,16 @@ export function PlayerEditNumbersDialog({
 }) {
   const { state, editPlayerNumbers } = useRoundDraft()
   const [draft, setDraft] = React.useState<Ticket[]>(() => cloneTickets(state.tickets))
-  const [pageIndex, setPageIndex] = React.useState(0)
+  // Ticket order is fixed when the dialog opens so cards don't jump while
+  // editing: tickets with free numbers first, complete ones last.
+  const [orderedIds, setOrderedIds] = React.useState<number[]>(() =>
+    orderTicketsByFreeNumbers(state.tickets).map((t) => t.id)
+  )
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
-  const [pendingSteal, setPendingSteal] = React.useState<number | null>(null)
+  const [pendingSteal, setPendingSteal] = React.useState<{
+    ticketId: number
+    number: number
+  } | null>(null)
 
   // Only reset when the dialog opens, not on every state.tickets change.
   const [wasOpen, setWasOpen] = React.useState(open)
@@ -56,27 +150,34 @@ export function PlayerEditNumbersDialog({
     setWasOpen(open)
     if (open) {
       setDraft(cloneTickets(state.tickets))
-      setPageIndex(0)
+      setOrderedIds(orderTicketsByFreeNumbers(state.tickets).map((t) => t.id))
     }
   }
 
   const isDirty = ticketsDiffer(draft, state.tickets)
   const playerIndexById = new Map(state.players.map((p, i) => [p.id, i]))
   const playerById = new Map(state.players.map((p) => [p.id, p]))
-  const currentTicket = draft[pageIndex]
+  const draftById = new Map(draft.map((t) => [t.id, t]))
+  const orderedTickets = orderedIds
+    .map((id) => draftById.get(id))
+    .filter((t): t is Ticket => t !== undefined)
+  const withFree = orderedTickets.filter((t) => t.numbers.some((n) => n.playerId === null))
+  const complete = orderedTickets.filter((t) => t.numbers.every((n) => n.playerId !== null))
   const pendingStealOwnerId =
     pendingSteal !== null
-      ? (currentTicket?.numbers.find((n) => n.number === pendingSteal)?.playerId ?? null)
+      ? (draftById
+          .get(pendingSteal.ticketId)
+          ?.numbers.find((n) => n.number === pendingSteal.number)?.playerId ?? null)
       : null
   const pendingStealOwnerName =
     pendingStealOwnerId !== null
       ? (playerById.get(pendingStealOwnerId)?.name ?? "otro jugador")
       : null
 
-  function applyCellToggle(number: number) {
+  function applyCellToggle(ticketId: number, number: number) {
     setDraft((prev) =>
       prev.map((ticket) => {
-        if (ticket.id !== currentTicket.id) return ticket
+        if (ticket.id !== ticketId) return ticket
         return {
           ...ticket,
           numbers: ticket.numbers.map((entry) =>
@@ -93,24 +194,31 @@ export function PlayerEditNumbersDialog({
     )
   }
 
-  function handleCellClick(number: number) {
-    const entry = currentTicket.numbers.find((n) => n.number === number)
+  function handleCellClick(ticketId: number, number: number) {
+    const entry = draftById.get(ticketId)?.numbers.find((n) => n.number === number)
     if (entry && entry.playerId !== null && entry.playerId !== player.id) {
-      setPendingSteal(number)
+      setPendingSteal({ ticketId, number })
       return
     }
-    applyCellToggle(number)
+    applyCellToggle(ticketId, number)
   }
 
-  function handleToggleGift(number: number) {
+  // On a free number the gift takes it as a gift; on the player's own number
+  // it adds or removes the gift.
+  function handleToggleGift(ticketId: number, number: number) {
     setDraft((prev) =>
       prev.map((ticket) => {
-        if (ticket.id !== currentTicket.id) return ticket
+        if (ticket.id !== ticketId) return ticket
         return {
           ...ticket,
-          numbers: ticket.numbers.map((entry) =>
-            entry.number === number ? { ...entry, isGift: !entry.isGift } : entry
-          ),
+          numbers: ticket.numbers.map((entry) => {
+            if (entry.number !== number) return entry
+            if (entry.playerId === null) {
+              return { ...entry, playerId: player.id, isGift: true }
+            }
+            if (entry.playerId !== player.id) return entry
+            return { ...entry, isGift: !entry.isGift }
+          }),
         }
       })
     )
@@ -167,12 +275,12 @@ export function PlayerEditNumbersDialog({
     onOpenChange(false)
   }
 
-  if (!currentTicket) return null
+  if (orderedTickets.length === 0) return null
 
   return (
     <>
       <Dialog open={open} onOpenChange={requestClose}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] w-[95%] sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Editar jugada de {player.name}</DialogTitle>
             <DialogDescription>
@@ -180,85 +288,35 @@ export function PlayerEditNumbersDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 p-6">
-            {draft.length > 1 && (
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={pageIndex === 0}
-                  onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
-                >
-                  <ChevronLeftIcon />
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  Cartón {pageIndex + 1}/{draft.length}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={pageIndex === draft.length - 1}
-                  onClick={() => setPageIndex((i) => Math.min(draft.length - 1, i + 1))}
-                >
-                  <ChevronRightIcon />
-                </Button>
-              </div>
-            )}
-
-            <div className="grid grid-cols-5 gap-2">
-              {currentTicket.numbers.map((entry) => {
-                const owner = entry.playerId !== null ? playerById.get(entry.playerId) : undefined
-                const isThisPlayer = entry.playerId === player.id
-
-                return (
-                  <div key={entry.number} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => handleCellClick(entry.number)}
-                      className={cn(
-                        "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 text-sm font-medium transition-colors",
-                        entry.playerId !== null
-                          ? cn(
-                              getPlayerColorClass(playerIndexById.get(entry.playerId) ?? -1),
-                              "border-transparent text-white",
-                              isThisPlayer && "ring-2 ring-primary ring-offset-1",
-                              entry.isGift && "border-2 border-dashed border-foreground/40"
-                            )
-                          : "cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
-                      )}
-                    >
-                      <span>{entry.number}</span>
-                      {owner && (
-                        <span className="max-w-full truncate text-[10px] leading-none opacity-90">
-                          {owner.name.split(" ")[0]}
-                        </span>
-                      )}
-                    </button>
-                    {isThisPlayer && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleToggleGift(entry.number)
-                        }}
-                        title={entry.isGift ? "Quitar regalo" : "Marcar como regalo"}
-                        className={cn(
-                          "absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors",
-                          entry.isGift
-                            ? "border-amber-500/60 text-amber-500"
-                            : "border-border text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <GiftIcon className="size-3" />
-                      </button>
-                    )}
+          <div className="flex flex-col gap-6 overflow-y-auto p-6">
+            {[
+              { title: "Con números libres", tickets: withFree },
+              { title: "Completos", tickets: complete },
+            ]
+              .filter((group) => group.tickets.length > 0)
+              .map((group) => (
+                <section key={group.title} className="flex flex-col gap-3">
+                  <h3 className="text-base font-semibold">
+                    {group.title} ({group.tickets.length})
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {group.tickets.map((ticket) => (
+                      <EditableTicket
+                        key={ticket.id}
+                        ticket={ticket}
+                        playerId={player.id}
+                        playerIndexById={playerIndexById}
+                        playerById={playerById}
+                        onCellClick={(number) => handleCellClick(ticket.id, number)}
+                        onToggleGift={(number) => handleToggleGift(ticket.id, number)}
+                      />
+                    ))}
                   </div>
-                )
-              })}
-            </div>
+                </section>
+              ))}
           </div>
 
-          <DialogFooter className="flex-row justify-end gap-2 p-5 bg-gray-300">
+          <DialogFooter className="flex-row justify-end gap-2 bg-gray-300 p-5">
             <Button variant="outline" onClick={handleCancel}>
               Cancelar
             </Button>
@@ -276,7 +334,7 @@ export function PlayerEditNumbersDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              ¿Quitar el número {pendingSteal} a {pendingStealOwnerName}?
+              ¿Quitar el número {pendingSteal?.number} a {pendingStealOwnerName}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               Este número ya está asignado a {pendingStealOwnerName}. Si continúas, pasará a ser de{" "}
@@ -287,7 +345,9 @@ export function PlayerEditNumbersDialog({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (pendingSteal !== null) applyCellToggle(pendingSteal)
+                if (pendingSteal !== null) {
+                  applyCellToggle(pendingSteal.ticketId, pendingSteal.number)
+                }
                 setPendingSteal(null)
               }}
             >

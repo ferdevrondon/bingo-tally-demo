@@ -4,9 +4,12 @@ import * as React from "react"
 import Link from "next/link"
 
 import { CloseRoundDialog } from "@/components/close-round-dialog"
+import { WinnerCelebration } from "@/components/winner-celebration"
 import { WinningNumberBall } from "@/components/winning-number-ball"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { fireConfetti } from "@/lib/confetti"
+import { buildAwardSummary, type AwardSummary } from "@/lib/round-draft/award-summary"
 import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
@@ -14,6 +17,7 @@ import { getActivePlayers } from "@/lib/round-draft/selectors"
 export function WinningNumbersCard() {
   const { state, readOnly, awardPrize } = useRoundDraft()
   const [isCloseOpen, setIsCloseOpen] = React.useState(false)
+  const [awards, setAwards] = React.useState<AwardSummary[]>([])
 
   if (!state.round) {
     return (
@@ -78,7 +82,13 @@ export function WinningNumbersCard() {
               value={state.winningNumbers[i] ?? null}
               usedNumbers={usedNumbers}
               readOnly={readOnly}
-              onSubmit={(number) => awardPrize(i, number)}
+              onSubmit={(number) => {
+                // The summary uses the state from before the award.
+                const summary = buildAwardSummary(state, i, number)
+                setAwards((prev) => [...prev, summary])
+                awardPrize(i, number)
+                void fireConfetti()
+              }}
             />
           ))}
          
@@ -90,6 +100,15 @@ export function WinningNumbersCard() {
           </Button>
         )}
       </CardContent>
+      <WinnerCelebration
+        awards={awards}
+        allSlotsFilled={allSlotsFilled}
+        onContinue={() => setAwards([])}
+        onCloseRound={() => {
+          setAwards([])
+          setIsCloseOpen(true)
+        }}
+      />
       <CloseRoundDialog open={isCloseOpen} onOpenChange={setIsCloseOpen} />
     </Card>
   )
