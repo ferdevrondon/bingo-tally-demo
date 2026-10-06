@@ -5,6 +5,7 @@ import type { Database } from "@/lib/supabase/database.types"
 import type { ActivityEntry, ActivityEntryType } from "@/lib/round-draft/types"
 
 import { formatHouseDateTime, houseDayRange } from "./format"
+import { buildRoundGifts } from "./gifts"
 import { houseResult, saleAmount } from "./ledger"
 import type {
   CashLine,
@@ -210,19 +211,42 @@ export async function fetchGameSessionReport(
     winnersByRound.set(w.round_id, list)
   }
 
+  const giftRowsByRound = new Map<number, LedgerRow[]>()
+  for (const row of ledger) {
+    if (row.round_id === null) continue
+    if (!["number_gifted", "number_ungifted", "number_released", "number_reassigned"].includes(row.type)) continue
+    const list = giftRowsByRound.get(row.round_id) ?? []
+    list.push(row)
+    giftRowsByRound.set(row.round_id, list)
+  }
+
   const roundReports: RoundReport[] = (rounds.data ?? []).map((r) => {
     const roundWinners = winnersByRound.get(r.id) ?? []
+    const played = wasPlayed(r)
+    const isOpen = r.status === "open"
     return {
       id: r.id,
       seq: r.seq,
       name: r.name,
       status: r.status === "open" ? "open" : "closed",
-      played: wasPlayed(r),
+      played,
       closedAtLabel: r.closed_at ? formatHouseDateTime(r.closed_at, timeZone) : null,
       linePrice: Number(r.line_price),
       prizes: r.prizes.map(Number),
       winningNumbers: r.prizes.map((_, i) => r.winning_numbers[i] ?? null),
       winners: roundWinners,
+      // A round closed without winning numbers was never played: its gifts
+      // were refunded with everything else.
+      gifts:
+        played || isOpen
+          ? buildRoundGifts(
+              giftRowsByRound.get(r.id) ?? [],
+              { linePrice: Number(r.line_price) },
+              roundWinners,
+              playerNames,
+              ticketIndex
+            )
+          : [],
       house: houseResult({
         sales: salesByRound.get(r.id) ?? 0,
         prizes: roundWinners.reduce((sum, w) => sum + w.prize, 0),
