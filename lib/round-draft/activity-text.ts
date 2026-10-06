@@ -106,7 +106,7 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
     case "carryover_kept":
       return (entry.amount ?? 0) > 0
         ? `${player} mantiene su jugada (${amount})`
-        : `${player} mantiene su jugada`
+        : `${player} liberó toda su jugada`
     case "carryover_released":
       return `${player} liberó ${position} para la siguiente ronda`
     case "payout":
