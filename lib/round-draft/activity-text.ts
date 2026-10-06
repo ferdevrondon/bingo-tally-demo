@@ -88,7 +88,9 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
     case "recharge":
       return `${player} recargó ${amount}${method}${note}`
     case "check_in":
-      return `${player} hizo check-in (está en la ronda)`
+      return entry.note === "auto"
+        ? `${player} quedó en la ronda al decidir su jugada (check-in automático)`
+        : `${player} hizo check-in (está en la ronda)`
     case "check_in_undone":
       return `Se deshizo el check-in de ${player}`
     case "round_started":
@@ -104,7 +106,7 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
     case "carryover_kept":
       return (entry.amount ?? 0) > 0
         ? `${player} mantiene su jugada (${amount})`
-        : `${player} mantiene su jugada`
+        : `${player} liberó toda su jugada`
     case "carryover_released":
       return `${player} liberó ${position} para la siguiente ronda`
     case "payout":

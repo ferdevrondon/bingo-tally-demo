@@ -91,7 +91,16 @@ export function PlayerActiveCard({
         )}
 
         {!readOnly && (
-          <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+          <Button
+            variant="outline"
+            disabled={player.pendingCarryOverDecision}
+            title={
+              player.pendingCarryOverDecision
+                ? "Primero decide si mantiene o libera su jugada"
+                : undefined
+            }
+            onClick={() => setIsEditOpen(true)}
+          >
             Editar jugada
           </Button>
         )}

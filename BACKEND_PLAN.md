@@ -508,6 +508,14 @@ Business rules v2 D and G, plus the settlement that used to be 4c (section 5b).
 - Browser (admin account): game session #1 with Ana, Carlos, María and Luis (Ana won #1) → summary → "Ir a liquidación": Carlos paid $10 then $10 more with a double click (one move, "Pagó $20"), María "Queda debiendo · paga el viernes", Luis paid in full, Ana was paid $50 of $80 and the rest marked "Pendiente de pago" (an empty note was refused inline) → "Todo resuelto"; `/players` showed each balance and note, and a $20 collection from Juan outside any game session left him "Por definir"; the settlement was closed and reopened from the sidebar read-only; "Iniciar jornada" warned about María, Juan and Ana; game session #2 opened Ana with +$30 ("A favor $20" after buying a number). SQL reconciliation: 0 mismatches per game session player (opening + ledger) and per account.
 - Security advisor: 25 expected 0029 findings (the 21 of 4d1 minus `set_credit_status`, plus five new functions) and the project-level leaked-password setting.
 
+### Carryover lock and automatic check-in (2026-10-06)
+
+Decided with the product owner after a double charge found in the data (a number bought in the new round before deciding was charged once by the purchase and again inside the kept amount of `resolve_carryover`). Migration `*_carryover_lock_and_auto_check_in.sql`, test `supabase/tests/carryover_lock_and_auto_check_in.sql`:
+
+- **Lock:** while `game_session_players.pending_carryover` is set, the player's play can't change. `private.assert_no_pending_carryover` is called by the four `private.apply_*` helpers (purchase, release, reassign — from or to the player —, gift toggle), so `record_purchase`, `release_number`, `reassign_number`, `toggle_gift` and `edit_player_numbers` raise `pending_carryover`. Only `resolve_carryover` can touch it. The UI mirrors it (`isPendingDecision` in `lib/round-draft/context.tsx`, "Editar jugada" disabled).
+- **Automatic check-in:** `resolve_carryover` sets `checked_in` and logs a `check_in` row with note `auto` when the player still holds at least one number after the decision. Releasing everything leaves them without check-in; buying again brings the regular check-in.
+- Charges already made twice before this change are not corrected.
+
 ### Phase 5: Realtime and observer view
 - `activity_log` subscription + debounced `HYDRATE`; `useRole()` gating in every action component; "Solo lectura" badge.
 

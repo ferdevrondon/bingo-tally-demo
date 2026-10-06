@@ -198,11 +198,7 @@ export function CloseRoundDialog({
           </div>
           <Alert className="border-none bg-amber-600/10 p-2 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
             <CircleAlertIcon />
-            <AlertTitle>Los jugadores deberán confirmar check-in</AlertTitle>
-            {/* <AlertDescription className="text-sky-600/80 dark:text-sky-400/80">
-               Los jugadores deberán confirmar check-in y decidir si
-                    mantienen o liberan su jugada.
-              </AlertDescription> */}
+            <AlertTitle>Cada jugador decidirá si mantiene o libera su jugada</AlertTitle>
           </Alert>
         </div>
 
