@@ -516,6 +516,10 @@ Decided with the product owner after a double charge found in the data (a number
 - **Automatic check-in:** `resolve_carryover` sets `checked_in` and logs a `check_in` row with note `auto` when the player still holds at least one number after the decision. Releasing everything leaves them without check-in; buying again brings the regular check-in.
 - Charges already made twice before this change are not corrected.
 
+### Gifts are cleared when the round closes (2026-10-07)
+
+Rule C says a gift lasts only its round, but the `is_gift` flag stayed on in the next round until the player kept or released their numbers, so the screen kept showing those numbers as gifts. `close_round` now sets `is_gift = false` right after `close_played_round` (the round's margin is computed from the flag there and the history reads the ledger, so nothing is lost). No money moves: `resolve_carryover` already charges every kept number, gifts included. Migration `*_clear_gifts_on_close_round.sql` also clears the flags of players waiting on that decision; test `supabase/tests/clear_gifts_on_close_round.sql`.
+
 ### Phase 5: Realtime and observer view
 - `activity_log` subscription + debounced `HYDRATE`; `useRole()` gating in every action component; "Solo lectura" badge.
 
