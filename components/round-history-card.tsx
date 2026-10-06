@@ -103,15 +103,20 @@ export function RoundHistoryCard({
                 type="button"
                 aria-expanded={isExpanded}
                 onClick={() => setExpandedId(isExpanded ? null : round.id)}
-                className="flex w-full flex-wrap items-center justify-between gap-3 p-3 text-left"
+                className="grid w-full grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 p-3 text-left sm:grid-cols-[1fr_auto_1fr]"
               >
-                <span className="font-medium">
+                <span className="order-1 min-w-0 truncate font-medium">
                   Ronda {round.seq} · {round.name}
                   {round.status === "open" && (
                     <span className="ml-2 text-xs text-muted-foreground">(en juego)</span>
                   )}
                 </span>
-                <span className="flex flex-wrap items-center gap-1.5">
+                <span
+                  className={cn(
+                    "order-3 col-span-2 flex flex-wrap items-center justify-center gap-1.5 sm:order-2 sm:col-span-1",
+                    winning.length === 0 && "max-sm:hidden"
+                  )}
+                >
                   {winning.map((n, i) => (
                     <span
                       key={`${n}-${i}`}
@@ -121,21 +126,23 @@ export function RoundHistoryCard({
                     </span>
                   ))}
                 </span>
-                <span
-                  className={cn(
-                    "text-sm font-semibold tabular-nums",
-                    round.house.total >= 0 ? "text-green-600" : "text-destructive"
-                  )}
-                >
-                  {signedMoney(round.house.total)}
+                <span className="order-2 flex items-center justify-self-end gap-2 sm:order-3">
+                  <span
+                    className={cn(
+                      "text-right text-sm font-semibold tabular-nums",
+                      round.house.total >= 0 ? "text-green-600" : "text-destructive"
+                    )}
+                  >
+                    {signedMoney(round.house.total)}
+                  </span>
+                  <ChevronDownIcon
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground transition-transform",
+                      isExpanded && "rotate-180"
+                    )}
+                    aria-hidden="true"
+                  />
                 </span>
-                <ChevronDownIcon
-                  className={cn(
-                    "size-4 text-muted-foreground transition-transform",
-                    isExpanded && "rotate-180"
-                  )}
-                  aria-hidden="true"
-                />
               </button>
 
               {isExpanded && (
