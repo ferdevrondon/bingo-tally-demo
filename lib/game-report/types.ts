@@ -34,6 +34,18 @@ export interface GameSessionListItem {
   settlement: Pick<SettlementOverview, "status" | "unresolved"> | null
 }
 
+/** A number gifted in a round ("Regalados" tab of the round history). */
+export interface RoundGift {
+  playerId: number
+  playerName: string
+  ticketIndex: number
+  number: number
+  /** The gifted number won: it was paid prize - line price. */
+  won: boolean
+  /** What it cost the house: the line price, or what a winning gift was paid. */
+  cost: number
+}
+
 export interface RoundWinnerReport {
   playerId: number
   playerName: string
@@ -58,6 +70,8 @@ export interface RoundReport {
   /** One per winning ticket ("Cartón N · #X"). A winning number nobody had
    *  has no winner: its prize stays with the house. */
   winners: RoundWinnerReport[]
+  /** Numbers gifted in this round that are still gifts (a played round). */
+  gifts: RoundGift[]
   /** The house result of this round (an open round: sales and prizes so far). */
   house: HouseResult
 }
