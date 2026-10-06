@@ -103,15 +103,15 @@ export function RoundHistoryCard({
                 type="button"
                 aria-expanded={isExpanded}
                 onClick={() => setExpandedId(isExpanded ? null : round.id)}
-                className="flex w-full flex-wrap items-center justify-between gap-3 p-3 text-left"
+                className="flex w-full items-center gap-3 p-3 text-left"
               >
-                <span className="font-medium">
+                <span className="min-w-0 flex-1 truncate font-medium">
                   Ronda {round.seq} · {round.name}
                   {round.status === "open" && (
                     <span className="ml-2 text-xs text-muted-foreground">(en juego)</span>
                   )}
                 </span>
-                <span className="flex flex-wrap items-center gap-1.5">
+                <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                   {winning.map((n, i) => (
                     <span
                       key={`${n}-${i}`}
@@ -123,7 +123,7 @@ export function RoundHistoryCard({
                 </span>
                 <span
                   className={cn(
-                    "text-sm font-semibold tabular-nums",
+                    "w-20 shrink-0 text-right text-sm font-semibold tabular-nums",
                     round.house.total >= 0 ? "text-green-600" : "text-destructive"
                   )}
                 >
@@ -131,7 +131,7 @@ export function RoundHistoryCard({
                 </span>
                 <ChevronDownIcon
                   className={cn(
-                    "size-4 text-muted-foreground transition-transform",
+                    "size-4 shrink-0 text-muted-foreground transition-transform",
                     isExpanded && "rotate-180"
                   )}
                   aria-hidden="true"
