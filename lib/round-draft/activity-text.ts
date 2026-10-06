@@ -88,7 +88,9 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
     case "recharge":
       return `${player} recargó ${amount}${method}${note}`
     case "check_in":
-      return `${player} hizo check-in (está en la ronda)`
+      return entry.note === "auto"
+        ? `${player} quedó en la ronda al decidir su jugada (check-in automático)`
+        : `${player} hizo check-in (está en la ronda)`
     case "check_in_undone":
       return `Se deshizo el check-in de ${player}`
     case "round_started":

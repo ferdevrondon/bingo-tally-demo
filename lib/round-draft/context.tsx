@@ -91,6 +91,12 @@ function creditPlayer(state: RoundDraftState, playerId: number, amount: number):
   }
 }
 
+/** The player still has to keep or release their numbers: their play is locked
+ *  (same rule as private.assert_no_pending_carryover). */
+function isPendingDecision(state: RoundDraftState, playerId: number): boolean {
+  return state.players.find((p) => p.id === playerId)?.pendingCarryOverDecision ?? false
+}
+
 function findEntry(state: RoundDraftState, { ticketId, number }: Position) {
   return state.tickets.find((t) => t.id === ticketId)?.numbers.find((n) => n.number === number)
 }
@@ -257,6 +263,8 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
           players: updatePlayer(state.players, playerId, (p) => ({
             ...p,
             pendingCarryOverDecision: false,
+            // Keeping (all or part) is the check-in; releasing everything isn't.
+            checkedIn: kept > 0 ? true : p.checkedIn,
           })),
         },
         playerId,
@@ -484,11 +492,21 @@ export function RoundDraftProvider({
       state,
       readOnly,
       roundTemplates,
-      setActivePlayer: (playerId) => dispatch({ type: "SET_ACTIVE_PLAYER", payload: playerId }),
+      setActivePlayer: (playerId) => {
+        if (playerId !== null && isPendingDecision(stateRef.current, playerId)) {
+          toast.error(GAME_ACTION_ERROR_MESSAGES.pending_carryover)
+          return
+        }
+        dispatch({ type: "SET_ACTIVE_PLAYER", payload: playerId })
+      },
       assignNumber: (ticketId, number) => {
         const current = stateRef.current
         const playerId = current.activePlayerId
         if (playerId === null || readOnly) return
+        if (isPendingDecision(current, playerId)) {
+          toast.error(GAME_ACTION_ERROR_MESSAGES.pending_carryover)
+          return
+        }
         const tapped = findEntry(current, { ticketId, number })
         if (tapped?.playerId === playerId) {
           // Releasing is positional: it frees the player's own number there.
@@ -528,6 +546,10 @@ export function RoundDraftProvider({
         const position = { ticketId, number }
         const owner = findEntry(stateRef.current, position)?.playerId
         if (owner == null) return
+        if (isPendingDecision(stateRef.current, owner)) {
+          toast.error(GAME_ACTION_ERROR_MESSAGES.pending_carryover)
+          return
+        }
         void perform([{ type: "TOGGLE_GIFT", payload: position }], () =>
           api.toggleGift(position, owner, requestId())
         )
@@ -564,6 +586,18 @@ export function RoundDraftProvider({
       },
       editPlayerNumbers: (playerId, changes) => {
         if (changes.length === 0) return
+        // The player, or the owner a number is taken from, still has to decide.
+        const touchesPending =
+          isPendingDecision(stateRef.current, playerId) ||
+          changes.some((c) => {
+            const owner = findEntry(stateRef.current, { ticketId: c.ticketId, number: c.number })
+              ?.playerId
+            return owner != null && owner !== playerId && isPendingDecision(stateRef.current, owner)
+          })
+        if (touchesPending) {
+          toast.error(GAME_ACTION_ERROR_MESSAGES.pending_carryover)
+          return
+        }
         const optimistic: Action[] = changes.flatMap((c): Action[] => {
           const position = { ticketId: c.ticketId, number: c.number }
           const entry = findEntry(stateRef.current, position)
