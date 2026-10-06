@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { assignTicket } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { getOpenStats } from "@/lib/round-draft/selectors"
+import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
 const ALL_NUMBERS = Array.from({ length: 15 }, (_, i) => i + 1)
@@ -22,6 +24,7 @@ export function OpenNumbersCard() {
     return { number, openCount, amount: openCount * linePrice }
   }).filter((n) => n.openCount > 0)
 
+  const stats = getOpenStats(state)
   const canAssign = state.activePlayerId !== null
 
   return (
@@ -29,12 +32,21 @@ export function OpenNumbersCard() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Números disponibles</CardTitle>
         {openNumbers.length > 0 && (
-          <Badge
-            variant="outline"
-            className="border-amber-500/40 text-amber-600 dark:text-amber-400"
-          >
-            {openNumbers.length} número{openNumbers.length === 1 ? "" : "s"} sin jugador
-          </Badge>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {[
+              `${stats.openTickets} de ${stats.totalTickets} cartones abiertos`,
+              `${stats.freeLines} números libres`,
+              `${formatMoney(stats.freeAmount)} por cobrar`,
+            ].map((label) => (
+              <Badge
+                key={label}
+                variant="outline"
+                className="border-amber-500/40 text-sm text-amber-600 dark:text-amber-400"
+              >
+                {label}
+              </Badge>
+            ))}
+          </div>
         )}
       </CardHeader>
       <CardContent>

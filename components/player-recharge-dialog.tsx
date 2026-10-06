@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { PaymentMethodSelect } from "@/components/payment-method-select"
+import { PaymentMethodChips } from "@/components/payment-method-chips"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -24,7 +24,7 @@ import { getLastRechargeActivity } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
-const PRESET_AMOUNTS = [10, 20, 50, 100, 200]
+const PRESET_AMOUNTS = [10, 20,40, 50, 100, 200]
 
 export function PlayerRechargeDialog({
   player,
@@ -70,7 +70,7 @@ export function PlayerRechargeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm gap-0 p-0">
+      <DialogContent className="max-w-md gap-0 p-0">
         <DialogHeader className="flex-row items-center gap-3 p-6">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-lg border-2 border-foreground/70 text-lg font-bold">
             {player.name.charAt(0).toUpperCase()}
@@ -87,7 +87,7 @@ export function PlayerRechargeDialog({
 
         <Separator className="border-t border-dashed border-border bg-transparent" />
 
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex min-h-0 flex-col gap-6 overflow-y-auto p-6">
           <div>
             <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Saldo actual
@@ -136,29 +136,31 @@ export function PlayerRechargeDialog({
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field>
-              <FieldLabel htmlFor="recharge-payment-method">Método de pago</FieldLabel>
-              <PaymentMethodSelect
-                id="recharge-payment-method"
-                value={paymentMethod}
-                onChange={setPaymentMethod}
-              />
-              {player.bank && (
-                <FieldDescription>Banco: {bankLabel(player.bank)}</FieldDescription>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="recharge-note">Nota (opcional)</FieldLabel>
-              <Input
-                id="recharge-note"
-                value={note}
-                maxLength={200}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ej. referencia"
-              />
-            </Field>
-          </div>
+          {parsedAmount > 0 ? (
+            <>
+              <Field>
+                <FieldLabel id="recharge-payment-method">Método de pago</FieldLabel>
+                <PaymentMethodChips
+                  aria-labelledby="recharge-payment-method"
+                  value={paymentMethod}
+                  onChange={setPaymentMethod}
+                />
+                {player.bank && (
+                  <FieldDescription>Banco: {bankLabel(player.bank)}</FieldDescription>
+                )}
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="recharge-note">Nota (opcional)</FieldLabel>
+                <Input
+                  id="recharge-note"
+                  value={note}
+                  maxLength={200}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ej. referencia"
+                />
+              </Field>
+            </>
+          ) : null}
 
           <p className="text-xs text-muted-foreground">
             {Number.isFinite(parsedAmount) && parsedAmount > 0

@@ -370,10 +370,18 @@ export async function fetchPlayerRounds(
       roundId,
       seq: round?.seq ?? 0,
       name: round?.name ?? "Fuera de ronda",
+      linePrice: Number(round?.line_price ?? 0),
       winningNumbers: round ? round.prizes.map((_, i) => round.winning_numbers[i] ?? null) : [],
       played: 0,
       bought: [],
       gifted: [],
+      released: [],
+      purchasedAmount: 0,
+      giftedAmount: 0,
+      releasedAmount: 0,
+      keptAmount: 0,
+      otherAmount: 0,
+      keptNumbers: [],
       keptCount: 0,
       wins: [],
       recharges: 0,
@@ -395,6 +403,8 @@ export async function fetchPlayerRounds(
       entry.bought.push(position(row))
     } else if (row.type === "number_gifted") {
       entry.gifted.push(position(row))
+    } else if (row.type === "number_released") {
+      entry.released.push(position(row))
     } else if (row.type === "carryover_kept") {
       const linePrice = Number(rounds.data.find((r) => r.id === row.round_id)?.line_price ?? 0)
       if (linePrice > 0) entry.keptCount += Math.round(amount / linePrice)
@@ -405,6 +415,47 @@ export async function fetchPlayerRounds(
     } else if (row.type === "payout") {
       entry.payouts += -amount
     }
+  }
+
+  // Split what the round moved into purchases, gifts and releases; the rest
+  // (kept numbers, un-gifts, reassignments, unplayed refunds) is "other".
+  for (const row of ledger) {
+    const entry = byRound.get(row.round_id)
+    if (!entry) continue
+    const amount = Number(row.amount ?? 0)
+    if (row.type === "number_purchased") entry.purchasedAmount += amount
+    else if (row.type === "number_gifted") entry.giftedAmount += -amount
+    else if (row.type === "number_released") entry.releasedAmount += -amount
+    else if (row.type === "carryover_kept") entry.keptAmount += amount
+  }
+
+  // The keep is logged as one amount, so the kept numbers are what the player
+  // held when it happened: purchases minus releases, reassignments and the
+  // numbers released at the decision (carryover_released).
+  const held: number[] = []
+  const drop = (number: number | null) => {
+    const i = held.indexOf(number ?? 0)
+    if (i >= 0) held.splice(i, 1)
+  }
+  for (const row of ledger) {
+    const amount = Number(row.amount ?? 0)
+    if (row.type === "number_purchased" || (row.type === "number_reassigned" && amount > 0)) {
+      held.push(row.number ?? 0)
+    } else if (
+      row.type === "number_released" ||
+      row.type === "carryover_released" ||
+      (row.type === "number_reassigned" && amount < 0)
+    ) {
+      drop(row.number)
+    } else if (row.type === "carryover_kept") {
+      const entry = byRound.get(row.round_id)
+      if (entry) entry.keptNumbers = [...held].sort((a, b) => a - b)
+    }
+  }
+  for (const entry of byRound.values()) {
+    entry.otherAmount =
+      entry.played -
+      (entry.purchasedAmount - entry.giftedAmount - entry.releasedAmount + entry.keptAmount)
   }
 
   return [...byRound.values()].sort((a, b) => b.seq - a.seq)

@@ -3,7 +3,6 @@
 import * as React from "react"
 import { CheckIcon, Crown } from "lucide-react"
 
-import { fireConfetti } from "@/lib/confetti"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
@@ -35,7 +34,6 @@ export function WinningNumberBall({
     }
     setInvalid(false)
     onSubmit(number)
-    fireConfetti()
   }
 
   const ball = (

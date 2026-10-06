@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ActivityLogCard } from "@/components/activity-log-card"
 import { AddPlayerControl } from "@/components/add-player-control"
 import { CheckInBalanceAlert } from "@/components/check-in-balance-alert"
+import { RoundGiftsCard } from "@/components/round-gifts-card"
 import { LiveRoundHistory } from "@/components/live-round-history"
 import { OpenNumbersCard } from "@/components/open-numbers-card"
 import { PlayerActiveCard } from "@/components/player-active-card"
@@ -49,6 +50,7 @@ export function ActiveRoundPage() {
         <WinningNumbersCard />
         <CheckInBalanceAlert />
       </div>
+      <RoundGiftsCard />
 
       {activePlayers.length > 0 && (
         <div className="grid grid-cols-3 gap-4 @4xl/main:grid-cols-3">

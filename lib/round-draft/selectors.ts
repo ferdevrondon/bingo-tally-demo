@@ -1,4 +1,9 @@
-import type { ActivityEntry, DraftPlayer, RoundDraftState } from "./types"
+import type {
+  ActivityEntry,
+  DraftPlayer,
+  RoundDraftState,
+  Ticket,
+} from "./types"
 
 /** The game session has at least one round (open or closed): it can no
  *  longer be discarded ("Salir y borrar"), and /active-round has a game. */
@@ -136,4 +141,89 @@ export function getLastRechargeActivity(
       (a) => a.type === "recharge" && a.playerId === playerId
     ) ?? null
   )
+}
+
+export interface OpenStats {
+  openTickets: number
+  totalTickets: number
+  freeLines: number
+  totalLines: number
+  /** What the free numbers would bring in: free lines × line price. */
+  freeAmount: number
+}
+
+/** What is left to sell: tickets with at least one free number, free numbers
+ *  (cells without a player) and their value. */
+export function getOpenStats(state: RoundDraftState): OpenStats {
+  const { unsold, totalLines } = getLineSaleStats(state)
+  const openTickets = state.tickets.filter((t) =>
+    t.numbers.some((n) => n.playerId === null)
+  ).length
+  return {
+    openTickets,
+    totalTickets: state.tickets.length,
+    freeLines: unsold,
+    totalLines,
+    freeAmount: unsold * (state.round?.linePrice ?? 0),
+  }
+}
+
+export interface PlayerGifts {
+  playerId: number
+  playerName: string
+  /** Gifted numbers of the player, one entry per gifted play. */
+  numbers: number[]
+}
+
+export interface RoundGifts {
+  players: PlayerGifts[]
+  /** Gifted plays in this round. */
+  giftCount: number
+  /** Gifted plays whose number has not won yet. */
+  pendingCount: number
+  /** What the house loses: a gift that doesn't win costs the line price (a
+   *  winning one is already covered by prize - line price). */
+  giftLoss: number
+}
+
+export function getRoundGifts(state: RoundDraftState): RoundGifts {
+  const winning = new Set(
+    state.winningNumbers.filter((n): n is number => n !== null)
+  )
+  const byPlayer = new Map<number, PlayerGifts>()
+  let giftCount = 0
+  let pendingCount = 0
+  state.tickets.forEach((ticket) => {
+    ticket.numbers.forEach((entry) => {
+      if (entry.playerId === null || !entry.isGift) return
+      giftCount += 1
+      if (!winning.has(entry.number)) pendingCount += 1
+      const current = byPlayer.get(entry.playerId) ?? {
+        playerId: entry.playerId,
+        playerName:
+          state.players.find((p) => p.id === entry.playerId)?.name ??
+          "Jugador desconocido",
+        numbers: [],
+      }
+      current.numbers.push(entry.number)
+      byPlayer.set(entry.playerId, current)
+    })
+  })
+  const players = [...byPlayer.values()].map((p) => ({
+    ...p,
+    numbers: [...p.numbers].sort((a, b) => a - b),
+  }))
+  return {
+    players,
+    giftCount,
+    pendingCount,
+    giftLoss: pendingCount * (state.round?.linePrice ?? 0),
+  }
+}
+
+/** Tickets with free numbers first (the emptiest first), complete ones last;
+ *  ties keep the ticket order. */
+export function orderTicketsByFreeNumbers(tickets: Ticket[]): Ticket[] {
+  const free = (t: Ticket) => t.numbers.filter((n) => n.playerId === null).length
+  return [...tickets].sort((a, b) => free(b) - free(a) || a.index - b.index)
 }

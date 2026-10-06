@@ -1,5 +1,6 @@
 import { GiftIcon } from "lucide-react"
 
+import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
 export function BingoBall({
@@ -17,15 +18,15 @@ export function BingoBall({
     <div className="relative">
       <span
         className={cn(
-          "absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full border bg-white px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap shadow-sm",
+          "absolute -top-3.5 left-1/2 z-20 -translate-x-1/2 rounded-full border bg-white px-2 py-0.5 text-sm font-bold whitespace-nowrap shadow-sm",
           variant === "pending" ? "border-amber-500/50 text-amber-700" : "border-ball/50 text-ball"
         )}
       >
-        ${amount}
+        {formatMoney(amount)}
       </span>
       <div
         className={cn(
-          "relative flex size-12 items-center justify-center overflow-hidden rounded-full border-2 shadow-inner",
+          "relative flex size-14 items-center justify-center overflow-hidden rounded-full border-2 shadow-inner",
           variant === "pending"
             ? "border-amber-500/50 bg-gradient-to-br from-amber-300 to-amber-600"
             : "border-ball/60 bg-gradient-to-br from-ball/70 to-ball"
@@ -34,7 +35,7 @@ export function BingoBall({
         <span className="pointer-events-none absolute -top-1.5 -left-1.5 size-6 rounded-full bg-white/70 blur-sm" />
         <div
           className={cn(
-            "relative z-10 flex size-8 items-center justify-center rounded-full bg-white text-base font-bold shadow-sm",
+            "relative z-10 flex size-10 items-center justify-center rounded-full bg-white text-lg font-bold shadow-sm",
             variant === "pending" ? "text-amber-700" : "text-ball"
           )}
         >
