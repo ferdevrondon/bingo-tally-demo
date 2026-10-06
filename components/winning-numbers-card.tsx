@@ -12,12 +12,21 @@ import { fireConfetti } from "@/lib/confetti"
 import { buildAwardSummary, type AwardSummary } from "@/lib/round-draft/award-summary"
 import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getActivePlayers } from "@/lib/round-draft/selectors"
+import { getActivePlayers, getSlotWinners } from "@/lib/round-draft/selectors"
 
 export function WinningNumbersCard() {
   const { state, readOnly, awardPrize } = useRoundDraft()
   const [isCloseOpen, setIsCloseOpen] = React.useState(false)
   const [awards, setAwards] = React.useState<AwardSummary[]>([])
+  const [celebrating, setCelebrating] = React.useState(false)
+
+  // The summaries belong to one round: start over when the next one begins.
+  const [awardsRound, setAwardsRound] = React.useState(state.roundsPlayed)
+  if (awardsRound !== state.roundsPlayed) {
+    setAwardsRound(state.roundsPlayed)
+    setAwards([])
+    setCelebrating(false)
+  }
 
   if (!state.round) {
     return (
@@ -61,6 +70,16 @@ export function WinningNumbersCard() {
   const allSlotsFilled =
     state.winningNumbers.length > 0 && state.winningNumbers.every((n) => n !== null)
 
+  // Who has won each number so far: the summaries made here first (instant),
+  // then what the activity says (survives a refresh and reaches observers).
+  const derivedWinners = getSlotWinners(state)
+  const slotWinners = state.round.prizes.map((_, i) => {
+    const local = awards.find((a) => a.slotIndex === i)
+    return local
+      ? local.winners.map((w) => ({ name: w.name, amount: w.amount }))
+      : (derivedWinners[i] ?? null)
+  })
+
   return (
     <Card className="w-fit  p-4 flex-row self-start bg-gradient-to-br from-primary/25 via-primary/5 to-background dark:from-primary/30 dark:via-background dark:to-background">
       {/* <CardHeader className="flex justify-center items-center" style={{ containerType: "normal" }}>
@@ -82,12 +101,18 @@ export function WinningNumbersCard() {
               value={state.winningNumbers[i] ?? null}
               usedNumbers={usedNumbers}
               readOnly={readOnly}
+              winners={slotWinners[i]}
               onSubmit={(number) => {
-                // The summary uses the state from before the award.
+                // The summary uses the state from before the award. The
+                // celebration waits until every winning number is in.
                 const summary = buildAwardSummary(state, i, number)
-                setAwards((prev) => [...prev, summary])
+                setAwards((prev) => [...prev.filter((a) => a.slotIndex !== i), summary])
                 awardPrize(i, number)
-                void fireConfetti()
+                const filled = state.winningNumbers.filter((n) => n !== null).length + 1
+                if (filled >= state.round!.prizes.length) {
+                  setCelebrating(true)
+                  void fireConfetti()
+                }
               }}
             />
           ))}
@@ -101,11 +126,11 @@ export function WinningNumbersCard() {
         )}
       </CardContent>
       <WinnerCelebration
-        awards={awards}
+        awards={celebrating ? [...awards].sort((a, b) => a.slotIndex - b.slotIndex) : []}
         allSlotsFilled={allSlotsFilled}
-        onContinue={() => setAwards([])}
+        onContinue={() => setCelebrating(false)}
         onCloseRound={() => {
-          setAwards([])
+          setCelebrating(false)
           setIsCloseOpen(true)
         }}
       />

@@ -4,6 +4,7 @@ import {
   getOpenStats,
   getPlayerNumberSummary,
   getRoundGifts,
+  getSlotWinners,
   orderTicketsByFreeNumbers,
 } from "./selectors"
 import type { RoundDraftState, Ticket } from "./types"
@@ -101,5 +102,52 @@ describe("orderTicketsByFreeNumbers", () => {
       4: [[1, 1, false]],
     })
     expect(orderTicketsByFreeNumbers(state.tickets).map((t) => t.index)).toEqual([3, 2, 4, 1])
+  })
+})
+
+describe("getSlotWinners", () => {
+  const prize = (playerId: number | null, number: number, amount: number, roundId = 7) => ({
+    type: "prize_won",
+    playerId,
+    number,
+    amount,
+    roundId,
+  })
+
+  it("groups the prizes of each winning number by player", () => {
+    const state = {
+      round: { roundId: 7 },
+      winningNumbers: [4, 9, null],
+      players: [
+        { id: 1, name: "Ana" },
+        { id: 2, name: "Beto" },
+      ],
+      activity: [
+        prize(1, 4, 100),
+        prize(1, 4, 90),
+        prize(2, 4, 100),
+        prize(null, 9, 0),
+        prize(1, 4, 500, 6),
+      ],
+    } as unknown as RoundDraftState
+
+    expect(getSlotWinners(state)).toEqual([
+      [
+        { playerId: 1, name: "Ana", amount: 190 },
+        { playerId: 2, name: "Beto", amount: 100 },
+      ],
+      [],
+      null,
+    ])
+  })
+
+  it("is null when the prize rows are not in the recent activity", () => {
+    const state = {
+      round: { roundId: 7 },
+      winningNumbers: [4],
+      players: [],
+      activity: [],
+    } as unknown as RoundDraftState
+    expect(getSlotWinners(state)).toEqual([null])
   })
 })

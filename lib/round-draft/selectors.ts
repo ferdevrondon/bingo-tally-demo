@@ -227,3 +227,37 @@ export function orderTicketsByFreeNumbers(tickets: Ticket[]): Ticket[] {
   const free = (t: Ticket) => t.numbers.filter((n) => n.playerId === null).length
   return [...tickets].sort((a, b) => free(b) - free(a) || a.index - b.index)
 }
+
+export interface SlotWinner {
+  playerId: number
+  name: string
+  /** What the player was paid for the number (summed over their tickets). */
+  amount: number
+}
+
+/** Who has won each winning-number slot of the open round, read from the
+ *  `prize_won` rows of the recent activity. An entry is `[]` when the number
+ *  was drawn and nobody had it (its row has no player), and `null` when the
+ *  slot is empty or its rows are not in the recent activity. */
+export function getSlotWinners(state: RoundDraftState): (SlotWinner[] | null)[] {
+  const roundId = state.round?.roundId ?? null
+  return state.winningNumbers.map((number) => {
+    if (number === null || roundId === null) return null
+    const rows = state.activity.filter(
+      (a) => a.type === "prize_won" && a.roundId === roundId && a.number === number
+    )
+    if (rows.length === 0) return null
+    const byPlayer = new Map<number, SlotWinner>()
+    for (const row of rows) {
+      if (row.playerId === null) continue
+      const winner = byPlayer.get(row.playerId) ?? {
+        playerId: row.playerId,
+        name: state.players.find((p) => p.id === row.playerId)?.name ?? "Jugador",
+        amount: 0,
+      }
+      winner.amount += row.amount ?? 0
+      byPlayer.set(row.playerId, winner)
+    }
+    return [...byPlayer.values()]
+  })
+}
