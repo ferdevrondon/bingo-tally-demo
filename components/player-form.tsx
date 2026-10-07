@@ -29,7 +29,7 @@ import type { PlayerInput } from "@/lib/players"
 
 const emptyPlayer: PlayerInput = {
   name: "",
-  username: "",
+  nickname: "",
   paymentMethod: null,
   bank: null,
   isVip: false,
@@ -54,6 +54,8 @@ export interface PlayerFormProps {
 }
 
 // Los saldos no se capturan aquí: son por jornada (BACKEND_PLAN.md regla 7).
+// El nombre y el nickname se guardan en mayúsculas (también lo garantiza la
+// base de datos).
 export function PlayerForm({
   onSubmit,
   onCancel,
@@ -84,23 +86,25 @@ export function PlayerForm({
           <Input
             id="player-name"
             value={player.name}
-            onChange={(e) => updateField("name", e.target.value)}
-            placeholder="Juan Pérez"
+            onChange={(e) => updateField("name", e.target.value.toUpperCase())}
+            placeholder="JUAN PÉREZ"
+            className="uppercase"
             required
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="player-username">Usuario</FieldLabel>
+          <FieldLabel htmlFor="player-nickname">Nickname</FieldLabel>
           <Input
-            id="player-username"
-            value={player.username}
-            onChange={(e) => updateField("username", e.target.value)}
-            placeholder="@juanperez"
+            id="player-nickname"
+            value={player.nickname}
+            onChange={(e) => updateField("nickname", e.target.value.toUpperCase())}
+            placeholder="JUANPE"
+            className="uppercase"
             required
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="player-payment-method">Método de pago</FieldLabel>
+          <FieldLabel htmlFor="player-payment-method">Método de pago (salida)</FieldLabel>
           <Select
             value={player.paymentMethod ?? ""}
             onValueChange={(value) =>
@@ -123,7 +127,7 @@ export function PlayerForm({
           </Select>
         </Field>
         <Field>
-          <FieldLabel htmlFor="player-bank">Entidad bancaria</FieldLabel>
+          <FieldLabel htmlFor="player-bank">Entidad bancaria (ingreso)</FieldLabel>
           <Select
             value={player.bank ?? NO_BANK}
             onValueChange={(value) => updateField("bank", isBank(value) ? value : null)}

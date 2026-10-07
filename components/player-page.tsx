@@ -52,7 +52,7 @@ import { writeSucceeded } from "@/lib/write-feedback"
 function toInput(player: Player): PlayerInput {
   return {
     name: player.name,
-    username: player.username,
+    nickname: player.nickname,
     paymentMethod: player.paymentMethod,
     bank: player.bank,
     isVip: player.isVip,
@@ -104,7 +104,7 @@ export default function PlayerPage({
       players.map((player) => ({
         id: player.id,
         name: player.name,
-        username: player.username,
+        nickname: player.nickname,
         paymentMethod: isAdmin
           ? (player.paymentMethod ?? "")
           : paymentMethodLabel(player.paymentMethod),
@@ -121,18 +121,18 @@ export default function PlayerPage({
   const columns = React.useMemo<DataTableColumnDef[]>(
     () => [
       { key: "name", header: "Nombre" },
-      { key: "username", header: "Usuario" },
+      { key: "nickname", header: "Nickname" },
       isAdmin
         ? {
             key: "paymentMethod",
-            header: "Método de pago",
+            header: "Método de pago (salida)",
             type: "select",
             options: PAYMENT_METHOD_OPTIONS,
           }
-        : { key: "paymentMethod", header: "Método de pago" },
+        : { key: "paymentMethod", header: "Método de pago (salida)" },
       isAdmin
-        ? { key: "bank", header: "Entidad bancaria", type: "select", options: BANK_OPTIONS_WITH_NONE }
-        : { key: "bank", header: "Entidad bancaria" },
+        ? { key: "bank", header: "Entidad bancaria (ingreso)", type: "select", options: BANK_OPTIONS_WITH_NONE }
+        : { key: "bank", header: "Entidad bancaria (ingreso)" },
       { key: "isVip", header: "VIP" },
       { key: "balance", header: "Saldo" },
       { key: "status", header: "Estado" },
