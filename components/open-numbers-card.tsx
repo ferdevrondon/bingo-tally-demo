@@ -5,16 +5,20 @@ import { CheckCircle2Icon } from "lucide-react"
 import { BingoBall } from "@/components/bingo-ball"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { assignTicket } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getOpenStats } from "@/lib/round-draft/selectors"
 import { formatMoney } from "@/lib/rounds"
-import { cn } from "@/lib/utils"
 
 const ALL_NUMBERS = Array.from({ length: 15 }, (_, i) => i + 1)
 
-export function OpenNumbersCard() {
-  const { state, readOnly, assignNumber } = useRoundDraft()
+/** Tapping a number opens "Ver cartones" with it ringed (`onNumberClick`);
+ *  numbers are assigned there, on the tickets. */
+export function OpenNumbersCard({
+  onNumberClick,
+}: {
+  onNumberClick: (number: number) => void
+}) {
+  const { state } = useRoundDraft()
 
   const linePrice = state.round?.linePrice ?? 0
   const openNumbers = ALL_NUMBERS.map((number) => {
@@ -25,7 +29,6 @@ export function OpenNumbersCard() {
   }).filter((n) => n.openCount > 0)
 
   const stats = getOpenStats(state)
-  const canAssign = state.activePlayerId !== null
 
   return (
     <Card className="gap-3">
@@ -57,25 +60,17 @@ export function OpenNumbersCard() {
           </div>
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
-            {openNumbers.map(({ number, amount }) =>
-              readOnly ? (
-                <BingoBall key={number} number={number} amount={amount} variant="pending" />
-              ) : (
+            {openNumbers.map(({ number, amount }) => (
               <button
                 key={number}
                 type="button"
-                disabled={!canAssign}
-                title={canAssign ? undefined : "Selecciona un jugador primero"}
-                onClick={() => {
-                  const ticketId = assignTicket(number, state.tickets)
-                  if (ticketId !== null) assignNumber(ticketId, number)
-                }}
-                className={cn(canAssign ? "cursor-pointer" : "cursor-not-allowed opacity-60")}
+                title={`Ver dónde está libre el ${number}`}
+                onClick={() => onNumberClick(number)}
+                className="cursor-pointer"
               >
                 <BingoBall number={number} amount={amount} variant="pending" />
               </button>
-              )
-            )}
+            ))}
           </div>
         )}
       </CardContent>
