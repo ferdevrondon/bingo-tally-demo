@@ -383,7 +383,7 @@ export type Database = {
           is_vip: boolean
           name: string
           payment_method: string | null
-          username: string | null
+          nickname: string | null
         }
         Insert: {
           active?: boolean
@@ -394,7 +394,7 @@ export type Database = {
           is_vip?: boolean
           name: string
           payment_method?: string | null
-          username?: string | null
+          nickname?: string | null
         }
         Update: {
           active?: boolean
@@ -405,7 +405,7 @@ export type Database = {
           is_vip?: boolean
           name?: string
           payment_method?: string | null
-          username?: string | null
+          nickname?: string | null
         }
         Relationships: [
           {

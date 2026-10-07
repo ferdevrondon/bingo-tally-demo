@@ -87,7 +87,8 @@ Glossary (business term in Spanish → name in code):
 | Pago al jugador | payout |
 | Efectivo / Transferencia / Paypal / Tarjeta de crédito / Tarjeta de débito / Otro | `cash` / `transfer` / `paypal` / `credit_card` / `debit_card` / `other` |
 | (from 6a2) Efectivo / Zelle / Venmo / Majority / PayPal / Square / Otro | `cash` / `zelle` / `venmo` / `majority` / `paypal` / `square` / `other` (transfer and cards retired) |
-| Entidad bancaria | `bank` (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `other`) |
+| Entidad bancaria (ingreso) | `bank` (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `capital_one`, `first_one_bank`, `ufcu_bank`, `regional_bank`, `southwest_bank`, `southstate_bank`, `frost_bank`, `mid_bank`, `pnc_business`, `pnc_personal`, `other`) |
+| Nickname (was "Usuario") | `nickname` (`players.nickname`, was `username`); the player's name and nickname are stored in uppercase |
 | Pagado / Pendiente | `paid` / `pending` |
 | Observador | observer |
 
@@ -191,7 +192,7 @@ Ids are `bigint generated always as identity` (keeps the existing `number` ids i
 
 | table | purpose | key columns |
 |---|---|---|
-| `players` | house player catalog (no balances) | house_id, name, username, payment_method, is_vip bool, active bool |
+| `players` | house player catalog (no balances) | house_id, name, nickname (was username), payment_method, bank, is_vip bool, active bool |
 | `round_templates` | rounds configured on `/rounds` | house_id, name, kind ('regular','special'), winner_count, line_price numeric(12,2) not null check (line_price > 0), prizes numeric[] (informational only: the paid prize is always derived from `kind` and `line_price`; **from 4c** the real paid value per slot, rule E) |
 | `game_sessions` | one per day/session | house_id, number, status ('active','ended'), started_at, ended_at, house_balance, created_by |
 | `game_session_players` | who plays in this game session **+ their balances for this game session** | house_id, game_session_id, player_id, positive_balance, negative_balance, checked_in, pending_carryover, removed_at null |
@@ -550,7 +551,7 @@ Decided with the product owner (2026-09-29): Phase 6 ships in two branches, **6a
 ### Phase 6a2: Payment methods v2 and the player's bank
 Decided with the product owner (2026-09-30), before 6b because the cash reports group by payment method:
 - **Payment method** (chosen on every recharge, collection and payout, and as the player's default): Efectivo, Zelle, Venmo, Majority, PayPal, Square, Otro (`cash`, `zelle`, `venmo`, `majority`, `paypal`, `square`, `other`).
-- **Bank** (`players.bank`, a player attribute edited on `/players`, optional; not asked on each movement): Chase, Bank of America, TD Bank, Wells Fargo, Chime, Otro (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `other`). More banks will be added later (a new migration + `lib/banks.ts`).
+- **Bank** (`players.bank`, a player attribute edited on `/players`, optional; not asked on each movement): Chase, Bank of America, TD Bank, Wells Fargo, Chime, Otro (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `other`). More banks will be added later (a new migration + `lib/banks.ts`). **2026-10-07** (`*_player_nickname_uppercase_banks.sql`, applied by the product owner in the SQL Editor after a rolled-back dry run): Capital One, First One Bank, UFCU Bank, Regional Bank, Southwest Bank, SouthState Bank, Frost Bank, Mid Bank, PNC Negocio, PNC Personal added (all earlier banks kept); `players.username` renamed to `nickname` ("Nickname"); a trigger (`private.normalize_player_names()`) stores the name and nickname trimmed and in uppercase (an empty nickname is null), and the existing 15 players were converted. Labels on the player: "Entidad bancaria (ingreso)" and "Método de pago (salida)" (names only; recharges and payouts are recorded as before).
 - Fixed lists in code for now.
 - `transfer`, `credit_card`, `debit_card` are **retired**: ledger rows that carry them stay (the ledger is immutable) and still show "Transferencia" / "Tarjeta de …"; new rows can't use them. Players whose default was one of them moved to `other`.
 
