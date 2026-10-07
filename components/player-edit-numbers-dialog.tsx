@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { GiftIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import {
   AlertDialog,
@@ -22,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { claimFirstFree } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
 import { orderTicketsByFreeNumbers } from "@/lib/round-draft/selectors"
@@ -194,29 +196,47 @@ export function PlayerEditNumbersDialog({
     )
   }
 
+  // A free number goes where the database will put it: the lowest ticket
+  // with that number free (record_purchase / edit_player_numbers), whichever
+  // ticket was tapped, as on Cartones y jugadores.
+  function claimFree(tappedTicketId: number, number: number, isGift: boolean) {
+    const result = claimFirstFree(draft, number, player.id, isGift)
+    if (!result) return
+    setDraft(result.tickets)
+    if (result.ticketId !== tappedTicketId) {
+      const index = draftById.get(result.ticketId)?.index
+      toast.info(`Asignado al cartón ${index}`)
+    }
+  }
+
   function handleCellClick(ticketId: number, number: number) {
     const entry = draftById.get(ticketId)?.numbers.find((n) => n.number === number)
     if (entry && entry.playerId !== null && entry.playerId !== player.id) {
       setPendingSteal({ ticketId, number })
       return
     }
+    if (entry?.playerId === null) {
+      claimFree(ticketId, number, false)
+      return
+    }
     applyCellToggle(ticketId, number)
   }
 
-  // On a free number the gift takes it as a gift; on the player's own number
-  // it adds or removes the gift.
+  // On a free number the gift takes it as a gift (on the first free ticket,
+  // like any purchase); on the player's own number it adds or removes the gift.
   function handleToggleGift(ticketId: number, number: number) {
+    const entry = draftById.get(ticketId)?.numbers.find((n) => n.number === number)
+    if (entry?.playerId === null) {
+      claimFree(ticketId, number, true)
+      return
+    }
     setDraft((prev) =>
       prev.map((ticket) => {
         if (ticket.id !== ticketId) return ticket
         return {
           ...ticket,
           numbers: ticket.numbers.map((entry) => {
-            if (entry.number !== number) return entry
-            if (entry.playerId === null) {
-              return { ...entry, playerId: player.id, isGift: true }
-            }
-            if (entry.playerId !== player.id) return entry
+            if (entry.number !== number || entry.playerId !== player.id) return entry
             return { ...entry, isGift: !entry.isGift }
           }),
         }
@@ -284,7 +304,8 @@ export function PlayerEditNumbersDialog({
           <DialogHeader>
             <DialogTitle>Editar jugada de {player.name}</DialogTitle>
             <DialogDescription>
-              Selecciona o quita números para este jugador en cada cartón.
+              Selecciona o quita números para este jugador. Los números libres se asignan al
+              primer cartón que los tenga libres.
             </DialogDescription>
           </DialogHeader>
 

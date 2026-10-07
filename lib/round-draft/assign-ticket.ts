@@ -75,3 +75,31 @@ export function movedPlays(lineNumber: number, tickets: Ticket[], hasAwards: boo
     return next !== null && next !== (t.numbers.find((n) => n.number === lineNumber)?.playerId ?? null)
   }).length
 }
+
+/** A purchase of `lineNumber` for `playerId` on a local copy of the tickets
+ *  (the "Editar jugada" draft, the optimistic edit): it lands where the
+ *  database will put it, the lowest-index ticket with the number free. Returns
+ *  the updated tickets and the chosen ticket, or null when it is taken on
+ *  every ticket. */
+export function claimFirstFree(
+  tickets: Ticket[],
+  lineNumber: number,
+  playerId: number,
+  isGift: boolean
+): { tickets: Ticket[]; ticketId: number } | null {
+  const ticketId = assignTicket(lineNumber, tickets)
+  if (ticketId === null) return null
+  return {
+    ticketId,
+    tickets: tickets.map((ticket) =>
+      ticket.id !== ticketId
+        ? ticket
+        : {
+            ...ticket,
+            numbers: ticket.numbers.map((n) =>
+              n.number === lineNumber ? { ...n, playerId, isGift } : n
+            ),
+          }
+    ),
+  }
+}
