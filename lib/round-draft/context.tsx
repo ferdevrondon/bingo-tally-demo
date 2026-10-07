@@ -14,7 +14,7 @@ import type { PaymentMethod } from "@/lib/payment-methods"
 import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 
-import { assignTicket, compactLine, movedPlays } from "./assign-ticket"
+import { assignTicket, claimFirstFree, compactLine, movedPlays } from "./assign-ticket"
 import { fetchGameSessionState } from "./fetch-state"
 import {
   createGameApi,
@@ -598,10 +598,31 @@ export function RoundDraftProvider({
           toast.error(GAME_ACTION_ERROR_MESSAGES.pending_carryover)
           return
         }
+        // Changes apply in order, as edit_player_numbers does: a purchase of a
+        // free number lands on the lowest ticket where it is still free at that
+        // point (the database ignores the ticket sent), the rest by position.
+        let working = stateRef.current.tickets
         const optimistic: Action[] = changes.flatMap((c): Action[] => {
-          const position = { ticketId: c.ticketId, number: c.number }
-          const entry = findEntry(stateRef.current, position)
+          const sent = { ticketId: c.ticketId, number: c.number }
+          const sentEntry = findEntry({ ...stateRef.current, tickets: working }, sent)
+          const claimed =
+            c.owned && sentEntry?.playerId === null
+              ? claimFirstFree(working, c.number, playerId, false)
+              : null
+          const position = claimed ? { ticketId: claimed.ticketId, number: c.number } : sent
+          const entry = claimed ? sentEntry : findEntry(stateRef.current, position)
+          if (claimed) working = claimed.tickets
           if (!c.owned) {
+            working = working.map((t) =>
+              t.id !== position.ticketId
+                ? t
+                : {
+                    ...t,
+                    numbers: t.numbers.map((n) =>
+                      n.number === c.number ? { ...n, playerId: null, isGift: false } : n
+                    ),
+                  }
+            )
             return [{ type: "SET_NUMBER_OWNER", payload: { ...position, playerId: null } }]
           }
           const own: Action[] =
