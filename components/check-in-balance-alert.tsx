@@ -37,7 +37,7 @@ export function CheckInBalanceAlert() {
             check-in.
             <div className="mt-2 flex flex-wrap gap-1.5">
               {pendingCheckIn.map((p) => (
-                <Badge key={p.id} className="bg-red-600">
+                <Badge key={p.id} className="bg-red-600 text-white">
                   {p.name}
                 </Badge>
               ))}

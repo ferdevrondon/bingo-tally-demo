@@ -84,7 +84,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
               </div>
             )}
             {alerts && alerts.players.length > 0 && (
-              <div className="flex flex-col gap-1 text-sm">
+              <div className="flex flex-col gap-1 text-sm p-2">
                 <span className="font-medium">Jugadores con saldo pendiente</span>
                 <ul className="divide-y rounded-lg border">
                   {alerts.players.map((p) => (
