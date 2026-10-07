@@ -17,10 +17,10 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { cn } from "@/lib/utils"
 
-type TicketsView = "tickets" | "list"
+export type TicketsView = "tickets" | "list"
 
 // Cartones (grid) or Lista (columns): a per-browser display preference,
-// shared by /new-game and "Ver cartones" in /active-round.
+// shared by /new-game, "Ver cartones" and "Editar jugada" in /active-round.
 const VIEW_STORAGE_KEY = "new-game-view"
 
 const viewListeners = new Set<() => void>()
@@ -43,7 +43,7 @@ function subscribeView(listener: () => void) {
   }
 }
 
-function useTicketsView() {
+export function useTicketsView() {
   // The server (and the first render) shows Cartones; the browser then reads
   // the saved choice.
   const view = React.useSyncExternalStore(
@@ -61,6 +61,32 @@ function useTicketsView() {
   return [view, change] as const
 }
 
+/** The Cartones/Lista toggle; the choice is remembered per browser. */
+export function TicketsViewToggle({ className }: { className?: string }) {
+  const [view, setView] = useTicketsView()
+  return (
+    <ToggleGroup
+      variant="outline"
+      spacing={0}
+      className={className}
+      value={[view]}
+      onValueChange={(value: string[]) => {
+        const next = value[0]
+        if (next === "tickets" || next === "list") setView(next)
+      }}
+    >
+      <ToggleGroupItem value="tickets" aria-label="Ver por cartones">
+        <LayoutGridIcon />
+        Cartones
+      </ToggleGroupItem>
+      <ToggleGroupItem value="list" aria-label="Ver por lista">
+        <ListIcon />
+        Lista
+      </ToggleGroupItem>
+    </ToggleGroup>
+  )
+}
+
 /** The active-player select and the Cartones/Lista toggle above the tickets.
  *  `leading` and `trailing` hold the controls each screen adds around the
  *  player select (/new-game: the round select before it and "Agregar
@@ -73,7 +99,6 @@ export function TicketsToolbar({
   trailing?: React.ReactNode
 }) {
   const { state, setActivePlayer } = useRoundDraft()
-  const [view, setView] = useTicketsView()
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -110,25 +135,7 @@ export function TicketsToolbar({
 
       {trailing}
 
-      <ToggleGroup
-        variant="outline"
-        spacing={0}
-        className="ml-auto"
-        value={[view]}
-        onValueChange={(value: string[]) => {
-          const next = value[0]
-          if (next === "tickets" || next === "list") setView(next)
-        }}
-      >
-        <ToggleGroupItem value="tickets" aria-label="Ver por cartones">
-          <LayoutGridIcon />
-          Cartones
-        </ToggleGroupItem>
-        <ToggleGroupItem value="list" aria-label="Ver por lista">
-          <ListIcon />
-          Lista
-        </ToggleGroupItem>
-      </ToggleGroup>
+      <TicketsViewToggle className="ml-auto" />
     </div>
   )
 }
@@ -173,7 +180,7 @@ export function TicketsGrid({
         <AddTicketButton
           disabled={isTicketPending}
           onClick={handleAddTicket}
-          className="w-full max-w-sm"
+          className="w-full max-w-72"
         />
       )}
     </div>

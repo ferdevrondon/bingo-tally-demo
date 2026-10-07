@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { TicketsViewToggle, useTicketsView } from "@/components/tickets-board"
 import { claimFirstFree } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
@@ -124,6 +125,103 @@ function EditableTicket({
   )
 }
 
+// The Lista view of one ticket while editing: a row per number with its
+// player's name. Same clicks and gift button as EditableTicket.
+function EditableTicketColumn({
+  ticket,
+  playerId,
+  playerIndexById,
+  playerById,
+  onCellClick,
+  onToggleGift,
+}: {
+  ticket: Ticket
+  playerId: number
+  playerIndexById: Map<number, number>
+  playerById: Map<number, DraftPlayer>
+  onCellClick: (number: number) => void
+  onToggleGift: (number: number) => void
+}) {
+  const free = ticket.numbers.filter((n) => n.playerId === null).length
+
+  return (
+    <div className="flex w-44 shrink-0 flex-col gap-2">
+      <span className="w-fit rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+        Cartón {ticket.index}
+      </span>
+      <div className="flex flex-col gap-1 rounded-2xl border border-primary/30 bg-card p-2">
+        {ticket.numbers.map((entry) => {
+          const owner = entry.playerId !== null ? playerById.get(entry.playerId) : undefined
+          const isThisPlayer = entry.playerId === playerId
+
+          return (
+            <div
+              key={entry.number}
+              className={cn(
+                "flex h-7 items-center gap-1 rounded-md border pr-1 text-xs font-medium transition-colors",
+                owner
+                  ? cn(
+                      getPlayerColorClass(playerIndexById.get(owner.id) ?? -1),
+                      "border-transparent text-white",
+                      isThisPlayer && "ring-2 ring-primary ring-offset-1",
+                      entry.isGift && "border-2 border-dashed border-foreground/40"
+                    )
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => onCellClick(entry.number)}
+                title={owner?.name}
+                className={cn(
+                  "flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2",
+                  !owner && "hover:bg-amber-500/20"
+                )}
+              >
+                {owner ? (
+                  <>
+                    <span className="min-w-0 flex-1 truncate text-left font-semibold uppercase">
+                      {owner.name}
+                    </span>
+                    <span className="tabular-nums">{entry.number}</span>
+                  </>
+                ) : (
+                  <span className="tabular-nums">{entry.number}</span>
+                )}
+              </button>
+              {(isThisPlayer || entry.playerId === null) && (
+                <button
+                  type="button"
+                  onClick={() => onToggleGift(entry.number)}
+                  title={
+                    entry.playerId === null
+                      ? "Tomar como regalo"
+                      : entry.isGift
+                        ? "Quitar regalo"
+                        : "Marcar como regalo"
+                  }
+                  className={cn(
+                    "flex size-5 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm transition-colors",
+                    entry.isGift
+                      ? "border-red-500/60 bg-amber-400 text-red-700"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <GiftIcon className="size-3" />
+                </button>
+              )}
+            </div>
+          )
+        })}
+        <div className="mt-1 flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <span>{free === 0 ? "Completo" : `${free} libre${free === 1 ? "" : "s"}`}</span>
+          <span className="tabular-nums">{15 - free}/15</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function PlayerEditNumbersDialog({
   player,
   open,
@@ -134,6 +232,7 @@ export function PlayerEditNumbersDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { state, editPlayerNumbers } = useRoundDraft()
+  const [view] = useTicketsView()
   const [draft, setDraft] = React.useState<Ticket[]>(() => cloneTickets(state.tickets))
   // Ticket order is fixed when the dialog opens so cards don't jump while
   // editing: tickets with free numbers first, complete ones last.
@@ -310,6 +409,7 @@ export function PlayerEditNumbersDialog({
           </DialogHeader>
 
           <div className="flex flex-col gap-6 overflow-y-auto p-6">
+            <TicketsViewToggle className="self-end" />
             {[
               { title: "Con números libres", tickets: withFree },
               { title: "Completos", tickets: complete },
@@ -320,18 +420,27 @@ export function PlayerEditNumbersDialog({
                   <h3 className="text-base font-semibold">
                     {group.title} ({group.tickets.length})
                   </h3>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {group.tickets.map((ticket) => (
-                      <EditableTicket
-                        key={ticket.id}
-                        ticket={ticket}
-                        playerId={player.id}
-                        playerIndexById={playerIndexById}
-                        playerById={playerById}
-                        onCellClick={(number) => handleCellClick(ticket.id, number)}
-                        onToggleGift={(number) => handleToggleGift(ticket.id, number)}
-                      />
-                    ))}
+                  <div
+                    className={
+                      view === "tickets"
+                        ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                        : "flex gap-3 overflow-x-auto pb-2"
+                    }
+                  >
+                    {group.tickets.map((ticket) => {
+                      const TicketView = view === "tickets" ? EditableTicket : EditableTicketColumn
+                      return (
+                        <TicketView
+                          key={ticket.id}
+                          ticket={ticket}
+                          playerId={player.id}
+                          playerIndexById={playerIndexById}
+                          playerById={playerById}
+                          onCellClick={(number) => handleCellClick(ticket.id, number)}
+                          onToggleGift={(number) => handleToggleGift(ticket.id, number)}
+                        />
+                      )
+                    })}
                   </div>
                 </section>
               ))}
