@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { LayoutGridIcon } from "lucide-react"
 
 import { ActivityLogCard } from "@/components/activity-log-card"
 import { AddPlayerControl } from "@/components/add-player-control"
@@ -10,6 +11,7 @@ import { RoundGiftsCard } from "@/components/round-gifts-card"
 import { LiveRoundHistory } from "@/components/live-round-history"
 import { OpenNumbersCard } from "@/components/open-numbers-card"
 import { PlayerActiveCard } from "@/components/player-active-card"
+import { TicketsBoardDialog } from "@/components/tickets-board-dialog"
 import { Button } from "@/components/ui/button"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
@@ -20,6 +22,12 @@ import { WinningNumbersCard } from "./winning-numbers-card"
 export function ActiveRoundPage() {
   const { state, readOnly } = useRoundDraft()
   const activePlayers = getActivePlayers(state)
+  // "Ver cartones": opened from its button, or from a number of "Números
+  // disponibles" (then that number is ringed on the tickets).
+  const [ticketsView, setTicketsView] = React.useState<{
+    open: boolean
+    highlightNumber: number | null
+  }>({ open: false, highlightNumber: null })
 
   if (!state.round) {
     return (
@@ -40,11 +48,24 @@ export function ActiveRoundPage() {
     <div className="@container/main flex flex-1 flex-col gap-6 p-4 lg:p-6">
       <PageHeadingWithActions />
       <Separator className={"border-primary/25 border-2"}/>
-      <OpenNumbersCard />
+      <OpenNumbersCard
+        onNumberClick={(number) =>
+          setTicketsView({ open: true, highlightNumber: number })
+        }
+      />
 
       <div className="flex items-center justify-between">
         <h2 className="text-4xl font-semibold">Jugadores</h2>
-        {!readOnly && <AddPlayerControl />}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setTicketsView({ open: true, highlightNumber: null })}
+          >
+            <LayoutGridIcon />
+            Ver cartones
+          </Button>
+          {!readOnly && <AddPlayerControl />}
+        </div>
       </div>
       <div className="flex items-center justify-between">
         <WinningNumbersCard />
@@ -65,6 +86,14 @@ export function ActiveRoundPage() {
       )}
       <LiveRoundHistory />
       <ActivityLogCard />
+
+      <TicketsBoardDialog
+        open={ticketsView.open}
+        onOpenChange={(open) =>
+          setTicketsView((current) => ({ ...current, open }))
+        }
+        highlightNumber={ticketsView.highlightNumber}
+      />
     </div>
   )
 }

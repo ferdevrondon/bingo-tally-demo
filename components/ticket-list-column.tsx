@@ -8,8 +8,9 @@ import {
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
 import { cn } from "@/lib/utils"
 
-// The Lista view of /new-game: one ticket as a narrow column, a row per
-// number with its player's name. Same rules and colors as TicketCard.
+// The Lista view of the tickets board (/new-game and "Ver cartones"): one
+// ticket as a narrow column, a row per number with its player's name. Same
+// rules and colors as TicketCard.
 export function TicketListColumn({
   ticket,
   players,
@@ -17,6 +18,7 @@ export function TicketListColumn({
   readOnly = false,
   onAssign,
   onToggleGift,
+  highlightNumber = null,
 }: TicketCardProps) {
   const assignedCount = ticket.numbers.filter((n) => n.playerId !== null).length
   const playerIndexById = new Map(players.map((p, i) => [p.id, i]))
@@ -48,7 +50,11 @@ export function TicketListColumn({
                       entry.isGift &&
                         "border-2 border-dashed border-foreground/40"
                     )
-                  : "border-border text-muted-foreground"
+                  : cn(
+                      "border-border text-muted-foreground",
+                      entry.number === highlightNumber &&
+                        "border-amber-500 bg-amber-500/10 text-amber-700 ring-2 ring-amber-500 dark:text-amber-400"
+                    )
               )}
             >
               <button

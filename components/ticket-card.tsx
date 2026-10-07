@@ -87,6 +87,8 @@ export interface TicketCardProps {
   readOnly?: boolean
   onAssign: (number: number) => void
   onToggleGift: (number: number) => void
+  /** A number to point out where it is still free ("Números disponibles"). */
+  highlightNumber?: number | null
 }
 
 export function TicketCard({
@@ -96,6 +98,7 @@ export function TicketCard({
   readOnly = false,
   onAssign,
   onToggleGift,
+  highlightNumber = null,
 }: TicketCardProps) {
   const assignedCount = ticket.numbers.filter((n) => n.playerId !== null).length
   const playerIndexById = new Map(players.map((p, i) => [p.id, i]))
@@ -143,6 +146,8 @@ export function TicketCard({
                         )
                       : cn(
                           "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                          entry.number === highlightNumber &&
+                            "ring-2 ring-amber-500 ring-offset-2 ring-offset-background",
                           readOnly
                             ? "cursor-default"
                             : canAssign
