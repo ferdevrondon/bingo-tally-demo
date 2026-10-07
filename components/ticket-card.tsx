@@ -105,7 +105,7 @@ export function TicketCard({
   const playerById = new Map(players.map((p) => [p.id, p]))
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-72">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Cartón #{ticket.index}</CardTitle>
         <span className="text-xs text-muted-foreground">
@@ -113,7 +113,7 @@ export function TicketCard({
         </span>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-5 gap-1.5">
           {ticket.numbers.map((entry) => {
             const owner =
               entry.playerId !== null
