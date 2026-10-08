@@ -32,6 +32,8 @@ const emptyPlayer: PlayerInput = {
   nickname: "",
   paymentMethod: null,
   bank: null,
+  phone: "",
+  email: "",
   isVip: false,
 }
 
@@ -82,7 +84,9 @@ export function PlayerForm({
     <form onSubmit={handleSubmit} className={cn(variant === "plain" && className)}>
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="player-name">Nombre</FieldLabel>
+          <FieldLabel htmlFor="player-name" className="gap-1">
+            Nombre<span className="text-destructive">*</span>
+          </FieldLabel>
           <Input
             id="player-name"
             value={player.name}
@@ -100,9 +104,32 @@ export function PlayerForm({
             onChange={(e) => updateField("nickname", e.target.value.toUpperCase())}
             placeholder="JUANPE"
             className="uppercase"
-            required
           />
         </Field>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="player-phone">Teléfono</FieldLabel>
+            <Input
+              id="player-phone"
+              type="tel"
+              value={player.phone}
+              maxLength={30}
+              onChange={(e) => updateField("phone", e.target.value)}
+              placeholder="+1 (555) 123-4567"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="player-email">Correo</FieldLabel>
+            <Input
+              id="player-email"
+              type="email"
+              value={player.email}
+              maxLength={254}
+              onChange={(e) => updateField("email", e.target.value)}
+              placeholder="jugador@correo.com"
+            />
+          </Field>
+        </div>
         <Field>
           <FieldLabel htmlFor="player-payment-method">Método de pago (salida)</FieldLabel>
           <Select
