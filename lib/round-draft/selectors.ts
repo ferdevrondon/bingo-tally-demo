@@ -261,3 +261,18 @@ export function getSlotWinners(state: RoundDraftState): (SlotWinner[] | null)[] 
     return [...byPlayer.values()]
   })
 }
+
+/** What the house wins with a winning number: it "plays" every ticket where
+ *  the number was left free and earns the prize minus the line it didn't
+ *  sell there (`unsoldWinning` in lib/game-report/ledger.ts). */
+export function getHouseWin(
+  state: RoundDraftState,
+  number: number,
+  prize: number
+): { tickets: number; amount: number } {
+  const tickets = state.tickets.filter(
+    (t) => t.numbers.find((n) => n.number === number)?.playerId === null
+  ).length
+  const linePrice = state.round?.linePrice ?? 0
+  return { tickets, amount: (prize - linePrice) * tickets }
+}

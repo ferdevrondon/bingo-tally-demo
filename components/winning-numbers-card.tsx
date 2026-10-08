@@ -12,7 +12,7 @@ import { fireConfetti } from "@/lib/confetti"
 import { buildAwardSummary, type AwardSummary } from "@/lib/round-draft/award-summary"
 import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getActivePlayers, getSlotWinners } from "@/lib/round-draft/selectors"
+import { getActivePlayers, getHouseWin, getSlotWinners } from "@/lib/round-draft/selectors"
 
 export function WinningNumbersCard() {
   const { state, readOnly, awardPrize } = useRoundDraft()
@@ -102,6 +102,11 @@ export function WinningNumbersCard() {
               usedNumbers={usedNumbers}
               readOnly={readOnly}
               winners={slotWinners[i]}
+              house={
+                state.winningNumbers[i] != null
+                  ? getHouseWin(state, state.winningNumbers[i]!, prize)
+                  : null
+              }
               onSubmit={(number) => {
                 // The summary uses the state from before the award. The
                 // celebration waits until every winning number is in.
