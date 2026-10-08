@@ -36,7 +36,10 @@ export default async function LoginPage({
             <div className="">
               <Image src={'/assets/img/logo.svg'}  alt={'logo'} width={60} height={40}/>
             </div>
-           <span className={"text-2xl " + titleFont.className}> Bingo Tally</span>
+            <div className="flex flex-col leading-tight">
+              <span className={"text-2xl " + titleFont.className}>Bingo Tally</span>
+              <span className="text-sm text-muted-foreground">Tu guía aliada</span>
+            </div>
           </div>
           <LoginForm notice={notice} />
         </div>
