@@ -78,6 +78,8 @@ export interface ActivityEntry {
   number: number | null
   amount: number | null
   paymentMethod: RecordedPaymentMethod | null
+  /** The bank of a cash move (recharge, payout); null on older rows. */
+  bank: Bank | null
   note: string | null
 }
 

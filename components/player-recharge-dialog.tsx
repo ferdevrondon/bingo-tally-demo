@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { BankSelect } from "@/components/bank-select"
 import { PaymentMethodChips } from "@/components/payment-method-chips"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,10 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { bankLabel } from "@/lib/banks"
+import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { formatRelativeTime } from "@/lib/format-relative-time"
 import { signedMoney } from "@/lib/round-draft/balance"
@@ -38,6 +39,7 @@ export function PlayerRechargeDialog({
   const { state, rechargeBalance } = useRoundDraft()
   const [amount, setAmount] = React.useState("")
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod | null>(null)
+  const [bank, setBank] = React.useState<Bank | null>(null)
   const [note, setNote] = React.useState("")
   // One recharge per dialog opening: a double click reuses the same request.
   const [requestKey, setRequestKey] = React.useState(() => crypto.randomUUID())
@@ -51,6 +53,7 @@ export function PlayerRechargeDialog({
     if (open) {
       setAmount("")
       setPaymentMethod(player.paymentMethod ?? "cash")
+      setBank(player.bank ?? null)
       setNote("")
       setRequestKey(crypto.randomUUID())
     }
@@ -64,7 +67,7 @@ export function PlayerRechargeDialog({
 
   function handleConfirm() {
     if (!isValid || paymentMethod === null) return
-    rechargeBalance(player.id, parsedAmount, paymentMethod, note.trim() || null, requestKey)
+    rechargeBalance(player.id, parsedAmount, paymentMethod, bank, note.trim() || null, requestKey)
     onOpenChange(false)
   }
 
@@ -139,15 +142,16 @@ export function PlayerRechargeDialog({
           {parsedAmount > 0 ? (
             <>
               <Field>
-                <FieldLabel id="recharge-payment-method">Método de pago</FieldLabel>
+                <FieldLabel id="recharge-payment-method">Método</FieldLabel>
                 <PaymentMethodChips
                   aria-labelledby="recharge-payment-method"
                   value={paymentMethod}
                   onChange={setPaymentMethod}
                 />
-                {player.bank && (
-                  <FieldDescription>Banco: {bankLabel(player.bank)}</FieldDescription>
-                )}
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="recharge-bank">Banco</FieldLabel>
+                <BankSelect id="recharge-bank" value={bank} onChange={setBank} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="recharge-note">Nota (opcional)</FieldLabel>

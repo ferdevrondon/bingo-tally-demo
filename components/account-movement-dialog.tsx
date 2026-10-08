@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { BankSelect } from "@/components/bank-select"
 import { PaymentMethodSelect } from "@/components/payment-method-select"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,10 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { bankLabel, type Bank } from "@/lib/banks"
+import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { formatMoney } from "@/lib/rounds"
@@ -26,6 +27,7 @@ export type MovementDirection = "in" | "out"
 export interface MovementValues {
   amount: number
   paymentMethod: PaymentMethod
+  bank: Bank | null
   note: string | null
   /** One per dialog opening: a double click records the move once. */
   requestId: string
@@ -65,6 +67,7 @@ export function AccountMovementDialog({
 }) {
   const [amount, setAmount] = React.useState("")
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod | null>(null)
+  const [bank, setBank] = React.useState<Bank | null>(null)
   const [note, setNote] = React.useState("")
   const [requestId, setRequestId] = React.useState(() => crypto.randomUUID())
   const [isPending, startTransition] = React.useTransition()
@@ -77,6 +80,7 @@ export function AccountMovementDialog({
     if (open) {
       setAmount(suggestedAmount(direction, player.balance))
       setPaymentMethod(player.paymentMethod ?? "cash")
+      setBank(player.bank ?? null)
       setNote("")
       setRequestId(crypto.randomUUID())
     }
@@ -95,6 +99,7 @@ export function AccountMovementDialog({
       const saved = await onConfirm({
         amount: parsedAmount,
         paymentMethod,
+        bank,
         note: note.trim() || null,
         requestId,
       })
@@ -167,19 +172,24 @@ export function AccountMovementDialog({
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="movement-payment-method">Método de pago</FieldLabel>
+              <FieldLabel htmlFor="movement-bank" className="whitespace-nowrap">
+                Banco
+              </FieldLabel>
+              <BankSelect id="movement-bank" value={bank} onChange={setBank} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="movement-payment-method" className="whitespace-nowrap">
+                Método
+              </FieldLabel>
               <PaymentMethodSelect
                 id="movement-payment-method"
                 value={paymentMethod}
                 onChange={setPaymentMethod}
               />
-              {player.bank && (
-                <FieldDescription>Banco: {bankLabel(player.bank)}</FieldDescription>
-              )}
             </Field>
-            <Field>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="movement-note">Nota (opcional)</FieldLabel>
               <Input
                 id="movement-note"

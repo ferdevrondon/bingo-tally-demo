@@ -10,6 +10,7 @@ import {
   GAME_ACTION_ERROR_MESSAGES,
   type GameActionResult,
 } from "@/lib/data/game-action-result"
+import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
@@ -309,6 +310,7 @@ interface RoundDraftContextValue {
     playerId: number,
     amount: number,
     paymentMethod: PaymentMethod,
+    bank: Bank | null,
     note: string | null,
     requestKey: string
   ) => void
@@ -564,11 +566,11 @@ export function RoundDraftProvider({
           api.undoCheckIn(gameSessionId, playerId, requestId())
         )
       },
-      rechargeBalance: (playerId, amount, paymentMethod, note, requestKey) => {
+      rechargeBalance: (playerId, amount, paymentMethod, bank, note, requestKey) => {
         if (submittedRecharges.current.has(requestKey)) return
         submittedRecharges.current.add(requestKey)
         void perform([{ type: "RECHARGE_BALANCE", payload: { playerId, amount } }], () =>
-          api.rechargeBalance(gameSessionId, playerId, amount, paymentMethod, note, requestKey)
+          api.rechargeBalance(gameSessionId, playerId, amount, paymentMethod, bank, note, requestKey)
         )
       },
       removePlayer: (playerId) => {

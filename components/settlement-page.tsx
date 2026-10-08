@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowLeftIcon, CheckCircle2Icon, ChevronDownIcon, LockIcon } from "lucide-react"
+import { ArrowLeftIcon, CheckCircle2Icon, ChevronDownIcon, FileTextIcon, LockIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { AccountMovementDialog, type MovementValues } from "@/components/account-movement-dialog"
@@ -294,8 +294,8 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
   }
 
   return (
-    <div className="flex flex-col gap-6 py-4 md:py-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Button
             variant="link"
@@ -308,32 +308,37 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
           </Button>
           <h1 className="text-2xl font-semibold">Liquidación · Jornada #{settlement.number}</h1>
           <p className="text-sm text-muted-foreground">
-            Terminó el {settlement.endedAtLabel} · {settlement.players.length} jugadores ·{" "}
-            <Link
-              href={`/reports/games/${settlement.gameSessionId}`}
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Ver reporte de la jornada
-            </Link>
+            Terminó el {settlement.endedAtLabel} · {settlement.players.length} jugadores
           </p>
         </div>
-        {isOpen ? (
-          <Badge
-            className={cn(
-              "h-7 px-3",
-              unresolved > 0
-                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                : "bg-green-500/15 text-green-700 dark:text-green-400"
-            )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={`/reports/games/${settlement.gameSessionId}`} />}
           >
-            {unresolved > 0 ? `${unresolved} por resolver` : "Todo resuelto"}
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="h-7 gap-1 px-3">
-            <LockIcon className="size-3" />
-            Cerrada el {settlement.closedAtLabel}
-          </Badge>
-        )}
+            <FileTextIcon />
+            Ver reporte de la jornada
+          </Button>
+          {isOpen ? (
+            <Badge
+              className={cn(
+                "h-7 px-3",
+                unresolved > 0
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : "bg-green-500/15 text-green-700 dark:text-green-400"
+              )}
+            >
+              {unresolved > 0 ? `${unresolved} por resolver` : "Todo resuelto"}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="h-7 gap-1 px-3">
+              <LockIcon className="size-3" />
+              Cerrada el {settlement.closedAtLabel}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
