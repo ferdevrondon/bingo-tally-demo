@@ -1,16 +1,19 @@
 import { Separator } from "@/components/ui/separator"
-import UserInfo from "./user-info"
+import type { CurrentHouse } from "@/lib/data/house"
 import HouseInfo from "./house-info"
+import UserInfo, { type AccountInfo } from "./user-info"
 
-
-
-const SettingsPage = () => {
+const SettingsPage = ({ account, house }: { account: AccountInfo; house: CurrentHouse | null }) => {
   return (
-    <section className="py-3 px-6">
+    <section className="px-4 py-3 lg:px-6">
       <div className="mx-auto max-w-7xl">
-        <UserInfo />
-        <Separator className={"mt-4 mb-4 border border-gray-400/25"} />
-        <HouseInfo />
+        <UserInfo account={account} role={house?.role ?? null} />
+        <Separator className="mt-4 mb-4 border border-gray-400/25" />
+        {house ? (
+          <HouseInfo house={house} />
+        ) : (
+          <p className="py-6 text-sm text-muted-foreground">Tu cuenta todavía no pertenece a ninguna casa.</p>
+        )}
       </div>
     </section>
   )
