@@ -1,4 +1,4 @@
-import { GiftIcon } from "lucide-react"
+import { GiftIcon, TrophyIcon } from "lucide-react"
 
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
@@ -8,11 +8,14 @@ export function BingoBall({
   amount,
   variant,
   isGift = false,
+  isWinner = false,
 }: {
   number: number
   amount: number
   variant: "pending" | "taken"
   isGift?: boolean
+  /** A winning number of the open round: a trophy and a gold ring. */
+  isWinner?: boolean
 }) {
   return (
     <div className="relative">
@@ -27,6 +30,7 @@ export function BingoBall({
       <div
         className={cn(
           "relative flex size-14 items-center justify-center overflow-hidden rounded-full border-2 shadow-inner",
+          isWinner && "ring-2 ring-amber-400 ring-offset-2 ring-offset-card",
           variant === "pending"
             ? "border-amber-500/50 bg-gradient-to-br from-amber-300 to-amber-600"
             : "border-ball/60 bg-gradient-to-br from-ball/70 to-ball"
@@ -42,6 +46,14 @@ export function BingoBall({
           {number}
         </div>
       </div>
+      {isWinner && (
+        <div
+          title="Número ganador"
+          className="absolute -top-1 -left-1.5 z-30 flex size-6 items-center justify-center rounded-full border border-amber-600/60 bg-gradient-to-br from-yellow-300 to-amber-500 shadow-sm"
+        >
+          <TrophyIcon className="size-3.5 text-amber-900" strokeWidth={2.5} />
+        </div>
+      )}
       {isGift && (
         <div
           title="Número regalado"

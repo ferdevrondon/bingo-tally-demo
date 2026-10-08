@@ -25,7 +25,8 @@ import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import { useCheckInToggle } from "@/components/check-in-dialog"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getPlayerNumberSummary } from "@/lib/round-draft/selectors"
+import { getPlayerNumberSummary, getSlotWinners } from "@/lib/round-draft/selectors"
+import { formatMoney } from "@/lib/rounds"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
@@ -56,6 +57,17 @@ export function PlayerActiveCard({
   )
   const totalPlayed = numbers.reduce((sum, n) => sum + n.amount, 0)
 
+  // The winning numbers of the open round this player holds, and what they
+  // were paid for them (the trophy goes away when the round closes).
+  const winningNumbers = new Set(state.winningNumbers.filter((n): n is number => n !== null))
+  const slotWinners = getSlotWinners(state)
+  const won = state.winningNumbers.flatMap((number, slot) => {
+    if (number === null || !numbers.some((n) => n.number === number)) return []
+    const amount = slotWinners[slot]?.find((w) => w.playerId === player.id)?.amount ?? 0
+    return [{ number, amount }]
+  })
+  const wonTotal = won.reduce((sum, w) => sum + w.amount, 0)
+
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -85,9 +97,16 @@ export function PlayerActiveCard({
                 amount={amount}
                 variant="taken"
                 isGift={isGift}
+                isWinner={winningNumbers.has(number)}
               />
             ))}
           </div>
+        )}
+        {won.length > 0 && (
+          <p className="rounded-xl border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950 dark:bg-amber-500/15 dark:text-amber-100">
+            🏆 {wonTotal > 0 ? `Ganó ${formatMoney(wonTotal)}` : "Ganó"} con el{" "}
+            {won.map((w) => w.number).join(" y el ")}
+          </p>
         )}
 
         {!readOnly && (
