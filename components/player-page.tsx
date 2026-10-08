@@ -55,6 +55,8 @@ function toInput(player: Player): PlayerInput {
     nickname: player.nickname,
     paymentMethod: player.paymentMethod,
     bank: player.bank,
+    phone: player.phone,
+    email: player.email,
     isVip: player.isVip,
   }
 }
@@ -105,6 +107,7 @@ export default function PlayerPage({
         id: player.id,
         name: player.name,
         nickname: player.nickname,
+        contact: [player.phone, player.email].filter(Boolean).join("\n") || "—",
         paymentMethod: isAdmin
           ? (player.paymentMethod ?? "")
           : paymentMethodLabel(player.paymentMethod),
@@ -122,6 +125,7 @@ export default function PlayerPage({
     () => [
       { key: "name", header: "Nombre" },
       { key: "nickname", header: "Nickname" },
+      { key: "contact", header: "Contacto", type: "lines" },
       isAdmin
         ? {
             key: "paymentMethod",

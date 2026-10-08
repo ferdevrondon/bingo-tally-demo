@@ -387,34 +387,40 @@ export type Database = {
           active: boolean
           bank: string | null
           created_at: string
+          email: string | null
           house_id: number
           id: number
           is_vip: boolean
           name: string
           payment_method: string | null
           nickname: string | null
+          phone: string | null
         }
         Insert: {
           active?: boolean
           bank?: string | null
           created_at?: string
+          email?: string | null
           house_id: number
           id?: never
           is_vip?: boolean
           name: string
           payment_method?: string | null
           nickname?: string | null
+          phone?: string | null
         }
         Update: {
           active?: boolean
           bank?: string | null
           created_at?: string
+          email?: string | null
           house_id?: number
           id?: never
           is_vip?: boolean
           name?: string
           payment_method?: string | null
           nickname?: string | null
+          phone?: string | null
         }
         Relationships: [
           {
