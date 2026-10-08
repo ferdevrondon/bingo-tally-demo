@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  getHouseWin,
   getOpenStats,
   getPlayerNumberSummary,
   getRoundGifts,
@@ -149,5 +150,24 @@ describe("getSlotWinners", () => {
       activity: [],
     } as unknown as RoundDraftState
     expect(getSlotWinners(state)).toEqual([null])
+  })
+})
+
+describe("getHouseWin", () => {
+  it("earns the prize minus the line on each ticket where the number is free", () => {
+    const state = {
+      ...makeState({ 1: [[7, 1, false]], 2: [], 3: [[7, 2, true]], 4: [] }),
+      round: { linePrice: 10 },
+    } as RoundDraftState
+    expect(getHouseWin(state, 7, 50)).toEqual({ tickets: 2, amount: 80 })
+    expect(getHouseWin(state, 3, 50)).toEqual({ tickets: 4, amount: 160 })
+  })
+
+  it("wins nothing when every ticket had the number sold", () => {
+    const state = {
+      ...makeState({ 1: [[5, 1, false]] }),
+      round: { linePrice: 10 },
+    } as RoundDraftState
+    expect(getHouseWin(state, 5, 50)).toEqual({ tickets: 0, amount: 0 })
   })
 })

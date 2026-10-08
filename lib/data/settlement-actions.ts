@@ -6,6 +6,7 @@ import { z } from "zod"
 import type { MovementInput } from "@/lib/data/account-actions"
 import type { GameActionResult } from "@/lib/data/game-action-result"
 import { rejectGameAction } from "@/lib/data/reject-game-action"
+import { BANKS } from "@/lib/banks"
 import { PAYMENT_METHODS } from "@/lib/payment-methods"
 import type { SettlementMark } from "@/lib/settlement"
 import { createClient } from "@/lib/supabase/server"
@@ -21,6 +22,7 @@ const movementSchema = z.object({
   playerId: idSchema,
   amount: z.number().positive(),
   paymentMethod: z.enum(PAYMENT_METHODS),
+  bank: z.enum(BANKS).nullable(),
   note: z.string().trim().max(200).nullable(),
   requestId: z.uuid(),
 })
@@ -41,6 +43,7 @@ async function move(
     p_payment_method: parsed.data.paymentMethod,
     p_note: parsed.data.note as string,
     p_request_id: parsed.data.requestId,
+    p_bank: parsed.data.bank as string,
   })
   if (error) return rejectGameAction(supabase, error)
   refresh()

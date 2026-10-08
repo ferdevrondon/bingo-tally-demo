@@ -335,6 +335,18 @@ function GiftsTab({ rounds }: { rounds: RoundReport[] }) {
   )
 }
 
+// A folder tab on the card's top edge: the shape is a `before:` trapezoid
+// (perspective tilt) with rounded top corners, so the label stays straight.
+// Inactive tabs keep their color; the active one takes the card's color and
+// covers the card's top line so both read as one piece.
+const FOLDER_TAB = cn(
+  "relative z-0 h-9 flex-none rounded-none border-0 px-5 pt-1 text-white hover:text-white dark:text-white dark:hover:text-white",
+  "before:absolute before:inset-0 before:-z-10 before:origin-bottom before:rounded-t-xl before:[transform:perspective(14px)_rotateX(2deg)]",
+  "after:hidden",
+  "data-active:z-10 data-active:-mb-px data-active:bg-transparent data-active:text-foreground dark:data-active:border-transparent dark:data-active:bg-transparent dark:data-active:text-foreground",
+  "data-active:before:bg-card data-active:before:shadow-[0_0_0_1px_color-mix(in_oklab,var(--foreground)_10%,transparent)] data-active:before:[clip-path:inset(-2px_-2px_0_-2px)]"
+)
+
 // Rounds of a game session as a small dashboard: totals on top, then a tab
 // per view. "Rondas": newest first, each expandable with its winners and
 // house result (business rule F). "Regalados": per round, which numbers were
@@ -349,6 +361,7 @@ export function RoundHistoryCard({
   emptyText?: string
 }) {
   const [expandedId, setExpandedId] = React.useState<number | null>(null)
+  const [tab, setTab] = React.useState<"rounds" | "gifts">("rounds")
   const houseTotal = rounds.reduce((sum, r) => sum + r.house.total, 0)
   const played = rounds.filter((r) => r.played).length
   const prizes = rounds.reduce((sum, r) => sum + r.house.prizes, 0)
@@ -356,58 +369,71 @@ export function RoundHistoryCard({
   const giftCost = gifts.reduce((sum, g) => sum + g.cost, 0)
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Historial de rondas</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {rounds.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 @3xl/main:grid-cols-4">
-            <Stat
-              tone="neutral"
-              icon={<LayersIcon className="size-3.5" aria-hidden="true" />}
-              label="Rondas jugadas"
-              value={String(played)}
-            />
-            <Stat
-              tone="amber"
-              icon={<TrophyIcon className="size-3.5 text-amber-500" aria-hidden="true" />}
-              label="Premios pagados"
-              value={formatMoney(prizes)}
-            />
-            <Stat
-              tone="red"
-              icon={<GiftIcon className="size-3.5 text-red-600" aria-hidden="true" />}
-              label={`Regalados (${gifts.length})`}
-              value={`−${formatMoney(giftCost)}`}
-              
-            />
-            <Stat
-              tone={houseTotal >= 0 ? "green" : "red"}
-              icon={<WalletIcon className="size-3.5" aria-hidden="true" />}
-              label="Resultado de la casa"
-              value={signedMoney(houseTotal)}
-            />
-          </div>
-        )}
-
-        <Tabs defaultValue="rounds">
-          <TabsList>
-            <TabsTrigger value="rounds">
-              <LayersIcon aria-hidden="true" />
-              Rondas
-            </TabsTrigger>
-            <TabsTrigger value="gifts">
-              <GiftIcon aria-hidden="true" />
-              Regalados
-              {gifts.length > 0 && (
-                <span className="rounded-full bg-red-500/15 px-1.5 text-xs font-semibold text-red-700 tabular-nums dark:text-red-400">
-                  {gifts.length}
-                </span>
+    <Tabs
+      value={tab}
+      onValueChange={(value) => setTab(value === "gifts" ? "gifts" : "rounds")}
+      className="gap-0"
+    >
+      <TabsList className="h-auto gap-1 rounded-none bg-transparent p-0">
+        <TabsTrigger value="rounds" className={cn(FOLDER_TAB, "before:bg-primary/85")}>
+          <LayersIcon aria-hidden="true" />
+          Rondas
+        </TabsTrigger>
+        <TabsTrigger value="gifts" className={cn(FOLDER_TAB, "before:bg-red-400/75")}>
+          <GiftIcon aria-hidden="true" />
+          Regalados
+          {gifts.length > 0 && (
+            <span
+              className={cn(
+                "rounded-full px-1.5 text-xs font-semibold tabular-nums",
+                tab === "gifts"
+                  ? "bg-red-500/15 text-red-700 dark:text-red-400"
+                  : "bg-white/25 text-white"
               )}
-            </TabsTrigger>
-          </TabsList>
+            >
+              {gifts.length}
+            </span>
+          )}
+        </TabsTrigger>
+      </TabsList>
+
+      <Card className="rounded-tl-none">
+        <CardHeader>
+          <CardTitle>
+            {tab === "rounds" ? "Historial de rondas" : "Historial de números regalados"}
+          </CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {rounds.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 @3xl/main:grid-cols-4">
+              <Stat
+                tone="neutral"
+                icon={<LayersIcon className="size-3.5" aria-hidden="true" />}
+                label="Rondas jugadas"
+                value={String(played)}
+              />
+              <Stat
+                tone="amber"
+                icon={<TrophyIcon className="size-3.5 text-amber-500" aria-hidden="true" />}
+                label="Premios pagados"
+                value={formatMoney(prizes)}
+              />
+              <Stat
+                tone="red"
+                icon={<GiftIcon className="size-3.5 text-red-600" aria-hidden="true" />}
+                label={`Regalados (${gifts.length})`}
+                value={`−${formatMoney(giftCost)}`}
+              
+              />
+              <Stat
+                tone={houseTotal >= 0 ? "green" : "red"}
+                icon={<WalletIcon className="size-3.5" aria-hidden="true" />}
+                label="Resultado de la casa"
+                value={signedMoney(houseTotal)}
+              />
+            </div>
+          )}
 
           <TabsContent value="rounds" className="flex flex-col gap-1.5 pt-2">
             {rounds.length === 0 && (
@@ -430,8 +456,8 @@ export function RoundHistoryCard({
           <TabsContent value="gifts" className="pt-2">
             <GiftsTab rounds={rounds} />
           </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Tabs>
   )
 }

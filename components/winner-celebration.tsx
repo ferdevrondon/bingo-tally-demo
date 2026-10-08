@@ -1,6 +1,6 @@
 "use client"
 
-import { CrownIcon, TrophyIcon } from "lucide-react"
+import { CrownIcon, HouseIcon, TrophyIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { AwardSummary } from "@/lib/round-draft/award-summary"
+import { houseWinText, type AwardSummary } from "@/lib/round-draft/award-summary"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { formatMoney } from "@/lib/rounds"
 
@@ -64,11 +64,7 @@ export function WinnerCelebration({
                 </div>
               </div>
 
-              {award.winners.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Nadie tenía el #{award.number}: el premio queda para la casa.
-                </p>
-              ) : (
+              {award.winners.length > 0 && (
                 <div className="flex min-w-0 flex-1 flex-wrap gap-3">
                   {award.winners.map((winner, i) => (
                     <div
@@ -93,6 +89,12 @@ export function WinnerCelebration({
                     </div>
                   ))}
                 </div>
+              )}
+              {award.house.tickets > 0 && (
+                <p className="flex items-center gap-1.5 text-sm font-medium">
+                  <HouseIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                  {houseWinText(award.house)}
+                </p>
               )}
             </section>
           ))}

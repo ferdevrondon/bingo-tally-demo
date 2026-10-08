@@ -7,6 +7,7 @@ import {
   type GameActionResult,
 } from "@/lib/data/game-action-result"
 import { houseResult, SALE_TYPES, saleAmount, type HouseResult } from "@/lib/game-report/ledger"
+import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/lib/supabase/database.types"
@@ -171,6 +172,7 @@ export function createGameApi(isAdmin: boolean) {
       playerId: number,
       amount: number,
       paymentMethod: PaymentMethod,
+      bank: Bank | null,
       note: string | null,
       requestId: string
     ) =>
@@ -182,6 +184,7 @@ export function createGameApi(isAdmin: boolean) {
           p_payment_method: paymentMethod,
           p_note: nullable(note),
           p_request_id: requestId,
+          p_bank: nullable(bank),
         })
       ),
 

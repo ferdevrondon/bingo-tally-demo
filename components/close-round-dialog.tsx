@@ -21,13 +21,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { fireConfetti } from "@/lib/confetti"
+import { houseWinText } from "@/lib/round-draft/award-summary"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import type { ClosedRoundSummary } from "@/lib/round-draft/game-api"
 import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import type { RoundDraftState } from "@/lib/round-draft/types"
 import { formatMoney, roundOptionLabel } from "@/lib/rounds"
 import { Separator } from "@base-ui/react"
-import { CircleAlertIcon } from "lucide-react"
+import { CircleAlertIcon, HouseIcon } from "lucide-react"
 import { Alert, AlertTitle, } from "./ui/alert"
 
 // Business rule F: after closing, who won, with which number and ticket
@@ -35,9 +36,12 @@ import { Alert, AlertTitle, } from "./ui/alert"
 function ClosedRoundSummaryView({
   summary,
   state,
+  linePrice,
 }: {
   summary: ClosedRoundSummary
   state: RoundDraftState
+  /** The closed round's line price (the state already holds the next round). */
+  linePrice: number
 }) {
   const playerName = (id: number) => state.players.find((p) => p.id === id)?.name ?? "Jugador"
   const ticketIndex = (id: number) => state.tickets.find((t) => t.id === id)?.index ?? "?"
@@ -54,11 +58,7 @@ function ClosedRoundSummaryView({
                 Premio {formatMoney(summary.prizes[slot] ?? 0)} por cartón
               </span>
             </div>
-            {winners.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nadie tenía el #{number}: el premio queda para la casa.
-              </p>
-            ) : (
+            {winners.length > 0 && (
               <ul className="flex flex-col gap-1 text-sm">
                 {winners.map((w) => (
                   <li key={`${w.ticketId}-${w.number}`} className="flex justify-between gap-4">
@@ -70,6 +70,19 @@ function ClosedRoundSummaryView({
                 ))}
               </ul>
             )}
+            {(() => {
+              // Every ticket has each number once: the ones without a winner
+              // had it free, and the house wins there (unsoldWinning).
+              const tickets = state.tickets.length - winners.length
+              if (number === null || tickets <= 0) return null
+              const amount = ((summary.prizes[slot] ?? 0) - linePrice) * tickets
+              return (
+                <p className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+                  <HouseIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                  {houseWinText({ tickets, amount })}
+                </p>
+              )
+            })()}
           </div>
         )
       })}
@@ -96,17 +109,20 @@ export function CloseRoundDialog({
   const nextRounds = roundTemplates
   const [selectedRoundId, setSelectedRoundId] = React.useState("")
   const [summary, setSummary] = React.useState<ClosedRoundSummary | null>(null)
+  const [closedLinePrice, setClosedLinePrice] = React.useState(0)
   const [isPending, startTransition] = React.useTransition()
 
   function handleConfirm() {
     const templateId = Number(selectedRoundId)
     if (!templateId) return
+    const linePrice = state.round?.linePrice ?? 0
     startTransition(async () => {
       const closed = await closeRound(templateId)
       if (!closed.ok) return
       fireConfetti()
       setSelectedRoundId("")
       // The round is closed either way; without its summary, just close.
+      setClosedLinePrice(linePrice)
       if (closed.summary) setSummary(closed.summary)
       else onOpenChange(false)
     })
@@ -130,7 +146,7 @@ export function CloseRoundDialog({
               libera su jugada.
             </DialogDescription>
           </DialogHeader>
-          <ClosedRoundSummaryView summary={summary} state={state} />
+          <ClosedRoundSummaryView summary={summary} state={state} linePrice={closedLinePrice} />
           <DialogFooter className="flex-row justify-end gap-2 bg-muted/50 pt-2">
             <Button onClick={handleSummaryDone}>Continuar</Button>
           </DialogFooter>

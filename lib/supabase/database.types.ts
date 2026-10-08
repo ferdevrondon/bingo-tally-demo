@@ -17,6 +17,7 @@ export type Database = {
       activity_log: {
         Row: {
           amount: number | null
+          bank: string | null
           created_at: string
           created_by: string | null
           game_session_id: number | null
@@ -33,6 +34,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          bank?: string | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -49,6 +51,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          bank?: string | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -764,6 +767,7 @@ export type Database = {
       record_account_payout: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_note: string
           p_payment_method: string
           p_player_id: number
@@ -774,6 +778,7 @@ export type Database = {
       record_account_recharge: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_note: string
           p_payment_method: string
           p_player_id: number
@@ -801,6 +806,7 @@ export type Database = {
       record_recharge: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_game_session_id: number
           p_note: string
           p_payment_method: string
@@ -857,6 +863,7 @@ export type Database = {
       settlement_payout: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_game_session_id: number
           p_note: string
           p_payment_method: string
@@ -868,6 +875,7 @@ export type Database = {
       settlement_receive: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_game_session_id: number
           p_note: string
           p_payment_method: string

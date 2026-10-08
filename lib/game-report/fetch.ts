@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { isBank } from "@/lib/banks"
 import { isRecordedPaymentMethod, type RecordedPaymentMethod } from "@/lib/payment-methods"
 import type { Database } from "@/lib/supabase/database.types"
 import type { ActivityEntry, ActivityEntryType } from "@/lib/round-draft/types"
@@ -30,7 +31,7 @@ type Client = SupabaseClient<Database>
 const PAGE_SIZE = 1000
 
 const LEDGER_COLUMNS =
-  "id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note"
+  "id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note, bank"
 
 type LedgerRow = Pick<
   Database["public"]["Tables"]["activity_log"]["Row"],
@@ -44,6 +45,7 @@ type LedgerRow = Pick<
   | "amount"
   | "payment_method"
   | "note"
+  | "bank"
 >
 
 export function toActivityEntry(row: LedgerRow): ActivityEntry {
@@ -57,6 +59,7 @@ export function toActivityEntry(row: LedgerRow): ActivityEntry {
     number: row.number,
     amount: row.amount === null ? null : Number(row.amount),
     paymentMethod: isRecordedPaymentMethod(row.payment_method) ? row.payment_method : null,
+    bank: isBank(row.bank) ? row.bank : null,
     note: row.note,
   }
 }

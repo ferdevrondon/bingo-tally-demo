@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { CheckIcon, Crown } from "lucide-react"
+import { CheckIcon, Crown, HouseIcon } from "lucide-react"
 
+import type { HouseWin } from "@/lib/round-draft/award-summary"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
@@ -12,6 +13,7 @@ export function WinningNumberBall({
   usedNumbers,
   readOnly = false,
   winners = null,
+  house = null,
   onSubmit,
 }: {
   slotIndex: number
@@ -24,6 +26,8 @@ export function WinningNumberBall({
   /** Who has won this number so far: players with what they were paid, `[]`
    *  when nobody had it, null when unknown or not drawn yet. */
   winners?: { name: string; amount: number }[] | null
+  /** What the house wins on the tickets where this number was free. */
+  house?: HouseWin | null
   onSubmit: (number: number) => void
 }) {
   const [draft, setDraft] = React.useState("")
@@ -98,30 +102,39 @@ export function WinningNumberBall({
     </div>
   )
 
-  if (value === null || winners === null) return slot
+  const houseWins = house !== null && house.tickets > 0
+  if (value === null || (winners === null && !houseWins)) return slot
   return (
     <div className="flex items-center gap-3">
       {slot}
       <div className="flex flex-col gap-1">
-        {winners.length === 0 ? (
-          <span className="inline-flex h-6 items-center rounded-full border border-dashed px-2 text-xs text-muted-foreground">
-            nadie · casa
-          </span>
-        ) : (
-          winners.map((w) => (
-            <span
-              key={w.name}
-              className="inline-flex h-6 items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-100 pr-2 pl-0.5 text-xs font-semibold text-amber-950 dark:bg-amber-500/15 dark:text-amber-100"
-            >
-              <span className="flex size-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950">
-                {w.name.charAt(0).toUpperCase()}
-              </span>
-              {w.name}
-              <span className="text-green-700 tabular-nums dark:text-green-400">
-                +{formatMoney(w.amount)}
-              </span>
+        {(winners ?? []).map((w) => (
+          <span
+            key={w.name}
+            className="inline-flex h-6 items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-100 pr-2 pl-0.5 text-xs font-semibold text-amber-950 dark:bg-amber-500/15 dark:text-amber-100"
+          >
+            <span className="flex size-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950">
+              {w.name.charAt(0).toUpperCase()}
             </span>
-          ))
+            {w.name}
+            <span className="text-green-700 tabular-nums dark:text-green-400">
+              +{formatMoney(w.amount)}
+            </span>
+          </span>
+        ))}
+        {houseWins && (
+          <span
+            title={`${house.tickets} cartón${house.tickets === 1 ? "" : "es"} libre${house.tickets === 1 ? "" : "s"} con el ${value}`}
+            className="inline-flex h-6 items-center gap-1.5 rounded-full border bg-muted pr-2 pl-0.5 text-xs font-semibold"
+          >
+            <span className="flex size-5 items-center justify-center rounded-full bg-foreground/10">
+              <HouseIcon className="size-3" aria-hidden="true" />
+            </span>
+            CASA
+            <span className="text-green-700 tabular-nums dark:text-green-400">
+              +{formatMoney(house.amount)}
+            </span>
+          </span>
         )}
       </div>
     </div>

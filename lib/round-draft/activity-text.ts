@@ -1,3 +1,4 @@
+import { bankLabel } from "@/lib/banks"
 import { paymentMethodLabel } from "@/lib/payment-methods"
 import { formatMoney } from "@/lib/rounds"
 
@@ -54,7 +55,9 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
   const round = state.rounds.find((r) => r.id === entry.roundId)
   const roundLabel = round ? `ronda ${round.seq} (${round.name})` : "la ronda"
   const amount = formatMoney(Math.abs(entry.amount ?? 0))
-  const method = entry.paymentMethod ? ` · ${paymentMethodLabel(entry.paymentMethod)}` : ""
+  const method =
+    (entry.paymentMethod ? ` · ${paymentMethodLabel(entry.paymentMethod)}` : "") +
+    (entry.bank ? ` · ${bankLabel(entry.bank)}` : "")
   const note = entry.note && entry.note !== "unplayed_round_refund" ? ` · ${entry.note}` : ""
 
   switch (entry.type) {
