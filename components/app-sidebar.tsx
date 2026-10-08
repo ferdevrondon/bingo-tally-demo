@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { useHouse } from "@/components/house-provider"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -102,6 +103,7 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & {
   user: { name: string; email: string; avatar: string }
 }) {
+  const house = useHouse()
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarCollapseToggle />
@@ -130,7 +132,7 @@ export function AppSidebar({
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        <NavUser user={user} houseLogoUrl={house?.logoUrl ?? null} />
       </SidebarFooter>
     </Sidebar>
   )

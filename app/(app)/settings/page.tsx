@@ -1,12 +1,22 @@
 import SettingsPage from "@/components/settings-page"
+import { getCurrentHouse, getCurrentUser } from "@/lib/data/house"
+import { toAppUser } from "@/lib/supabase/types"
 
-// House name/identifier come from the database once the backend lands
-// (see BACKEND_PLAN.md); until then SettingsPage renders its own form state.
-export default function Page() {
+// Configuración: the signed-in account and the current house, read on the
+// server; the admin edits the house, everyone edits their own account.
+export default async function Page() {
+  const [user, house] = await Promise.all([getCurrentUser(), getCurrentHouse()])
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
-        <SettingsPage />
+        <SettingsPage
+          account={{
+            name: user ? toAppUser(user).name : "",
+            email: user?.email ?? "",
+            hasCustomName: Boolean(user?.user_metadata?.full_name),
+          }}
+          house={house}
+        />
       </div>
     </div>
   )

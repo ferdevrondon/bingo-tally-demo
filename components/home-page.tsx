@@ -103,7 +103,8 @@ function moneyClass(value: number) {
 // reports. When the device is elsewhere its own time is shown too.
 function Greeting({ home }: { home: HomeData }) {
   const now = useClock()
-  const timeZone = useHouse()?.timezone
+  const house = useHouse()
+  const timeZone = house?.timezone
   const deviceZone = now
     ? Intl.DateTimeFormat().resolvedOptions().timeZone
     : undefined
@@ -126,14 +127,24 @@ function Greeting({ home }: { home: HomeData }) {
   return (
     <div className="relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-2xl border bg-card p-6">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent" />
-      <div className="relative flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">
-          {getGreeting(now, timeZone)}, {home.userName}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {home.houseName} ·{" "}
-          {home.role === "admin" ? "Administrador" : "Observador"}
-        </p>
+      <div className="relative flex items-center gap-4">
+        {house?.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- public Storage URL, any size
+          <img
+            src={house.logoUrl}
+            alt={`Logo de ${home.houseName}`}
+            className="size-14 shrink-0 rounded-full border bg-background object-cover"
+          />
+        )}
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">
+            {getGreeting(now, timeZone)}, {home.userName}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {home.houseName} ·{" "}
+            {home.role === "admin" ? "Administrador" : "Observador"}
+          </p>
+        </div>
       </div>
       <div className="relative flex flex-col items-end gap-0.5">
         <span className="text-3xl font-bold tabular-nums">{time}</span>

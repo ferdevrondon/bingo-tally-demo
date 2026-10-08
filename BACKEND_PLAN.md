@@ -601,8 +601,14 @@ Decided with the product owner in QA: "Recibir pago" / "Registrar pago" (`/playe
 - Migration `20261008120000_movement_bank.sql` (applied by the product owner in the SQL Editor on 2026-10-07; the MCP refuses destructive DDL): `activity_log.bank` (nullable, same check as `players.bank`); the ledger is append-only, so `private.log_activity` and `private.record_cash` take `p_bank` (dropped and recreated); `record_account_recharge`, `record_account_payout`, `settlement_receive`, `settlement_payout` and `record_recharge` take `p_bank text default null` as their last argument (dropped and recreated with the same grants), so callers that don't send it keep working.
 - Verified with read-only SQL: the column, the five public signatures with `p_bank`, and `execute` only for `authenticated` (private helpers for nobody).
 
+### Configuración (2026-10-07)
+Decided with the product owner while preparing the demo house: `/settings` stops being a prototype.
+- Migration `20261008170000_house_settings.sql` (dry run with rollback, then applied by the product owner in the SQL Editor): `houses.phone`, `houses.logo_path`; `update_house(p_house_id, p_name, p_identifier, p_timezone, p_phone, p_request_id)` and `set_house_logo(p_house_id, p_logo_path, p_request_id)` (admin only via `private.require_admin`, by request id, errors `invalid_name`, `invalid_identifier`, `identifier_taken`, `invalid_timezone`, `invalid_phone`, `invalid_logo_path`), each leaving a `house_updated` ledger row without a game session (so `LiveRefresh` follows); public bucket `house-logos` (1 MB, PNG/JPG/WEBP/SVG) whose writes are limited to the house admin under `{house_id}/` (`private.is_logo_admin`).
+- Dry run (as the demo house admin): anon → `not_admin`, another house's identifier → `identifier_taken`, `Mars/Base` → `invalid_timezone`, another house's folder → `invalid_logo_path`; a save trimmed/uppercased and logged two `house_updated` rows.
+- App: `getCurrentHouse()` adds `identifier`, `phone`, `logoPath`, `logoUrl`; `lib/house-settings.ts` (schemas, time zones, logo limits); Server Actions in `lib/data/settings-actions.ts` (`updateHouse`, `setHouseLogo`, `updateDisplayName` → `user_metadata.full_name`, `changePassword` → `auth.updateUser`). The logo shows in the sidebar user avatar and the Inicio greeting (never replaces the Bingo Tally logo); "Mi cuenta" in the user menu opens `/settings`.
+
 ## Later (not now)
-House switcher, editing the house name/identifier from `/settings` (needs an admin-only function, since `houses` is select-only), transferring the admin role to another member, dashboard metrics, offline queue.
+House switcher, transferring the admin role to another member, dashboard metrics, offline queue.
 
 ## Files
 New: `supabase/migrations/*_init.sql`, `lib/supabase/database.types.ts`, `lib/data/{house,admin-session,players,rounds,load-game-session,game-session-actions}.ts`, `app/(app)/(game)/layout.tsx` (provider), `app/(app)/games/[id]/settlement/page.tsx`, `components/settlement-page.tsx`.

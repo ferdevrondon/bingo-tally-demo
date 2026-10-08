@@ -322,21 +322,27 @@ export type Database = {
           created_at: string
           id: number
           identifier: string
+          logo_path: string | null
           name: string
+          phone: string | null
           timezone: string
         }
         Insert: {
           created_at?: string
           id?: never
           identifier: string
+          logo_path?: string | null
           name: string
+          phone?: string | null
           timezone?: string
         }
         Update: {
           created_at?: string
           id?: never
           identifier?: string
+          logo_path?: string | null
           name?: string
+          phone?: string | null
           timezone?: string
         }
         Relationships: []
@@ -860,6 +866,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_house_logo: {
+        Args: { p_house_id: number; p_logo_path: string; p_request_id: string }
+        Returns: undefined
+      }
       settlement_payout: {
         Args: {
           p_amount: number
@@ -910,6 +920,17 @@ export type Database = {
           p_game_session_id: number
           p_player_id: number
           p_request_id: string
+        }
+        Returns: undefined
+      }
+      update_house: {
+        Args: {
+          p_house_id: number
+          p_identifier: string
+          p_name: string
+          p_phone: string
+          p_request_id: string
+          p_timezone: string
         }
         Returns: undefined
       }
