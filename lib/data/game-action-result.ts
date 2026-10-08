@@ -37,6 +37,12 @@ export type GameActionError =
   | "settlement_closed"
   | "settlement_not_found"
   | "player_not_in_settlement"
+  | "invalid_name"
+  | "invalid_identifier"
+  | "identifier_taken"
+  | "invalid_timezone"
+  | "invalid_phone"
+  | "invalid_logo_path"
 
 export type GameActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -78,6 +84,12 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   settlement_closed: "Esta liquidación ya está cerrada.",
   settlement_not_found: "No se encontró la liquidación de esta jornada.",
   player_not_in_settlement: "Ese jugador no está en esta liquidación.",
+  invalid_name: "El nombre de la casa debe tener entre 1 y 60 caracteres.",
+  invalid_identifier: "El ID debe tener de 3 a 30 letras, números o guiones.",
+  identifier_taken: "Ese ID ya lo usa otra casa. Elige otro.",
+  invalid_timezone: "Elige una zona horaria de la lista.",
+  invalid_phone: "El teléfono puede tener hasta 30 caracteres.",
+  invalid_logo_path: "No se pudo guardar el logo. Súbelo de nuevo.",
 }
 
 const KNOWN_CODES = new Set<string>(Object.keys(GAME_ACTION_ERROR_MESSAGES))

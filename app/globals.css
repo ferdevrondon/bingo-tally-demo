@@ -16,6 +16,10 @@
   --primary-foreground: oklch(0.1579 0 89.8756);
   --ball: oklch(0.5520 0.2117 262.3136);
   --ball-foreground: oklch(1 0 0);
+  /* Brand turquoise (the circle of public/assets/img/logo.svg) and the
+     highlighter stripe of the slogan ("Tu guía aliada"). */
+  --brand-teal: #78c9c9;
+  --brand-highlight: var(--brand-teal);
   
 
   --secondary: oklch(0.6346 0.0939 249.5033);
@@ -100,6 +104,8 @@
   --primary-foreground: oklch(1 0 0);
   --ball: oklch(0.5520 0.2117 262.3136);
   --ball-foreground: oklch(1 0 0);
+  /* Lighter stripe so the light "aliada" stays readable on it. */
+  --brand-highlight: color-mix(in oklab, var(--brand-teal) 45%, transparent);
 
   --secondary: oklch(0.430 0.070 249);
   --secondary-foreground: oklch(1 0 0);
@@ -177,6 +183,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-ball: var(--ball);
   --color-ball-foreground: var(--ball-foreground);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-highlight: var(--brand-highlight);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
