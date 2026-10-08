@@ -601,6 +601,13 @@ Decided with the product owner in QA: "Recibir pago" / "Registrar pago" (`/playe
 - Migration `20261008120000_movement_bank.sql` (applied by the product owner in the SQL Editor on 2026-10-07; the MCP refuses destructive DDL): `activity_log.bank` (nullable, same check as `players.bank`); the ledger is append-only, so `private.log_activity` and `private.record_cash` take `p_bank` (dropped and recreated); `record_account_recharge`, `record_account_payout`, `settlement_receive`, `settlement_payout` and `record_recharge` take `p_bank text default null` as their last argument (dropped and recreated with the same grants), so callers that don't send it keep working.
 - Verified with read-only SQL: the column, the five public signatures with `p_bank`, and `execute` only for `authenticated` (private helpers for nobody).
 
+### Demo environment for the client (2026-10-07)
+Decided with the product owner: the client reviews the product in their own house, in **the same Supabase project** (it only holds the product owner's test data so far; RLS keeps houses apart and `getCurrentHouse()` opens the user's oldest membership).
+- Migration `20261008150000_seed_demo_house.sql` (applied with the MCP): house **CASA DEMO DAIRY** (`CASA-DEMO-DAIRY`, `America/Chicago`), admin `guiaaliadabingoo@gmail.com` (account created by hand in Authentication → Users), 12 fictitious players with payment methods and banks, 4 round templates (Regular, Doble, Especial, Gran Bingo), no game sessions. Verified with read-only SQL.
+- Branch **`bingo-dev-1`** (created from `main`) is what the demo runs: it only gets what the product owner merges into it from `main` (PR `main → bingo-dev-1`); nobody commits to it directly. Since migrations reach the shared database when applied, not when merged, they must stay backward compatible.
+- Tried first locally in production mode (`next build` + `next start` on port 3001); next, a Vercel project with Production Branch `bingo-dev-1` and an unlisted `*.vercel.app` link, plus that URL in Supabase Auth → URL Configuration.
+- Before real money: a separate Supabase project and Vercel project for production.
+
 ## Later (not now)
 House switcher, editing the house name/identifier from `/settings` (needs an admin-only function, since `houses` is select-only), transferring the admin role to another member, dashboard metrics, offline queue.
 
