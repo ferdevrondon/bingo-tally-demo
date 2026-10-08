@@ -116,7 +116,7 @@ export interface DataTableColumnDef {
    * tipo de celda a renderizar. "text" (default) muestra un Badge o Input,
    * "select" muestra un dropdown de shadcn con las "options" dadas.
    */
-  type?: "text" | "select"
+  type?: "text" | "select" | "lines"
   /** opciones a mostrar cuando type === "select" */
   options?: DataTableSelectOption[]
   /** placeholder para el Select cuando el valor está vacío */
@@ -253,7 +253,7 @@ function RowDetailDrawer({
               return (
                 <div key={col.key} className="flex flex-col gap-1">
                   <dt className="text-muted-foreground">{col.header}</dt>
-                  <dd className="font-medium">{label || "—"}</dd>
+                  <dd className="font-medium whitespace-pre-line">{label || "—"}</dd>
                 </div>
               )
             })}
@@ -413,6 +413,21 @@ export function DataTable({
             if (col.key === resolvedTitleKey) {
               return (
                 <RowDetailDrawer item={row.original} columns={columnDefs} titleKey={resolvedTitleKey} />
+              )
+            }
+
+            // Columna tipo "lines": varias líneas cortas apiladas (separadas por "\n"), ej. contacto
+            if (col.type === "lines") {
+              return (
+                <div className="flex flex-col text-xs leading-snug text-muted-foreground">
+                  {String(value ?? "")
+                    .split("\n")
+                    .map((line, i) => (
+                      <span key={i} className={cn("max-w-56 truncate", i === 0 && "text-foreground")}>
+                        {line}
+                      </span>
+                    ))}
+                </div>
               )
             }
 

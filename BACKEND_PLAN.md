@@ -613,6 +613,11 @@ Decided with the product owner: the client reviews the product in their own hous
 - Tried first locally in production mode (`next build` + `next start` on port 3001); next, a Vercel project with Production Branch `bingo-dev-1` and an unlisted `*.vercel.app` link, plus that URL in Supabase Auth → URL Configuration.
 - Before real money: a separate Supabase project and Vercel project for production.
 
+### Player contact (2026-10-07)
+Agreed in the 2026-09-25 meeting: players get a phone and an email, and the name is the only required field.
+- Migration `20261008190000_player_contact.sql` (dry run with rollback, then applied by the product owner in the SQL Editor): `players.phone` (up to 30) and `players.email` (up to 254, basic shape check), both optional; `private.normalize_player_names()` also trims the phone and trims + lowercases the email (empty → null), and the trigger now fires on those columns too. Dry run: `' Cliente@Ejemplo.COM '` → `cliente@ejemplo.com`, a malformed email → `players_email_check`, blanks → null.
+- App: `Player.phone` / `Player.email` and the zod schema (`lib/players.ts`, tests in `lib/players.test.ts`); the player form adds Teléfono and Correo, and Nickname is no longer required; `/players` shows them in one "Contacto" column (data-table `type: "lines"`).
+
 ## Later (not now)
 House switcher, transferring the admin role to another member, dashboard metrics, offline queue.
 
