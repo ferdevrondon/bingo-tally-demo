@@ -301,6 +301,7 @@ export async function fetchGameSessionReport(
     settlement: settlement.data
       ? {
           status: settlement.data.status === "closed" ? "closed" : "open",
+          total: settlementPlayers.length,
           unresolved: settlementPlayers.filter((p) => p.resolution === null).length,
           received: settlementPlayers.reduce((sum, p) => sum + Number(p.received), 0),
           paid: settlementPlayers.reduce((sum, p) => sum + Number(p.paid), 0),

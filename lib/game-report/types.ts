@@ -13,6 +13,8 @@ export type GameSessionStatus = "active" | "ended"
 
 export interface SettlementOverview {
   status: Settlement["status"]
+  /** Players in the settlement. */
+  total: number
   /** Players not resolved yet (open settlements). */
   unresolved: number
   /** Collected and paid out from the settlement. */
