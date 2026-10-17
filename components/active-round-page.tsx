@@ -54,8 +54,8 @@ export function ActiveRoundPage() {
         }
       />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-4xl font-semibold">Jugadores</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-2xl font-semibold sm:text-4xl">Jugadores</h2>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -67,14 +67,14 @@ export function ActiveRoundPage() {
           {!readOnly && <AddPlayerControl />}
         </div>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <WinningNumbersCard />
         <CheckInBalanceAlert />
       </div>
       <RoundGiftsCard />
 
       {activePlayers.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 @4xl/main:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @md/main:grid-cols-2 @4xl/main:grid-cols-3">
           {activePlayers.map((player) => (
             <PlayerActiveCard
               key={player.id}

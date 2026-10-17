@@ -78,7 +78,7 @@ export function WinningNumberBall({
   )
 
   const slot = (
-    <div className="relative">
+    <div className="relative shrink-0">
       <Crown className="absolute -top-4 left-1/2 z-30 -translate-x-1/2 size-4 fill-green-400 text-green-600" />
       <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full border border-green-500/50 bg-white px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap text-green-700 shadow-sm">
         {formatMoney(prize)}
@@ -107,7 +107,7 @@ export function WinningNumberBall({
   return (
     <div className="flex items-center gap-3">
       {slot}
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         {(winners ?? []).map((w) => (
           <span
             key={w.name}

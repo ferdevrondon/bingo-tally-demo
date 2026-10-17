@@ -70,13 +70,13 @@ export function PlayerActiveCard({
 
   return (
     <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <span className="font-heading text-base font-medium">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <span className="min-w-0 font-heading text-base font-medium break-words">
           {player.name}
         </span>
         <span
           className={cn(
-            "text-lg font-bold",
+            "shrink-0 text-lg font-bold",
             balance >= 0 ? "text-green-600" : "text-destructive"
           )}
         >
@@ -132,7 +132,7 @@ export function PlayerActiveCard({
         ) : (
           <div
             className={cn(
-              "flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors",
+              "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
               player.checkedIn
                 ? "border-green-500/40 bg-green-500/10"
                 : cn(
