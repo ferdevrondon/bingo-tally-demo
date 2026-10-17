@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-import { isRecordedPaymentMethod, type RecordedPaymentMethod } from "@/lib/payment-methods"
+import {
+  isRecordedPaymentMethod,
+  type RecordedPaymentMethod,
+} from "@/lib/payment-methods"
 import type { Database } from "@/lib/supabase/database.types"
 
 import {
@@ -27,7 +30,10 @@ const TOP = 5
 
 // The API returns at most 1000 rows per request.
 async function readPaged<T>(
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+  page: (
+    from: number,
+    to: number
+  ) => PromiseLike<{ data: T[] | null; error: unknown }>
 ): Promise<T[]> {
   const rows: T[] = []
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -49,7 +55,11 @@ function top(totals: Map<number, number>, names: Map<number, string>) {
     .filter(([, amount]) => amount > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP)
-    .map(([playerId, amount]) => ({ playerId, name: names.get(playerId) ?? "Jugador", amount }))
+    .map(([playerId, amount]) => ({
+      playerId,
+      name: names.get(playerId) ?? "Jugador",
+      amount,
+    }))
 }
 
 /** The report of the house's days `from`..`to` (inclusive, "YYYY-MM-DD"). */
@@ -67,7 +77,7 @@ export async function fetchPeriodReport(
     supabase
       .from("game_sessions")
       .select(
-        "id, number, started_at, house_balance, game_session_rounds(status, winning_numbers, margin_gifts, margin_unsold_losing, margin_unsold_winning), round_winners(player_id, prize), tickets(count), game_session_players(player_id, removed_at)"
+        "id, number, status, started_at, house_balance, game_session_rounds(status, winning_numbers, margin_gifts, margin_unsold_losing, margin_unsold_winning), round_winners(player_id, prize), tickets(count), game_session_players(player_id, removed_at)"
       )
       .eq("house_id", houseId)
       .gte("started_at", start)
@@ -136,7 +146,8 @@ export async function fetchPeriodReport(
       if (r.winning_numbers.some((n) => n !== null)) roundsPlayed += 1
     }
     tickets += g.tickets[0]?.count ?? 0
-    for (const p of g.game_session_players) if (p.removed_at === null) activePlayers.add(p.player_id)
+    for (const p of g.game_session_players)
+      if (p.removed_at === null) activePlayers.add(p.player_id)
     const day = houseDayOf(g.started_at, timeZone)
     const entry = houseByDay.get(day) ?? { total: 0, count: 0 }
     entry.total += Number(g.house_balance)
@@ -148,7 +159,9 @@ export async function fetchPeriodReport(
   const cash = new Map<RecordedPaymentMethod | null, PeriodCashLine>()
   const cashByDay = new Map<string, number>()
   for (const row of cashRows) {
-    const method = isRecordedPaymentMethod(row.payment_method) ? row.payment_method : null
+    const method = isRecordedPaymentMethod(row.payment_method)
+      ? row.payment_method
+      : null
     const line = cash.get(method) ?? {
       method,
       inGame: { recharges: 0, payouts: 0 },
@@ -189,6 +202,8 @@ export async function fetchPeriodReport(
     gameSessions: sessions.data.map((g) => ({
       id: g.id,
       number: g.number,
+      day: houseDayOf(g.started_at, timeZone),
+      active: g.status === "active",
       startedAtLabel: formatHouseDateTime(g.started_at, timeZone),
     })),
   }

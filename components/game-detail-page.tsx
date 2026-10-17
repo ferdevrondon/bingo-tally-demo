@@ -13,6 +13,11 @@ import {
 
 import { GameTimelineCard } from "@/components/game-timeline-card"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
+import {
+  HouseResultWaterfall,
+  KpiCard,
+  signTone,
+} from "@/components/report-cards"
 import { RoundHistoryCard } from "@/components/round-history-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,42 +31,11 @@ import {
 } from "@/components/ui/card"
 import { formatDuration } from "@/lib/game-report/format"
 import type { GameSessionReport, PlayerReport } from "@/lib/game-report/types"
-import { houseWaterfall } from "@/lib/game-report/waterfall"
 import { paymentMethodLabel } from "@/lib/payment-methods"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
-
-function signTone(value: number) {
-  return value > 0 ? "text-success" : value < 0 ? "text-destructive" : undefined
-}
-
-function KpiCard({
-  label,
-  children,
-  footer,
-}: {
-  label: string
-  children: React.ReactNode
-  footer?: React.ReactNode
-}) {
-  return (
-    <Card size="sm">
-      <CardContent className="flex flex-col gap-1">
-        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          {label}
-        </span>
-        <div className="text-3xl font-bold tracking-tight tabular-nums">
-          {children}
-        </div>
-        {footer && (
-          <div className="text-xs text-muted-foreground">{footer}</div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
 
 function Money({ value, signed = false }: { value: number; signed?: boolean }) {
   if (value === 0) return <span className="text-muted-foreground">—</span>
@@ -73,7 +47,6 @@ function Money({ value, signed = false }: { value: number; signed?: boolean }) {
 }
 
 function HouseCard({ report }: { report: GameSessionReport }) {
-  const { steps, zero } = houseWaterfall(report.house)
   return (
     <Card>
       <CardHeader>
@@ -87,64 +60,7 @@ function HouseCard({ report }: { report: GameSessionReport }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="flex flex-col">
-          {steps.map((step) => (
-            <div
-              key={step.label}
-              className={cn(
-                "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 @xl/main:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)_5rem]",
-                step.total ? "mt-1.5 border-t pt-1.5" : ""
-              )}
-            >
-              <dt
-                className={cn(
-                  "py-1 text-sm",
-                  step.total ? "font-semibold" : "text-muted-foreground"
-                )}
-              >
-                {step.label}
-              </dt>
-              <div
-                aria-hidden="true"
-                className="relative col-span-2 row-start-2 h-6 @xl/main:col-span-1 @xl/main:col-start-2 @xl/main:row-start-1 @xl/main:h-10"
-              >
-                <div
-                  className="absolute inset-y-0 w-px bg-border"
-                  style={{ left: `${zero}%` }}
-                />
-                {step.width > 0 && (
-                  <div
-                    className={cn(
-                      "absolute top-1/2 -translate-y-1/2 rounded",
-                      step.total ? "h-4.5" : "h-3.5",
-                      step.total
-                        ? step.value >= 0
-                          ? "bg-success"
-                          : "bg-destructive"
-                        : step.value >= 0
-                          ? "bg-primary"
-                          : "bg-destructive/45"
-                    )}
-                    style={{
-                      left: `${step.left}%`,
-                      width: `max(${step.width}%, 4px)`,
-                    }}
-                  />
-                )}
-              </div>
-              <dd
-                className={cn(
-                  "text-right tabular-nums",
-                  step.total
-                    ? cn("text-base font-bold", signTone(step.value))
-                    : "font-medium"
-                )}
-              >
-                {signedMoney(step.value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <HouseResultWaterfall house={report.house} />
       </CardContent>
     </Card>
   )
