@@ -97,7 +97,7 @@ function PlayersCard({ gameSessionId, players }: { gameSessionId: number; player
             <table className="w-full min-w-[640px] text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr className="border-b">
-                  <th className="py-2 pr-3 font-medium">Jugador</th>
+                  <th className="sticky left-0 z-10 bg-card py-2 pr-3 font-medium">Jugador</th>
                   <th className="px-3 py-2 text-right font-medium">Entró con</th>
                   <th className="px-3 py-2 text-right font-medium">Jugó</th>
                   <th className="px-3 py-2 text-right font-medium">Premios</th>
@@ -110,7 +110,7 @@ function PlayersCard({ gameSessionId, players }: { gameSessionId: number; player
               <tbody>
                 {players.map((p) => (
                   <tr key={p.id} className="border-b last:border-b-0">
-                    <td className="py-2 pr-3 font-medium">
+                    <td className="sticky left-0 z-10 bg-card py-2 pr-3 font-medium">
                       {p.name}
                       {p.removed && (
                         <Badge variant="outline" className="ml-2">

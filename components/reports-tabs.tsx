@@ -18,8 +18,11 @@ const TABS = [
 export function ReportsTabs() {
   const pathname = usePathname()
   return (
-    <nav aria-label="Reportes" className="mx-4 w-fit rounded-4xl bg-muted p-[3px] lg:mx-6">
-      <ul className="flex flex-wrap items-center gap-1">
+    <nav
+      aria-label="Reportes"
+      className="mx-4 w-fit max-w-full overflow-x-auto rounded-4xl bg-muted p-[3px] [scrollbar-width:none] lg:mx-6  [&::-webkit-scrollbar]:hidden"
+    >
+      <ul className="flex w-max items-center gap-1">
         {TABS.map((tab) => {
           const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`)
           return (

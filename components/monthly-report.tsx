@@ -70,7 +70,7 @@ export function MonthlyReport({
             <table className="w-full min-w-[420px] text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr className="border-b">
-                  <th className="py-2 pr-3 font-medium">Día</th>
+                  <th className="sticky left-0 z-10 bg-card py-2 pr-3 font-medium">Día</th>
                   <th className="px-3 py-2 text-right font-medium">Jornadas</th>
                   <th className="px-3 py-2 text-right font-medium">Resultado de la casa</th>
                   <th className="px-3 py-2 text-right font-medium">Caja neta</th>
@@ -84,7 +84,7 @@ export function MonthlyReport({
                       key={d.day}
                       className={cn("border-b last:border-b-0", quiet && "text-muted-foreground/60")}
                     >
-                      <td className="py-1.5 pr-3">
+                      <td className="sticky left-0 z-10 bg-card py-1.5 pr-3">
                         <Link
                           href={`/reports/daily?date=${d.day}`}
                           className="inline-block py-1.5 underline-offset-4 hover:underline"
