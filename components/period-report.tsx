@@ -72,7 +72,7 @@ function CashCard({ report }: { report: PeriodReport }) {
             <table className="w-full min-w-[520px] text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th rowSpan={2} className="py-1 pr-3 text-left font-medium">
+                  <th rowSpan={2} className="sticky left-0 z-10 bg-card py-1 pr-3 text-left font-medium">
                     Método
                   </th>
                   <th colSpan={2} className="px-3 py-1 text-center font-medium">
@@ -92,7 +92,7 @@ function CashCard({ report }: { report: PeriodReport }) {
               <tbody>
                 {report.cash.map((line) => (
                   <tr key={line.method ?? "none"} className="border-b last:border-b-0">
-                    <td className="py-2 pr-3">
+                    <td className="sticky left-0 z-10 bg-card py-2 pr-3">
                       {line.method ? paymentMethodLabel(line.method) : "Sin método"}
                     </td>
                     <td className="px-3 py-2 text-right">

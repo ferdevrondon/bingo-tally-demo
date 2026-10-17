@@ -31,7 +31,7 @@ import { writeSucceeded } from "@/lib/write-feedback"
 
 const columns: DataTableColumnDef[] = [
   { key: "name", header: "Nombre" },
-  { key: "winnerCount", header: "Números ganadores" },
+  { key: "winnerCount", header: "Números ganadores", hideBelow: "md" },
   { key: "linePrice", header: "Precio de línea" },
   { key: "prizes", header: "Premios" },
 ]
