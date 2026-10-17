@@ -20,7 +20,7 @@ export default async function Page({
   return (
     <>
       {report && house && (
-        <MonthlyReport report={report} currentMonth={houseToday(house.timezone).slice(0, 7)} />
+        <MonthlyReport report={report} today={houseToday(house.timezone)} />
       )}
       <LiveRefresh />
     </>
