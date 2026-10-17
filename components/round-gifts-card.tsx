@@ -42,7 +42,7 @@ export function RoundGiftsCard() {
             )
           })}
         </div>
-        <div className="min-w-0 sm:text-right">
+        <div className="sm:max-w-64 sm:shrink-0 sm:text-right">
           <div className="text-2xl font-bold text-red-600 tabular-nums">
             {formatMoney(gifts.giftLoss)}
           </div>
