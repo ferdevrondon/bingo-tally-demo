@@ -1,6 +1,9 @@
 import { LiveRefresh } from "@/components/live-refresh"
 import { SettlementList } from "@/components/settlement-list"
 import { listSettlements } from "@/lib/data/settlement"
+import { pageTitle } from "@/lib/page-titles"
+
+export const metadata = { title: pageTitle("/settlement") }
 
 export default async function Page() {
   const settlements = await listSettlements()

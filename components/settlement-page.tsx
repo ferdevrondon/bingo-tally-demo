@@ -306,7 +306,7 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
             <ArrowLeftIcon />
             Liquidaciones
           </Button>
-          <h1 className="text-2xl font-semibold">Liquidación · Jornada #{settlement.number}</h1>
+          <h2 className="text-2xl font-semibold">Liquidación · Jornada #{settlement.number}</h2>
           <p className="text-sm text-muted-foreground">
             Terminó el {settlement.endedAtLabel} · {settlement.players.length} jugadores
           </p>

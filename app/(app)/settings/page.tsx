@@ -1,9 +1,12 @@
 import SettingsPage from "@/components/settings-page"
 import { getCurrentHouse, getCurrentUser } from "@/lib/data/house"
 import { toAppUser } from "@/lib/supabase/types"
+import { pageTitle } from "@/lib/page-titles"
 
 // Configuración: the signed-in account and the current house, read on the
 // server; the admin edits the house, everyone edits their own account.
+export const metadata = { title: pageTitle("/settings") }
+
 export default async function Page() {
   const [user, house] = await Promise.all([getCurrentUser(), getCurrentHouse()])
   return (

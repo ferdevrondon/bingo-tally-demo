@@ -28,6 +28,7 @@ import {
   HomeIcon,
 } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 
 import { titleFont } from "@/lib/fonts"
 
@@ -108,12 +109,12 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               className="group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1.5! data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<a href="#" />}
+              render={<Link href="/" />}
             >
               <div className="flex size-6 shrink-0 items-center justify-center">
                 <Image
                   src={"/assets/img/logo.svg"}
-                  alt={"logo"}
+                  alt={""}
                   width={24}
                   height={24}
                   className="size-6"

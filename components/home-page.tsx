@@ -137,9 +137,9 @@ function Greeting({ home }: { home: HomeData }) {
           />
         )}
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">
+          <h2 className="text-2xl font-semibold">
             {getGreeting(now, timeZone)}, {home.userName}
-          </h1>
+          </h2>
           <p className="text-sm text-muted-foreground">
             {home.houseName} ·{" "}
             {home.role === "admin" ? "Administrador" : "Observador"}

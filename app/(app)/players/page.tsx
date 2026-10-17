@@ -2,6 +2,9 @@ import { LiveRefresh } from "@/components/live-refresh"
 import PlayerPage from "@/components/player-page"
 import { listPlayerAccounts } from "@/lib/data/accounts"
 import { listPlayers } from "@/lib/data/players"
+import { pageTitle } from "@/lib/page-titles"
+
+export const metadata = { title: pageTitle("/players") }
 
 export default async function Page() {
   const [players, accounts] = await Promise.all([listPlayers(), listPlayerAccounts()])

@@ -4,6 +4,9 @@ import { LiveRefresh } from "@/components/live-refresh"
 import { SettlementPage } from "@/components/settlement-page"
 import { Button } from "@/components/ui/button"
 import { loadSettlement } from "@/lib/data/settlement"
+import { pageTitle } from "@/lib/page-titles"
+
+export const metadata = { title: pageTitle("/games/1/settlement") }
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
