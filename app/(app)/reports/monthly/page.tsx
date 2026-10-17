@@ -3,6 +3,9 @@ import { MonthlyReport } from "@/components/monthly-report"
 import { loadMonthlyReport } from "@/lib/data/game-sessions"
 import { getCurrentHouse } from "@/lib/data/house"
 import { houseToday } from "@/lib/game-report/format"
+import { pageTitle } from "@/lib/page-titles"
+
+export const metadata = { title: pageTitle("/reports/monthly") }
 
 export default async function Page({
   searchParams,

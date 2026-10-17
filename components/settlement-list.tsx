@@ -11,7 +11,7 @@ export function SettlementList({ settlements }: { settlements: SettlementListIte
   return (
     <div className="flex flex-col gap-4 py-4 md:py-6">
       <div>
-        <h1 className="text-2xl font-semibold">Liquidaciones</h1>
+        <h2 className="text-2xl font-semibold">Liquidaciones</h2>
         <p className="text-sm text-muted-foreground">
           Al terminar cada jornada, cobra, paga o marca el saldo de cada jugador.
         </p>

@@ -287,7 +287,7 @@ export function GameDetailPage({ report }: { report: GameSessionReport | null })
           Volver
         </Button>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">Jornada #{report.number}</h1>
+          <h2 className="text-3xl font-bold tracking-tight">Jornada #{report.number}</h2>
           {isActive ? (
             <Badge className="bg-green-500/15 text-green-700 dark:text-green-400">En curso</Badge>
           ) : (
