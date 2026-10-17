@@ -105,7 +105,7 @@ export function TicketCard({
   const playerById = new Map(players.map((p) => [p.id, p]))
 
   return (
-    <Card className="w-full max-w-72">
+    <Card className="w-full max-w-80">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Cartón #{ticket.index}</CardTitle>
         <span className="text-xs text-muted-foreground">
