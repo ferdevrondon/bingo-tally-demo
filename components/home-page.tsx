@@ -283,7 +283,7 @@ function TodayCard({ today }: { today: NonNullable<HomeData["today"]> }) {
         </div>
         <Link
           href="/reports/daily"
-          className="flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline"
+          className="flex min-h-6 w-fit items-center gap-1 text-sm font-medium text-primary hover:underline max-lg:min-h-11"
         >
           Ver diario
           <ArrowRightIcon className="size-3.5" />

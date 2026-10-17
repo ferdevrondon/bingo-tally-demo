@@ -198,7 +198,7 @@ export function PlayerActiveCard({
         <button
           type="button"
           onClick={() => setIsRoundsOpen(true)}
-          className="flex items-center justify-between text-sm text-muted-foreground hover:text-foreground"
+          className="flex min-h-9 items-center justify-between text-sm text-muted-foreground hover:text-foreground"
         >
           <span>Ver rondas</span>
           <ChevronRightIcon className="size-4" />

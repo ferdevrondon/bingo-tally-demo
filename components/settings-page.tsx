@@ -8,7 +8,7 @@ const SettingsPage = ({ account, house }: { account: AccountInfo; house: Current
     <section className="px-4 py-3 lg:px-6">
       <div className="mx-auto max-w-7xl">
         <UserInfo account={account} role={house?.role ?? null} />
-        <Separator className="mt-4 mb-4 border border-gray-400/25" />
+        <Separator className="my-4" />
         {house ? (
           <HouseInfo house={house} />
         ) : (

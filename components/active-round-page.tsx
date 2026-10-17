@@ -46,7 +46,7 @@ export function ActiveRoundPage() {
   return (
     <div className="@container/main flex flex-1 flex-col gap-6 p-4 lg:p-6">
       <PageHeadingWithActions />
-      <Separator className={"border-primary/25 border-2"}/>
+      <Separator className="h-1 bg-primary/25" />
       <OpenNumbersCard
         onNumberClick={(number) =>
           setTicketsView({ open: true, highlightNumber: number })

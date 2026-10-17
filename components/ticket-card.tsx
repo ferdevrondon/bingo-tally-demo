@@ -67,7 +67,7 @@ export function GiftToggle({
       title={entry.isGift ? "Quitar regalo" : "Marcar como regalo"}
       className={cn(
         base,
-        "transition-colors",
+        "relative transition-colors after:absolute after:-inset-1 after:content-['']",
         entry.isGift
           ? "border-red-500/60 text-red-500"
           : "border-border text-muted-foreground hover:text-foreground",

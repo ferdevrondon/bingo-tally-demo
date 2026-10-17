@@ -173,7 +173,7 @@ export function PlayerRechargeDialog({
           </p>
         </div>
 
-        <DialogFooter className="p-6  bg-muted">
+        <DialogFooter>
           <Button className="w-full" size="lg" disabled={!isValid} onClick={handleConfirm}>
             Confirmar recarga
           </Button>

@@ -87,7 +87,7 @@ export function MonthlyReport({
                       <td className="py-1.5 pr-3">
                         <Link
                           href={`/reports/daily?date=${d.day}`}
-                          className="underline-offset-4 hover:underline"
+                          className="inline-block py-1.5 underline-offset-4 hover:underline"
                         >
                           {d.label}
                         </Link>

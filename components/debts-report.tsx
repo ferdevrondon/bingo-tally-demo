@@ -61,7 +61,7 @@ function DebtLine({ row }: { row: DebtRow }) {
           {row.lastGameSession ? (
             <Link
               href={`/reports/games/${row.lastGameSession.id}`}
-              className="underline-offset-4 hover:underline"
+              className="inline-block py-1.5 underline-offset-4 hover:underline"
             >
               última jornada #{row.lastGameSession.number}
             </Link>

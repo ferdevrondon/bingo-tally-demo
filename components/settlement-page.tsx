@@ -299,7 +299,7 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
         <div>
           <Button
             variant="link"
-            className="h-auto p-0 text-muted-foreground"
+            className="h-auto min-h-6 p-0 text-muted-foreground max-lg:min-h-11"
             nativeButton={false}
             render={<Link href="/settlement" />}
           >

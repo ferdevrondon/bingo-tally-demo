@@ -446,7 +446,7 @@ export function PlayerEditNumbersDialog({
               ))}
           </div>
 
-          <DialogFooter className="flex-row justify-end gap-2 bg-gray-300 p-5">
+          <DialogFooter>
             <Button variant="outline" onClick={handleCancel}>
               Cancelar
             </Button>

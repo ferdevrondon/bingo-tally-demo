@@ -75,7 +75,7 @@ function ActivityLogRow({
         {description}
       </span>
       <Tooltip>
-        <TooltipTrigger className="col-start-3 row-start-1 shrink-0 text-xs text-muted-foreground @lg/main:col-start-4">
+        <TooltipTrigger className="col-start-3 row-start-1 shrink-0 py-1 text-xs text-muted-foreground @lg/main:col-start-4">
           {now === null ? "\u00a0" : formatRelativeTime(entry.timestamp, now)}
         </TooltipTrigger>
         <TooltipContent>

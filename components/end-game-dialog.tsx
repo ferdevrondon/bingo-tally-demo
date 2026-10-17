@@ -64,7 +64,7 @@ export function EndGameDialog({
               Una ronda con números ganadores a medias no deja terminar.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-row justify-end gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
@@ -146,7 +146,7 @@ export function EndGameDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex-row justify-end gap-2 bg-muted/50 p-3">
+        <DialogFooter>
           <Button variant="outline" onClick={handleGoHome}>
             Ir al inicio
           </Button>
