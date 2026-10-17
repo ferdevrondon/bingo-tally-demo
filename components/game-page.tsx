@@ -47,8 +47,8 @@ function SettlementBadge({ game }: { game: GameSessionListItem }) {
     <Badge
       className={cn(
         game.settlement.unresolved > 0
-          ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-          : "bg-green-500/15 text-green-700 dark:text-green-400"
+          ? "bg-warning/15 text-warning"
+          : "bg-success/15 text-success"
       )}
     >
       {game.settlement.unresolved > 0
@@ -62,7 +62,7 @@ function GameRow({ game }: { game: GameSessionListItem }) {
   const isActive = game.status === "active"
 
   const status = isActive ? (
-    <span className="flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-500">
+    <span className="flex items-center gap-1 text-sm font-medium text-success">
       <span className="size-2 rounded-full bg-green-600 dark:bg-green-500" />
       En curso
     </span>
@@ -87,7 +87,7 @@ function GameRow({ game }: { game: GameSessionListItem }) {
           <span
             className={cn(
               "text-base font-bold tabular-nums",
-              game.houseTotal >= 0 ? "text-green-600" : "text-destructive"
+              game.houseTotal >= 0 ? "text-success" : "text-destructive"
             )}
             title="Resultado de la casa"
           >

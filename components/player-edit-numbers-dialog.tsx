@@ -83,7 +83,7 @@ function EditableTicket({
                         isThisPlayer && "ring-2 ring-primary ring-offset-1",
                         entry.isGift && "border-2 border-dashed border-foreground/40"
                       )
-                    : "cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+                    : "cursor-pointer border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
                 )}
               >
                 <span>{entry.number}</span>
@@ -110,7 +110,7 @@ function EditableTicket({
                   className={cn(
                     "absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors",
                     entry.isGift
-                      ? "border-red-500/60 bg-amber-400 text-red-700"
+                      ? "border-destructive/60 bg-amber-400 text-destructive"
                       : "border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -166,7 +166,7 @@ function EditableTicketColumn({
                       isThisPlayer && "ring-2 ring-primary ring-offset-1",
                       entry.isGift && "border-2 border-dashed border-foreground/40"
                     )
-                  : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  : "border-warning/40 bg-warning/10 text-warning"
               )}
             >
               <button
@@ -175,7 +175,7 @@ function EditableTicketColumn({
                 title={owner?.name}
                 className={cn(
                   "flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2",
-                  !owner && "hover:bg-amber-500/20"
+                  !owner && "hover:bg-warning/20"
                 )}
               >
                 {owner ? (
@@ -203,7 +203,7 @@ function EditableTicketColumn({
                   className={cn(
                     "flex size-5 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm transition-colors",
                     entry.isGift
-                      ? "border-red-500/60 bg-amber-400 text-red-700"
+                      ? "border-destructive/60 bg-amber-400 text-destructive"
                       : "border-border text-muted-foreground hover:text-foreground"
                   )}
                 >

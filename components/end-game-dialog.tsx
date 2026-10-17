@@ -126,7 +126,7 @@ export function EndGameDialog({
             <div className="text-xs tracking-wide text-muted-foreground uppercase">
               A favor de los jugadores
             </div>
-            <div className="text-lg font-semibold text-green-600">
+            <div className="text-lg font-semibold text-success">
               {formatMoney(summary.owedToPlayers)}
             </div>
           </div>

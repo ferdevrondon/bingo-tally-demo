@@ -97,7 +97,7 @@ export function MonthlyReport({
                         className={cn(
                           "px-3 py-1.5 text-right tabular-nums",
                           !quiet && d.houseTotal < 0 && "text-destructive",
-                          !quiet && d.houseTotal > 0 && "text-green-600"
+                          !quiet && d.houseTotal > 0 && "text-success"
                         )}
                       >
                         {d.gameSessions ? signedMoney(d.houseTotal) : "—"}

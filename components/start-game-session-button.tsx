@@ -61,7 +61,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <TriangleAlertIcon className="size-5 text-amber-600" aria-hidden="true" />
+              <TriangleAlertIcon className="size-5 text-warning" aria-hidden="true" />
               Antes de empezar
             </DialogTitle>
             <DialogDescription>
@@ -94,7 +94,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
                         <span
                           className={cn(
                             "font-medium tabular-nums",
-                            p.balance < 0 ? "text-destructive" : "text-green-600"
+                            p.balance < 0 ? "text-destructive" : "text-success"
                           )}
                         >
                           {balanceLabel(p.balance)}

@@ -140,14 +140,14 @@ const STICKY_ACTIONS =
   "sticky right-0 z-10 bg-background shadow-[-6px_0_6px_-6px_rgb(0_0_0/0.15)]"
 
 const columnTextColorClasses: Record<"green" | "red", string> = {
-  green: "text-green-600 dark:text-green-500",
-  red: "text-red-600 dark:text-red-500",
+  green: "text-success",
+  red: "text-destructive",
 }
 
 const columnBadgeColorClasses: Record<"green" | "red", string> = {
   green:
-    "border-green-600/30 bg-green-50 text-green-700 dark:border-green-500/30 dark:bg-green-950 dark:text-green-400",
-  red: "border-red-600/30 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-950 dark:text-red-400",
+    "border-success/30 bg-green-50 text-success dark:bg-green-950",
+  red: "border-destructive/30 bg-red-50 text-destructive dark:bg-red-950",
 }
 
 const columnTextSizeClasses: Record<NonNullable<DataTableColumnDef["textSize"]>, string> = {

@@ -53,13 +53,13 @@ export function RoundWinners({ round }: { round: RoundReport }) {
               winners.map((w) => (
                 <span
                   key={`${w.ticketIndex}-${w.playerId}`}
-                  className="inline-flex h-7 items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-100 pr-2.5 pl-1 font-semibold text-amber-950 dark:bg-amber-500/15 dark:text-amber-100"
+                  className="inline-flex h-7 items-center gap-1.5 rounded-full border border-warning/60 bg-amber-100 pr-2.5 pl-1 font-semibold text-amber-950 dark:bg-warning/15 dark:text-amber-100"
                 >
                   <span className="flex size-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950">
                     {w.playerName.charAt(0).toUpperCase()}
                   </span>
                   {w.playerName}
-                  <span className="text-green-700 tabular-nums dark:text-green-400">
+                  <span className="text-success tabular-nums">
                     {formatMoney(w.prize)}
                   </span>
                 </span>
@@ -88,9 +88,9 @@ function Stat({
     <div
       className={cn(
         "flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
-        tone === "amber" && "border-amber-400/40 bg-amber-50 dark:bg-amber-500/10",
-        tone === "red" && "border-red-500/30 bg-red-500/5",
-        tone === "green" && "border-green-600/30 bg-green-500/10",
+        tone === "amber" && "border-warning/40 bg-amber-50 dark:bg-warning/10",
+        tone === "red" && "border-destructive/30 bg-destructive/5",
+        tone === "green" && "border-success/30 bg-success/10",
         tone === "neutral" && "bg-muted/40"
       )}
     >
@@ -99,8 +99,8 @@ function Stat({
       <span
         className={cn(
           "text-sm font-bold tabular-nums",
-          tone === "red" && "text-red-600",
-          tone === "green" && "text-green-600"
+          tone === "red" && "text-destructive",
+          tone === "green" && "text-success"
         )}
       >
         {value}
@@ -118,19 +118,19 @@ function RoundSummary({ round }: { round: RoundReport }) {
   const items = [
     {
       icon: ShoppingBagIcon,
-      iconClass: "text-green-600",
+      iconClass: "text-success",
       label: plural(c.sold, "número vendido", "números vendidos"),
       value: house.sales,
     },
     {
       icon: TrophyIcon,
-      iconClass: "text-amber-500",
+      iconClass: "text-warning",
       label: plural(c.prizes, "premio pagado", "premios pagados"),
       value: -house.prizes,
     },
     {
       icon: GiftIcon,
-      iconClass: "text-red-600",
+      iconClass: "text-destructive",
       label: `${plural(c.gifted, "regalado", "regalados")} · sin ganar`,
       value: house.gifts,
     },
@@ -142,7 +142,7 @@ function RoundSummary({ round }: { round: RoundReport }) {
     },
     {
       icon: PackageOpenIcon,
-      iconClass: "text-amber-500",
+      iconClass: "text-warning",
       label:
         c.unsoldWon === null
           ? "Sin vender que ganaron (premio para la casa)"
@@ -229,7 +229,7 @@ function RoundRow({
             <span
               className={cn(
                 "flex items-center gap-1 text-sm font-bold tabular-nums",
-                positive ? "text-green-600" : "text-destructive"
+                positive ? "text-success" : "text-destructive"
               )}
             >
               {positive ? (
@@ -279,21 +279,21 @@ function GiftChip({ gift }: { gift: RoundGift }) {
       className={cn(
         "inline-flex h-7 items-center gap-1.5 rounded-full border pr-2.5 pl-1 text-xs font-medium",
         gift.won
-          ? "border-amber-400/60 bg-amber-100 text-amber-950 dark:bg-amber-500/15 dark:text-amber-100"
-          : "border-red-500/20 bg-red-500/5"
+          ? "border-warning/60 bg-amber-100 text-amber-950 dark:bg-warning/15 dark:text-amber-100"
+          : "border-destructive/20 bg-destructive/5"
       )}
     >
       <span
         className={cn(
           "flex size-5 items-center justify-center rounded-full text-[11px] font-bold tabular-nums",
-          gift.won ? "bg-amber-400 text-amber-950" : "bg-red-500/15 text-red-700 dark:text-red-400"
+          gift.won ? "bg-amber-400 text-amber-950" : "bg-destructive/15 text-destructive"
         )}
       >
         {gift.number}
       </span>
       {gift.playerName}
-      {gift.won && <TrophyIcon className="size-3 text-amber-600" aria-hidden="true" />}
-      <strong className="text-red-600 tabular-nums">−{formatMoney(gift.cost)}</strong>
+      {gift.won && <TrophyIcon className="size-3 text-warning" aria-hidden="true" />}
+      <strong className="text-destructive tabular-nums">−{formatMoney(gift.cost)}</strong>
     </span>
   )
 }
@@ -322,7 +322,7 @@ function GiftsTab({ rounds }: { rounds: RoundReport[] }) {
               <h3 className="font-semibold">
                 R{round.seq} · {round.name}
               </h3>
-              <span className="font-bold text-red-600 tabular-nums">
+              <span className="font-bold text-destructive tabular-nums">
                 {cost > 0 ? `−${formatMoney(cost)}` : formatMoney(0)}
               </span>
             </div>
@@ -370,7 +370,7 @@ export function RoundHistoryCard({
           <LayersIcon aria-hidden="true" />
           Rondas
         </TabsTrigger>
-        <TabsTrigger value="gifts" className={cn(FOLDER_TAB, "before:bg-red-400/75")}>
+        <TabsTrigger value="gifts" className={cn(FOLDER_TAB, "before:bg-destructive/75")}>
           <GiftIcon aria-hidden="true" />
           Regalados
           {gifts.length > 0 && (
@@ -378,7 +378,7 @@ export function RoundHistoryCard({
               className={cn(
                 "rounded-full px-1.5 text-xs font-semibold tabular-nums",
                 tab === "gifts"
-                  ? "bg-red-500/15 text-red-700 dark:text-red-400"
+                  ? "bg-destructive/15 text-destructive"
                   : "bg-white/25 text-white"
               )}
             >
@@ -406,13 +406,13 @@ export function RoundHistoryCard({
               />
               <Stat
                 tone="amber"
-                icon={<TrophyIcon className="size-3.5 text-amber-500" aria-hidden="true" />}
+                icon={<TrophyIcon className="size-3.5 text-warning" aria-hidden="true" />}
                 label="Premios pagados"
                 value={formatMoney(prizes)}
               />
               <Stat
                 tone="red"
-                icon={<GiftIcon className="size-3.5 text-red-600" aria-hidden="true" />}
+                icon={<GiftIcon className="size-3.5 text-destructive" aria-hidden="true" />}
                 label={`Regalados (${gifts.length})`}
                 value={giftCost > 0 ? `−${formatMoney(giftCost)}` : formatMoney(0)}
               

@@ -185,7 +185,7 @@ export function TicketsAssignmentPage() {
                           className={
                             player.balance < 0
                               ? "text-xs font-medium text-destructive"
-                              : "text-xs font-medium text-green-600"
+                              : "text-xs font-medium text-success"
                           }
                         >
                           {balanceLabel(player.balance)}

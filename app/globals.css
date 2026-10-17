@@ -13,7 +13,7 @@
   --popover-foreground: oklch(0.1579 0 89.8756);
 
   --primary: oklch(53.722% 0.12493 267.561);
-  --primary-foreground: oklch(0.1579 0 89.8756);
+  --primary-foreground: oklch(1 0 0);
   --ball: oklch(0.5520 0.2117 262.3136);
   --ball-foreground: oklch(1 0 0);
   /* Brand turquoise (the circle of public/assets/img/logo.svg) and the
@@ -31,8 +31,15 @@
   --accent: oklch(0.7375 0.1211 159.5284);
   --accent-foreground: oklch(0.1579 0 89.8756);
 
-  --destructive: oklch(0.6528 0.2263 21.3391);
+  --destructive: #cf002a;
   --destructive-foreground: oklch(1 0 89.8756);
+
+  /* Status colors for text on the card/background (4.5:1 or more). `-solid` is
+     the fill behind white text. */
+  --success: #00781e;
+  --success-solid: #00781e;
+  --warning: #a64d00;
+  --warning-solid: #a64d00;
 
   --border: oklch(0.7753 0.0243 196.6619);
   --input: oklch(0.7570 0 89.8756);
@@ -100,7 +107,7 @@
   --popover: oklch(0.205 0.010 195);
   --popover-foreground: oklch(0.95 0 0);
 
-  --primary: oklch(0.5902 0.0821 195.1591);
+  --primary: #298383;
   --primary-foreground: oklch(1 0 0);
   --ball: oklch(0.5520 0.2117 262.3136);
   --ball-foreground: oklch(1 0 0);
@@ -116,8 +123,13 @@
   --accent: oklch(0.470 0.090 159);
   --accent-foreground: oklch(1 0 0);
 
-  --destructive: oklch(0.510 0.190 21);
+  --destructive: #f23047;
   --destructive-foreground: oklch(1 0 0);
+
+  --success: #00943b;
+  --success-solid: #00781e;
+  --warning: #c36800;
+  --warning-solid: #a64d00;
 
   --border: oklch(0.390 0.020 195);
   --input: oklch(0.400 0.015 195);
@@ -191,6 +203,10 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-solid: var(--success-solid);
+  --color-warning: var(--warning);
+  --color-warning-solid: var(--warning-solid);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);

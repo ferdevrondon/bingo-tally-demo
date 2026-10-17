@@ -71,7 +71,7 @@ function Money({ value, signed = false }: { value: number; signed?: boolean }) {
     <span
       className={cn(
         "tabular-nums",
-        signed && (value > 0 ? "text-green-600" : "text-destructive")
+        signed && (value > 0 ? "text-success" : "text-destructive")
       )}
     >
       {signed ? signedMoney(value) : formatMoney(value)}
@@ -289,7 +289,7 @@ export function GameDetailPage({ report }: { report: GameSessionReport | null })
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-3xl font-bold tracking-tight">Jornada #{report.number}</h2>
           {isActive ? (
-            <Badge className="bg-green-500/15 text-green-700 dark:text-green-400">En curso</Badge>
+            <Badge className="bg-success/15 text-success">En curso</Badge>
           ) : (
             <Badge variant="secondary">Terminada</Badge>
           )}
@@ -322,10 +322,10 @@ export function GameDetailPage({ report }: { report: GameSessionReport | null })
         <StatCard
           label="Resultado de la casa"
           value={signedMoney(house)}
-          valueClassName={house >= 0 ? "text-green-700 dark:text-green-400" : "text-destructive"}
+          valueClassName={house >= 0 ? "text-success" : "text-destructive"}
           icon={
             house >= 0 ? (
-              <TrendingUpIcon className="text-green-600 dark:text-green-500" />
+              <TrendingUpIcon className="text-success" />
             ) : (
               <TrendingDownIcon className="text-destructive" />
             )
