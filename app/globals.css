@@ -38,7 +38,9 @@
      the fill behind white text. */
   --success: #00781e;
   --success-solid: #00781e;
-  --warning: #a64d00;
+  /* Pending items that need the user's attention: the vivid amber on purpose
+     (it must stand out), so text on white uses --warning-solid instead. */
+  --warning: #e17100;
   --warning-solid: #a64d00;
 
   --border: oklch(0.7753 0.0243 196.6619);
@@ -128,7 +130,7 @@
 
   --success: #00943b;
   --success-solid: #00781e;
-  --warning: #c36800;
+  --warning: oklch(0.828 0.189 84.429);
   --warning-solid: #a64d00;
 
   --border: oklch(0.390 0.020 195);
