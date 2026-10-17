@@ -67,7 +67,7 @@ export function OpenNumbersCard({
         </TabsTrigger>
         <TabsTrigger
           value="gifts"
-          className={cn(FOLDER_TAB, "before:bg-red-400/75")}
+          className={cn(FOLDER_TAB, "before:bg-destructive/75")}
         >
           <GiftIcon aria-hidden="true" />
           Regalados
@@ -76,7 +76,7 @@ export function OpenNumbersCard({
               className={cn(
                 "rounded-full px-1.5 text-xs font-semibold tabular-nums",
                 tab === "gifts"
-                  ? "bg-red-500/15 text-red-700 dark:text-red-400"
+                  ? "bg-destructive/15 text-destructive"
                   : "bg-white/25 text-white"
               )}
             >
@@ -100,7 +100,7 @@ export function OpenNumbersCard({
                   <Badge
                     key={label}
                     variant="outline"
-                    className="border-amber-500/40 text-sm text-amber-600 dark:text-amber-400"
+                    className="border-warning/40 text-sm text-warning"
                   >
                     {label}
                   </Badge>
@@ -111,7 +111,7 @@ export function OpenNumbersCard({
           <CardContent>
             {openNumbers.length === 0 ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2Icon className="size-4 text-green-600" />
+                <CheckCircle2Icon className="size-4 text-success" />
                 Todos los números tienen jugador asignado.
               </div>
             ) : (

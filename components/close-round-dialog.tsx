@@ -212,7 +212,7 @@ export function CloseRoundDialog({
               </>
             )}
           </div>
-          <Alert className="border-none bg-amber-600/10 p-2 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
+          <Alert className="border-none bg-warning/10 p-2 text-warning">
             <CircleAlertIcon />
             <AlertTitle>Cada jugador decidirá si mantiene o libera su jugada</AlertTitle>
           </Alert>

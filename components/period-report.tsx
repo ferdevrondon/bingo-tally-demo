@@ -184,7 +184,7 @@ export function PeriodReportView({ report }: { report: PeriodReport }) {
         <Stat
           label="Resultado de la casa"
           value={signedMoney(house)}
-          className={house >= 0 ? "text-green-700 dark:text-green-400" : "text-destructive"}
+          className={house >= 0 ? "text-success" : "text-destructive"}
           icon={house >= 0 ? <TrendingUpIcon /> : <TrendingDownIcon />}
         />
         <Stat label="Jornadas" value={report.activity.gameSessions} icon={<DicesIcon />} />

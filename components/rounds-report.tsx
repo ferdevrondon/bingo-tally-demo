@@ -30,7 +30,7 @@ export function RoundsReport({ report }: { report: RoundsOfDay }) {
               variant="outline"
               className={cn(
                 report.houseTotal >= 0
-                  ? "border-green-600/30 text-green-700 dark:text-green-400"
+                  ? "border-success/30 text-success"
                   : "border-destructive/40 text-destructive"
               )}
             >

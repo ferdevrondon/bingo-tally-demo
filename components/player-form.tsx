@@ -182,7 +182,7 @@ export function PlayerForm({
             onPressedChange={(pressed) => updateField("isVip", pressed)}
             variant="outline"
             aria-label="Marcar como jugador VIP"
-            className="w-fit data-[pressed]:border-amber-500/40 data-[pressed]:bg-amber-50 data-[pressed]:text-amber-600 dark:data-[pressed]:bg-amber-950 dark:data-[pressed]:text-amber-400"
+            className="w-fit data-[pressed]:border-warning/40 data-[pressed]:bg-amber-50 data-[pressed]:text-warning dark:data-[pressed]:bg-amber-950 dark:data-[pressed]:text-warning"
           >
             <Star className={cn("size-4", player.isVip && "fill-current")} />
             VIP

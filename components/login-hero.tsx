@@ -111,7 +111,7 @@ export function LoginHero() {
             </div>
             <div className="flex items-center justify-between border-t border-dashed border-border pt-2">
               <span className="text-sm font-semibold">Casa</span>
-              <span className="text-lg font-bold text-green-600 dark:text-green-400">+$180</span>
+              <span className="text-lg font-bold text-success">+$180</span>
             </div>
           </CardContent>
         </Card>

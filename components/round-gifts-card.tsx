@@ -31,7 +31,7 @@ export function RoundGiftsTab() {
               <Badge
                 key={label}
                 variant="outline"
-                className="border-red-500/40 text-sm text-red-600 dark:text-red-400"
+                className="border-destructive/40 text-sm text-destructive"
               >
                 {label}
               </Badge>

@@ -98,7 +98,7 @@ export function PlayerRechargeDialog({
             <div
               className={cn(
                 "text-4xl font-bold tabular-nums",
-                netBalance >= 0 ? "text-green-600" : "text-destructive"
+                netBalance >= 0 ? "text-success" : "text-destructive"
               )}
             >
               {netBalance >= 0 ? "+" : "-"}${Math.abs(netBalance)}

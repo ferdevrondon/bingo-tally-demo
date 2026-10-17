@@ -131,7 +131,7 @@ export function AccountMovementDialog({
             <div
               className={cn(
                 "text-2xl font-bold tabular-nums",
-                player.balance >= 0 ? "text-green-600" : "text-destructive"
+                player.balance >= 0 ? "text-success" : "text-destructive"
               )}
             >
               {balanceLabel(player.balance)}
