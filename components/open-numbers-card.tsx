@@ -6,7 +6,7 @@ import { CheckCircle2Icon, GiftIcon, HashIcon } from "lucide-react"
 import { BingoBall } from "@/components/bingo-ball"
 import { Badge } from "@/components/ui/badge"
 import { FOLDER_TAB } from "@/components/folder-tab"
-import { RoundGiftsContent } from "@/components/round-gifts-card"
+import { RoundGiftsTab } from "@/components/round-gifts-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRoundDraft } from "@/lib/round-draft/context"
@@ -136,12 +136,7 @@ export function OpenNumbersCard({
           </CardContent>
         </TabsContent>
         <TabsContent value="gifts" className="flex flex-col gap-3">
-          <CardHeader>
-            <CardTitle>Números regalados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RoundGiftsContent />
-          </CardContent>
+          <RoundGiftsTab />
         </TabsContent>
       </Card>
     </Tabs>
