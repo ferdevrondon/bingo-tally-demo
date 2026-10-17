@@ -60,7 +60,7 @@ export function RoundGiftsTab() {
                   {p.numbers.map((number) => (
                     <span
                       key={number}
-                      className="flex size-5 items-center justify-center rounded-full bg-white text-xs font-bold text-neutral-900 tabular-nums"
+                      className="flex size-5 items-center justify-center rounded-full bg-white/25 text-xs font-bold text-white tabular-nums"
                     >
                       {number}
                     </span>
