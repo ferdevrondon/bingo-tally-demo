@@ -26,7 +26,7 @@ export function RoundGiftsCard() {
           {playerCount} jugador{playerCount === 1 ? "" : "es"} con números
           regalados
         </div>
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-1">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:min-w-48 sm:flex-[1_1_16rem]">
           {gifts.players.map((p) => {
             const index = state.players.findIndex((x) => x.id === p.playerId)
             return (
