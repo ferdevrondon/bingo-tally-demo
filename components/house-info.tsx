@@ -222,7 +222,10 @@ const HouseInfo = ({ house }: { house: CurrentHouse }) => {
                 disabled={!isAdmin}
                 items={options}
               >
-                <SelectTrigger id="house-timezone" className="w-full">
+                <SelectTrigger
+                  id="house-timezone"
+                  className="w-full data-[size=default]:h-auto data-[size=default]:min-h-9 *:data-[slot=select-value]:line-clamp-2"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
