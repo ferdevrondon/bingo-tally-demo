@@ -100,7 +100,7 @@ export function WinnerCelebration({
           ))}
         </div>
 
-        <DialogFooter className="flex-row justify-end gap-2 bg-muted p-5">
+        <DialogFooter>
           <Button variant="outline" onClick={onContinue}>
             Continuar
           </Button>

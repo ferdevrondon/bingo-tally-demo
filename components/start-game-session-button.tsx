@@ -109,7 +109,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
               </div>
             )}
           </div>
-          <DialogFooter className="flex-row flex-wrap justify-end gap-2">
+          <DialogFooter>
             {alerts && alerts.openSettlements.length > 0 && (
               <Button variant="outline" nativeButton={false} render={<Link href="/settlement" />}>
                 Ver liquidación

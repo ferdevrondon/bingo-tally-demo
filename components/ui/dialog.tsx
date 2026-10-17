@@ -69,7 +69,7 @@ function DialogContent({
               }
             >
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">Cerrar</span>
             </DialogPrimitive.Close>
           )}
         </DialogPrimitive.Popup>
@@ -82,7 +82,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1.5 p-6 pb-0", className)}
+      className={cn("flex flex-col gap-1.5 p-6 pr-12 pb-0", className)}
       {...props}
     />
   )
@@ -92,7 +92,10 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-6 pt-0", className)}
+      className={cn(
+        "mt-auto flex flex-row flex-wrap justify-end gap-2 border-t bg-muted/50 px-6 py-4",
+        className
+      )}
       {...props}
     />
   )
