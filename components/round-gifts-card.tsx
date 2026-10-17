@@ -52,11 +52,19 @@ export function RoundGiftsTab() {
                 <span
                   key={p.playerId}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold whitespace-nowrap text-white",
+                    "inline-flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-2.5 text-sm font-semibold whitespace-nowrap text-white",
                     getPlayerColorClass(index)
                   )}
                 >
-                  {p.playerName} el {p.numbers.join(", ")}
+                  {p.playerName} el
+                  {p.numbers.map((number) => (
+                    <span
+                      key={number}
+                      className="flex size-5 items-center justify-center rounded-full bg-white text-xs font-bold text-neutral-900 tabular-nums"
+                    >
+                      {number}
+                    </span>
+                  ))}
                 </span>
               )
             })}
