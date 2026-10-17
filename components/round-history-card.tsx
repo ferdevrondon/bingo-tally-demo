@@ -94,7 +94,7 @@ function Stat({
       )}
     >
       {icon}
-      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{label}</span>
+      <span className="min-w-0 flex-1 text-xs text-muted-foreground">{label}</span>
       <span
         className={cn(
           "text-sm font-bold tabular-nums",
@@ -157,7 +157,7 @@ function RoundSummary({ round }: { round: RoundReport }) {
           className={cn("flex items-center gap-1.5", value === 0 && "text-muted-foreground")}
         >
           <Icon className={cn("size-3.5 shrink-0", iconClass)} aria-hidden="true" />
-          <dt className="min-w-0 flex-1 truncate" title={label}>
+          <dt className="min-w-0 flex-1">
             {label}
           </dt>
           <dd className="font-semibold tabular-nums">{signedMoney(value)}</dd>
@@ -321,7 +321,9 @@ function GiftsTab({ rounds }: { rounds: RoundReport[] }) {
               <h3 className="font-semibold">
                 R{round.seq} · {round.name}
               </h3>
-              <span className="font-bold text-red-600 tabular-nums">−{formatMoney(cost)}</span>
+              <span className="font-bold text-red-600 tabular-nums">
+                {cost > 0 ? `−${formatMoney(cost)}` : formatMoney(0)}
+              </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {round.gifts.map((g) => (
@@ -406,7 +408,7 @@ export function RoundHistoryCard({
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {rounds.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 @3xl/main:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2 @sm/main:grid-cols-2 @3xl/main:grid-cols-4">
               <Stat
                 tone="neutral"
                 icon={<LayersIcon className="size-3.5" aria-hidden="true" />}
@@ -423,7 +425,7 @@ export function RoundHistoryCard({
                 tone="red"
                 icon={<GiftIcon className="size-3.5 text-red-600" aria-hidden="true" />}
                 label={`Regalados (${gifts.length})`}
-                value={`−${formatMoney(giftCost)}`}
+                value={giftCost > 0 ? `−${formatMoney(giftCost)}` : formatMoney(0)}
               
               />
               <Stat

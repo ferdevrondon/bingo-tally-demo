@@ -33,7 +33,7 @@ export function RoundGiftsCard() {
               <span
                 key={p.playerId}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold text-white",
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold whitespace-nowrap text-white",
                   getPlayerColorClass(index)
                 )}
               >
@@ -42,7 +42,7 @@ export function RoundGiftsCard() {
             )
           })}
         </div>
-        <div className="text-right">
+        <div className="min-w-0 sm:text-right">
           <div className="text-2xl font-bold text-red-600 tabular-nums">
             {formatMoney(gifts.giftLoss)}
           </div>
