@@ -20,13 +20,24 @@ export function RoundGiftsCard() {
 
   return (
     <Card className="gap-2 border-red-500/30 bg-red-500/5">
-      <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div className="flex items-center gap-2 text-base font-semibold">
-          <GiftIcon className="size-5 text-red-600" />
-          {playerCount} jugador{playerCount === 1 ? "" : "es"} con números
-          regalados
+      <CardContent className="flex flex-col gap-4">
+        {/* Same structure at every width: summary on the left, the loss on the right, the pills below. */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-2 text-base font-semibold">
+            <GiftIcon className="size-5 shrink-0 text-red-600" />
+            {playerCount} jugador{playerCount === 1 ? "" : "es"} con números
+            regalados
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-2xl font-bold text-red-600 tabular-nums">
+              {formatMoney(gifts.giftLoss)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              pérdida de la casa
+            </div>
+          </div>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:min-w-48 sm:flex-[1_1_16rem]">
+        <div className="flex flex-wrap items-center gap-2">
           {gifts.players.map((p) => {
             const index = state.players.findIndex((x) => x.id === p.playerId)
             return (
@@ -42,15 +53,10 @@ export function RoundGiftsCard() {
             )
           })}
         </div>
-        <div className="sm:max-w-64 sm:shrink-0 sm:text-right">
-          <div className="text-2xl font-bold text-red-600 tabular-nums">
-            {formatMoney(gifts.giftLoss)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            pérdida de la casa · {gifts.pendingCount} de {gifts.giftCount}{" "}
-            regalo{gifts.giftCount === 1 ? "" : "s"} sin ganar
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          {gifts.pendingCount} de {gifts.giftCount} regalo
+          {gifts.giftCount === 1 ? "" : "s"} sin ganar
+        </p>
       </CardContent>
     </Card>
   )
