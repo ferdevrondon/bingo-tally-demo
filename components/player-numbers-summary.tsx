@@ -52,7 +52,7 @@ export function PlayerNumbersSummary({
             <span className="font-medium opacity-80">×{count}</span>
           )}
           {gifts > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-background px-1 text-red-500">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-background px-1 text-destructive">
               <GiftIcon className="size-3" />
               {gifts < count && <span className="text-[10px]">{gifts}</span>}
             </span>

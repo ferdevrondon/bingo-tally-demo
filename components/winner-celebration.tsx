@@ -39,7 +39,7 @@ export function WinnerCelebration({
     >
       <DialogContent className="max-h-[90vh] w-[95%] sm:max-w-4xl">
         <DialogHeader className="items-center text-center">
-          <TrophyIcon className="size-10 text-amber-500 motion-safe:animate-bounce" />
+          <TrophyIcon className="size-10 text-warning motion-safe:animate-bounce" />
           <DialogTitle className="text-3xl">
             {awards.some((a) => a.winners.length > 0) ? "¡Tenemos ganadores!" : "Número declarado"}
           </DialogTitle>
@@ -53,9 +53,9 @@ export function WinnerCelebration({
               className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b pb-5 last:border-b-0 last:pb-0"
             >
               <div className="flex shrink-0 flex-col items-center gap-1 pt-3">
-                <div className="relative flex size-14 items-center justify-center rounded-full border-2 border-green-500/50 bg-gradient-to-br from-green-300 to-green-600 shadow-inner">
-                  <CrownIcon className="absolute -top-4 size-5 fill-green-400 text-green-600" />
-                  <div className="flex size-10 items-center justify-center rounded-full bg-white text-lg font-bold text-green-700">
+                <div className="relative flex size-14 items-center justify-center rounded-full border-2 border-success/50 bg-gradient-to-br from-green-300 to-green-600 shadow-inner">
+                  <CrownIcon className="absolute -top-4 size-5 fill-green-400 text-success" />
+                  <div className="flex size-10 items-center justify-center rounded-full bg-white text-lg font-bold text-success-solid">
                     {award.number}
                   </div>
                 </div>
@@ -79,7 +79,7 @@ export function WinnerCelebration({
                         {winner.gifts > 0 &&
                           ` (${winner.gifts} regalo${winner.gifts === 1 ? "" : "s"})`}
                       </div>
-                      <div className="mt-1 text-2xl font-bold text-green-600 tabular-nums">
+                      <div className="mt-1 text-2xl font-bold text-success tabular-nums">
                         gana {formatMoney(winner.amount)}
                       </div>
                       <div className="text-xs tabular-nums">
@@ -100,7 +100,7 @@ export function WinnerCelebration({
           ))}
         </div>
 
-        <DialogFooter className="flex-row justify-end gap-2 bg-muted p-5">
+        <DialogFooter>
           <Button variant="outline" onClick={onContinue}>
             Continuar
           </Button>

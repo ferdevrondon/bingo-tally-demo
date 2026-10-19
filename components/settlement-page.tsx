@@ -80,7 +80,7 @@ function SummaryCard({
         className={cn(
           "text-xl font-semibold tabular-nums",
           tone === "danger" && "text-destructive",
-          tone === "success" && "text-green-600"
+          tone === "success" && "text-success"
         )}
       >
         {value}
@@ -241,14 +241,14 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
               {group === "done" && (
-                <CheckCircle2Icon className="size-4 text-green-600" aria-hidden="true" />
+                <CheckCircle2Icon className="size-4 text-success" aria-hidden="true" />
               )}
               <span className="font-medium">{player.name}</span>
               {player.inGame && <Badge variant="secondary">En jornada</Badge>}
               <span
                 className={cn(
                   "font-semibold tabular-nums",
-                  balance < 0 ? "text-destructive" : balance > 0 ? "text-green-600" : "text-muted-foreground"
+                  balance < 0 ? "text-destructive" : balance > 0 ? "text-success" : "text-muted-foreground"
                 )}
               >
                 {balanceLabel(balance)}
@@ -299,14 +299,14 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
         <div>
           <Button
             variant="link"
-            className="h-auto p-0 text-muted-foreground"
+            className="h-auto min-h-6 p-0 text-muted-foreground max-lg:min-h-11"
             nativeButton={false}
             render={<Link href="/settlement" />}
           >
             <ArrowLeftIcon />
             Liquidaciones
           </Button>
-          <h1 className="text-2xl font-semibold">Liquidación · Jornada #{settlement.number}</h1>
+          <h2 className="text-2xl font-semibold">Liquidación · Jornada #{settlement.number}</h2>
           <p className="text-sm text-muted-foreground">
             Terminó el {settlement.endedAtLabel} · {settlement.players.length} jugadores
           </p>
@@ -326,8 +326,8 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
               className={cn(
                 "h-7 px-3",
                 unresolved > 0
-                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                  : "bg-green-500/15 text-green-700 dark:text-green-400"
+                  ? "bg-warning/15 text-warning"
+                  : "bg-success/15 text-success"
               )}
             >
               {unresolved > 0 ? `${unresolved} por resolver` : "Todo resuelto"}

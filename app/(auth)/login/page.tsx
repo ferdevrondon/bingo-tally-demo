@@ -5,6 +5,7 @@ import { LoginHero } from "@/components/login-hero"
 // Messages for the ?reason= / ?error= values other routes redirect here with.
 const NOTICES: Record<string, string> = {
   replaced: "Tu sesión se cerró porque se inició sesión en otro dispositivo.",
+  expired: "Tu sesión expiró, vuelve a iniciar sesión.",
   auth_callback_error: "No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.",
   oauth_error: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
 }
@@ -12,6 +13,8 @@ const NOTICES: Record<string, string> = {
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
+
+export const metadata = { title: "Iniciar sesión" }
 
 export default async function LoginPage({
   searchParams,

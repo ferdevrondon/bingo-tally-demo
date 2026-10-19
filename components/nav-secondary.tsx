@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import { ThemeMenuItem } from "@/components/theme-menu-item"
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -39,6 +40,7 @@ export function NavSecondary({
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          <ThemeMenuItem />
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

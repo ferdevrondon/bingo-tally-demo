@@ -53,7 +53,7 @@ export function GiftToggle({
     return entry.isGift ? (
       <span
         title="Regalo"
-        className={cn(base, "border-red-500/60 text-red-500", className)}
+        className={cn(base, "border-destructive/60 text-destructive", className)}
       >
         <GiftIcon className="size-3" />
       </span>
@@ -67,9 +67,9 @@ export function GiftToggle({
       title={entry.isGift ? "Quitar regalo" : "Marcar como regalo"}
       className={cn(
         base,
-        "transition-colors",
+        "relative transition-colors after:absolute after:-inset-1 after:content-['']",
         entry.isGift
-          ? "border-red-500/60 text-red-500"
+          ? "border-destructive/60 text-destructive"
           : "border-border text-muted-foreground hover:text-foreground",
         className
       )}
@@ -105,7 +105,7 @@ export function TicketCard({
   const playerById = new Map(players.map((p) => [p.id, p]))
 
   return (
-    <Card className="w-full max-w-72">
+    <Card className="w-full max-w-80">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Cartón #{ticket.index}</CardTitle>
         <span className="text-xs text-muted-foreground">
@@ -145,13 +145,13 @@ export function TicketCard({
                           canRelease ? "cursor-pointer" : "cursor-default"
                         )
                       : cn(
-                          "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                          "border-warning/40 bg-warning/10 text-warning",
                           entry.number === highlightNumber &&
                             "ring-2 ring-amber-500 ring-offset-2 ring-offset-background",
                           readOnly
                             ? "cursor-default"
                             : canAssign
-                              ? "cursor-pointer hover:bg-amber-500/20"
+                              ? "cursor-pointer hover:bg-warning/20"
                               : "cursor-not-allowed opacity-60"
                         )
                   )}

@@ -93,7 +93,7 @@ function plural(count: number, one: string, many: string) {
 
 function moneyClass(value: number) {
   return value > 0
-    ? "text-green-700 dark:text-green-400"
+    ? "text-success"
     : value < 0
       ? "text-destructive"
       : undefined
@@ -137,9 +137,9 @@ function Greeting({ home }: { home: HomeData }) {
           />
         )}
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">
+          <h2 className="text-2xl font-semibold">
             {getGreeting(now, timeZone)}, {home.userName}
-          </h1>
+          </h2>
           <p className="text-sm text-muted-foreground">
             {home.houseName} ·{" "}
             {home.role === "admin" ? "Administrador" : "Observador"}
@@ -283,7 +283,7 @@ function TodayCard({ today }: { today: NonNullable<HomeData["today"]> }) {
         </div>
         <Link
           href="/reports/daily"
-          className="flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline"
+          className="flex min-h-6 w-fit items-center gap-1 text-sm font-medium text-primary hover:underline max-lg:min-h-11"
         >
           Ver diario
           <ArrowRightIcon className="size-3.5" />
@@ -329,7 +329,7 @@ function PendingCard({ pending }: { pending: HomeData["pending"] }) {
       <CardContent className="flex flex-col gap-2">
         {clear ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CircleCheckIcon className="size-4 text-green-600" />
+            <CircleCheckIcon className="size-4 text-success" />
             Todo al día.
           </p>
         ) : (
@@ -345,7 +345,7 @@ function PendingCard({ pending }: { pending: HomeData["pending"] }) {
             {owed.players > 0 && (
               <PendingRow href="/reports/debts">
                 Se le debe{owed.players === 1 ? "" : "n"}{" "}
-                <span className="font-semibold text-green-700 tabular-nums dark:text-green-400">
+                <span className="font-semibold text-success tabular-nums">
                   {formatMoney(owed.total)}
                 </span>{" "}
                 a {plural(owed.players, "jugador", "jugadores")}

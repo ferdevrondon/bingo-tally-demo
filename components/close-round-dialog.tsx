@@ -147,7 +147,7 @@ export function CloseRoundDialog({
             </DialogDescription>
           </DialogHeader>
           <ClosedRoundSummaryView summary={summary} state={state} linePrice={closedLinePrice} />
-          <DialogFooter className="flex-row justify-end gap-2 bg-muted/50 pt-2">
+          <DialogFooter>
             <Button onClick={handleSummaryDone}>Continuar</Button>
           </DialogFooter>
         </DialogContent>
@@ -167,7 +167,7 @@ export function CloseRoundDialog({
             check-in y decidir si mantienen o liberan su jugada.
           </DialogDescription> */}
         </DialogHeader>
-        <Separator className={"border border-muted/50"} />
+        <Separator />
         <div className="grid grid-cols-1 px-6 py-4 gap-4">
           {/* <div className="px-6">
             <span className="mb-2 text-black">
@@ -212,13 +212,13 @@ export function CloseRoundDialog({
               </>
             )}
           </div>
-          <Alert className="border-none bg-amber-600/10 p-2 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
+          <Alert className="border-none bg-warning/10 p-2 text-warning">
             <CircleAlertIcon />
             <AlertTitle>Cada jugador decidirá si mantiene o libera su jugada</AlertTitle>
           </Alert>
         </div>
 
-        <DialogFooter className="flex-row justify-end gap-2 bg-muted/50 pt-2">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

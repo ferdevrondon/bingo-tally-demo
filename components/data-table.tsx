@@ -125,17 +125,29 @@ export interface DataTableColumnDef {
   color?: "green" | "red"
   /** tamaño del texto del valor de esta columna */
   textSize?: "sm" | "base" | "lg" | "xl" | "2xl"
+  /** oculta la columna en pantallas más angostas que este breakpoint (prioridad de columnas) */
+  hideBelow?: "md" | "lg" | "xl"
 }
 
+const hideBelowClasses: Record<NonNullable<DataTableColumnDef["hideBelow"]>, string> = {
+  md: "max-md:hidden",
+  lg: "max-lg:hidden",
+  xl: "max-xl:hidden",
+}
+
+// Columna de acciones pegada al borde derecho para que no quede fuera de pantalla
+const STICKY_ACTIONS =
+  "sticky right-0 z-10 bg-background shadow-[-6px_0_6px_-6px_rgb(0_0_0/0.15)]"
+
 const columnTextColorClasses: Record<"green" | "red", string> = {
-  green: "text-green-600 dark:text-green-500",
-  red: "text-red-600 dark:text-red-500",
+  green: "text-success",
+  red: "text-destructive",
 }
 
 const columnBadgeColorClasses: Record<"green" | "red", string> = {
   green:
-    "border-green-600/30 bg-green-50 text-green-700 dark:border-green-500/30 dark:bg-green-950 dark:text-green-400",
-  red: "border-red-600/30 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-950 dark:text-red-400",
+    "border-success/30 bg-green-50 text-success dark:bg-green-950",
+  red: "border-destructive/30 bg-red-50 text-destructive dark:bg-red-950",
 }
 
 const columnTextSizeClasses: Record<NonNullable<DataTableColumnDef["textSize"]>, string> = {
@@ -184,12 +196,18 @@ function DragHandle({ id }: { id: number | string }) {
       className="size-7 text-muted-foreground hover:bg-transparent"
     >
       <GripVerticalIcon className="size-3 text-muted-foreground" />
-      <span className="sr-only">Drag to reorder</span>
+      <span className="sr-only">Arrastrar para reordenar</span>
     </Button>
   )
 }
 
-function DraggableRow({ row }: { row: Row<typeof features, DataRow> }) {
+function DraggableRow({
+  row,
+  columnClasses,
+}: {
+  row: Row<typeof features, DataRow>
+  columnClasses: Record<string, string>
+}) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
   })
@@ -205,7 +223,7 @@ function DraggableRow({ row }: { row: Row<typeof features, DataRow> }) {
       }}
     >
       {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
+        <TableCell key={cell.id} className={columnClasses[cell.column.id]}>
           <FlexRender cell={cell} />
         </TableCell>
       ))}
@@ -339,6 +357,35 @@ export function DataTable({
   const resolvedTitleKey = titleKey ?? columnDefs[0]?.key ?? "id"
   const hasRowActions = !!rowActions && rowActions.length > 0
 
+  // Clases por columna: prioridad según el ancho, el asa de arrastre solo con
+  // mouse (md+) y las acciones pegadas a la derecha.
+  const columnClasses = React.useMemo(() => {
+    const classes: Record<string, string> = { drag: "max-md:hidden", actions: STICKY_ACTIONS }
+    for (const col of columnDefs) {
+      if (col.hideBelow) classes[col.key] = hideBelowClasses[col.hideBelow]
+    }
+    return classes
+  }, [columnDefs])
+
+  // Pista de scroll: un degradado en el borde derecho mientras quede tabla por ver.
+  const wrapRef = React.useRef<HTMLDivElement>(null)
+  const [canScrollRight, setCanScrollRight] = React.useState(false)
+  React.useEffect(() => {
+    const scroller = wrapRef.current?.querySelector<HTMLElement>('[data-slot="table-container"]')
+    if (!scroller) return
+    const update = () =>
+      setCanScrollRight(scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1)
+    update()
+    scroller.addEventListener("scroll", update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(scroller)
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild)
+    return () => {
+      scroller.removeEventListener("scroll", update)
+      observer.disconnect()
+    }
+  }, [])
+
   const handleCellChange = React.useCallback(
     (rowId: DataRow["id"], key: string, value: string) => {
       setData((prev) =>
@@ -379,7 +426,7 @@ export function DataTable({
                       table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
                     }
                     onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                    aria-label="Select all"
+                    aria-label="Seleccionar todo"
                   />
                 </div>
               ),
@@ -388,7 +435,7 @@ export function DataTable({
                   <Checkbox
                     checked={row.getIsSelected()}
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
-                    aria-label="Select row"
+                    aria-label="Seleccionar fila"
                   />
                 </div>
               ),
@@ -478,7 +525,7 @@ export function DataTable({
               <Badge
                 variant="outline"
                 className={cn(
-                  "px-1.5",
+                  "h-auto max-w-64 px-1.5 text-left whitespace-normal",
                   col.color ? columnBadgeColorClasses[col.color] : "text-muted-foreground",
                   col.textSize && columnTextSizeClasses[col.textSize]
                 )}
@@ -505,7 +552,7 @@ export function DataTable({
                     }
                   >
                     <EllipsisVerticalIcon />
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">Abrir menú</span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-40">
                     {rowActions!.map((action) => (
@@ -555,7 +602,7 @@ export function DataTable({
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="overflow-hidden rounded-lg border">
+      <div ref={wrapRef} className="relative overflow-hidden rounded-lg border">
         <DndContext
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis]}
@@ -568,7 +615,14 @@ export function DataTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={cn(
+                        columnClasses[header.column.id],
+                        header.column.id === "actions" && "bg-muted"
+                      )}
+                    >
                       {header.isPlaceholder ? null : <FlexRender header={header} />}
                     </TableHead>
                   ))}
@@ -579,7 +633,7 @@ export function DataTable({
               {table.getRowModel().rows?.length ? (
                 <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
                   {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
+                    <DraggableRow key={row.id} row={row} columnClasses={columnClasses} />
                   ))}
                 </SortableContext>
               ) : (
@@ -597,6 +651,14 @@ export function DataTable({
             </TableBody>
           </Table>
         </DndContext>
+        <div
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute inset-y-0 z-20 w-8 bg-gradient-to-l from-background/90 to-transparent transition-opacity",
+            hasRowActions ? "right-12" : "right-0",
+            canScrollRight ? "opacity-100" : "opacity-0"
+          )}
+        />
       </div>
       <div className="flex items-center justify-between px-4">
         <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">

@@ -113,7 +113,7 @@ export function TicketsToolbar({
           value: String(p.id),
         }))}
       >
-        <SelectTrigger className="w-56">
+        <SelectTrigger className="w-full sm:w-72">
           <SelectValue
             placeholder={
               state.round

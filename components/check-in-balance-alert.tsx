@@ -46,7 +46,7 @@ export function CheckInBalanceAlert() {
         </Alert>
       )}
       {pendingDecision.length > 0 && (
-        <Alert className="w-fit border-none bg-amber-600/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-400">
+        <Alert className="w-fit border-none bg-warning/10 text-warning">
           <TriangleAlertIcon />
           <AlertTitle>
             {pendingDecision.length} jugador{pendingDecision.length === 1 ? "" : "es"}{" "}

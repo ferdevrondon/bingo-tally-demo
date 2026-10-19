@@ -4,6 +4,11 @@ import * as React from "react"
 
 import { SESSION_REPLACED_PATH } from "@/lib/admin-session-paths"
 import { createClient } from "@/lib/supabase/client"
+import {
+  isJwtError,
+  refreshExpiredSession,
+  signOutExpired,
+} from "@/lib/supabase/expired-session"
 
 const HEARTBEAT_MS = 60_000
 
@@ -29,8 +34,16 @@ export function AdminSessionGuard() {
     }
 
     async function heartbeat() {
-      await supabase.rpc("admin_heartbeat")
-      const { data: status } = await supabase.rpc("admin_session_status")
+      // Expired access token: refresh it (then claim again), or the refresh
+      // token is gone too (e.g. another device's login deleted this session)
+      // and this device goes to /login. Still a 401 after a refresh: same.
+      let { error } = await supabase.rpc("admin_heartbeat")
+      if (isJwtError(error)) {
+        if (!(await refreshExpiredSession(supabase))) return
+        ;({ error } = await supabase.rpc("admin_heartbeat"))
+      }
+      const { data: status, error: statusError } = await supabase.rpc("admin_session_status")
+      if (isJwtError(error) || isJwtError(statusError)) return signOutExpired(supabase)
       if (status === "other_active" || status === "other_stale") await leave()
     }
 
@@ -59,12 +72,21 @@ export function AdminSessionGuard() {
 
       void heartbeat()
       intervalId = setInterval(() => void heartbeat(), HEARTBEAT_MS)
+      document.addEventListener("visibilitychange", onVisible)
+    }
+
+    // A phone that slept or switched apps paused the timers (supabase-js's
+    // token refresh too): check in right away instead of waiting for the next
+    // tick, so an expired token is refreshed before the admin's next tap.
+    function onVisible() {
+      if (document.visibilityState === "visible") void heartbeat()
     }
 
     void start()
 
     return () => {
       cancelled = true
+      document.removeEventListener("visibilitychange", onVisible)
       if (intervalId) clearInterval(intervalId)
       if (channel) void supabase.removeChannel(channel)
     }

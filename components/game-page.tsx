@@ -47,8 +47,8 @@ function SettlementBadge({ game }: { game: GameSessionListItem }) {
     <Badge
       className={cn(
         game.settlement.unresolved > 0
-          ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-          : "bg-green-500/15 text-green-700 dark:text-green-400"
+          ? "bg-warning/15 text-warning"
+          : "bg-success/15 text-success"
       )}
     >
       {game.settlement.unresolved > 0
@@ -61,50 +61,57 @@ function SettlementBadge({ game }: { game: GameSessionListItem }) {
 function GameRow({ game }: { game: GameSessionListItem }) {
   const isActive = game.status === "active"
 
+  const status = isActive ? (
+    <span className="flex items-center gap-1 text-sm font-medium text-success">
+      <span className="size-2 rounded-full bg-green-600 dark:bg-green-500" />
+      En curso
+    </span>
+  ) : (
+    <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+      <CheckIcon className="size-3.5" />
+      Terminada
+    </span>
+  )
+
+  // Same rows at every width: narrow, the title and result on top and the pills
+  // below; wide (@3xl), everything on one line.
   return (
-    <Card className="flex-row flex-wrap items-center gap-3 rounded-3xl px-4 py-3">
-      <div className="flex min-w-0 items-baseline gap-2">
-        <span className="text-base font-bold text-foreground">Jornada #{game.number}</span>
-        <span className="truncate text-sm text-muted-foreground">{game.startedAtLabel}</span>
+    <Card className="gap-2 rounded-3xl px-4 py-3 @3xl/main:flex-row @3xl/main:items-center @3xl/main:gap-3">
+      <div className="flex items-center justify-between gap-3 @3xl/main:contents">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 @3xl/main:order-1">
+          <span className="text-base font-bold text-foreground">Jornada #{game.number}</span>
+          <span className="truncate text-sm text-muted-foreground">{game.startedAtLabel}</span>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-4 @3xl/main:order-3">
+          <span
+            className={cn(
+              "text-base font-bold tabular-nums",
+              game.houseTotal >= 0 ? "text-success" : "text-destructive"
+            )}
+            title="Resultado de la casa"
+          >
+            {signedMoney(game.houseTotal)}
+          </span>
+          <div className="hidden @3xl/main:block">{status}</div>
+          <Button
+            size="icon-sm"
+            className="bg-foreground text-background hover:bg-foreground/85"
+            aria-label={`Ver reporte de la jornada #${game.number}`}
+            nativeButton={false}
+            render={<Link href={`/reports/games/${game.id}`} />}
+          >
+            <ArrowRightIcon />
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-wrap items-center justify-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 @3xl/main:order-2 @3xl/main:flex-1 @3xl/main:justify-center">
         <GamePill isActive={isActive} value={game.roundsPlayed} label={["ronda", "rondas"]} />
         <GamePill isActive={isActive} value={game.playersCount} label={["jugador", "jugadores"]} />
         <GamePill isActive={isActive} value={game.ticketsCount} label={["cartón", "cartones"]} />
         <SettlementBadge game={game} />
-      </div>
-
-      <div className="flex shrink-0 items-center gap-4">
-        <span
-          className={cn(
-            "text-base font-bold tabular-nums",
-            game.houseTotal >= 0 ? "text-green-600" : "text-destructive"
-          )}
-          title="Resultado de la casa"
-        >
-          {signedMoney(game.houseTotal)}
-        </span>
-        {isActive ? (
-          <span className="flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-500">
-            <span className="size-2 rounded-full bg-green-600 dark:bg-green-500" />
-            En curso
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
-            <CheckIcon className="size-3.5" />
-            Terminada
-          </span>
-        )}
-        <Button
-          size="icon-sm"
-          className="bg-foreground text-background hover:bg-foreground/85"
-          aria-label={`Ver reporte de la jornada #${game.number}`}
-          nativeButton={false}
-          render={<Link href={`/reports/games/${game.id}`} />}
-        >
-          <ArrowRightIcon />
-        </Button>
+        <div className="ml-auto @3xl/main:hidden">{status}</div>
       </div>
     </Card>
   )

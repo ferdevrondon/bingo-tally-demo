@@ -18,6 +18,8 @@ import { createClient } from "@/lib/supabase/server"
 // Shown after an admin signs in while the account is active on another
 // device (BACKEND_PLAN.md business rule 5). proxy.ts already sends signed-out
 // visitors to /login.
+export const metadata = { title: "Sesión activa en otro dispositivo" }
+
 export default async function SessionConflictPage() {
   const supabase = await createClient()
   const status = await getAdminSessionStatus(supabase)

@@ -27,8 +27,11 @@ import {
   WalletIcon,
   HomeIcon,
 } from "lucide-react"
-import { Climate_Crisis } from "next/font/google"
 import Image from "next/image"
+import Link from "next/link"
+
+import { AppVersion } from "@/components/app-version"
+import { titleFont } from "@/lib/fonts"
 
 const data = {
   navMain: [
@@ -73,11 +76,6 @@ const data = {
   ],
 }
 
-const titleFont = Climate_Crisis({
-  subsets: ["latin"],
-  variable: "--font-title",
-})
-
 function SidebarCollapseToggle() {
   const { state, toggleSidebar } = useSidebar()
   return (
@@ -111,14 +109,23 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5! group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1.5!"
-              render={<a href="#" />}
+              className="group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1.5! data-[slot=sidebar-menu-button]:p-1.5!"
+              render={<Link href="/" />}
             >
               <div className="flex size-6 shrink-0 items-center justify-center">
-                 <Image src={'/assets/img/logo.svg'}  alt={'logo'} width={24} height={24} className="size-6"/>
+                <Image
+                  src={"/assets/img/logo.svg"}
+                  alt={""}
+                  width={24}
+                  height={24}
+                  className="size-6"
+                />
               </div>
               <span
-                className={"text text-xl font-semibold group-data-[collapsible=icon]:hidden " + titleFont.className}
+                className={
+                  "text text-xl font-semibold group-data-[collapsible=icon]:hidden " +
+                  titleFont.className
+                }
               >
                 {" "}
                 Bingo Tally.
@@ -133,6 +140,7 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} houseLogoUrl={house?.logoUrl ?? null} />
+        <AppVersion />
       </SidebarFooter>
     </Sidebar>
   )

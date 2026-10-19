@@ -124,19 +124,20 @@ export default function PlayerPage({
   const columns = React.useMemo<DataTableColumnDef[]>(
     () => [
       { key: "name", header: "Nombre" },
-      { key: "nickname", header: "Nickname" },
-      { key: "contact", header: "Contacto", type: "lines" },
+      { key: "nickname", header: "Nickname", hideBelow: "md" },
+      { key: "contact", header: "Contacto", type: "lines", hideBelow: "lg" },
       isAdmin
         ? {
             key: "paymentMethod",
             header: "Método de pago (salida)",
             type: "select",
+            hideBelow: "xl",
             options: PAYMENT_METHOD_OPTIONS,
           }
-        : { key: "paymentMethod", header: "Método de pago (salida)" },
+        : { key: "paymentMethod", header: "Método de pago (salida)", hideBelow: "xl" },
       isAdmin
-        ? { key: "bank", header: "Entidad bancaria (ingreso)", type: "select", options: BANK_OPTIONS_WITH_NONE }
-        : { key: "bank", header: "Entidad bancaria (ingreso)" },
+        ? { key: "bank", header: "Entidad bancaria (ingreso)", type: "select", hideBelow: "xl", options: BANK_OPTIONS_WITH_NONE }
+        : { key: "bank", header: "Entidad bancaria (ingreso)", hideBelow: "xl" },
       { key: "isVip", header: "VIP" },
       { key: "balance", header: "Saldo" },
       { key: "status", header: "Estado" },

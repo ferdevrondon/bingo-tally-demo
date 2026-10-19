@@ -10,6 +10,7 @@ import { houseResult, SALE_TYPES, saleAmount, type HouseResult } from "@/lib/gam
 import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { createClient } from "@/lib/supabase/client"
+import { isJwtError, refreshExpiredSession, signOutExpired } from "@/lib/supabase/expired-session"
 import type { Database } from "@/lib/supabase/database.types"
 
 export type { HouseResult }
@@ -87,7 +88,17 @@ export function createGameApi(isAdmin: boolean) {
   const supabase = createClient()
 
   async function run<T>(call: (s: Client) => RpcResponse<T>): Promise<GameActionResult<T>> {
-    const { data, error } = await call(supabase)
+    let { data, error } = await call(supabase)
+    // Expired access token (401): refresh and retry once. The retry carries
+    // the same request_id, so a call that did go through isn't applied twice.
+    if (isJwtError(error)) {
+      if (!(await refreshExpiredSession(supabase))) return { ok: false, error: "session_expired" }
+      ;({ data, error } = await call(supabase))
+      if (isJwtError(error)) {
+        await signOutExpired(supabase)
+        return { ok: false, error: "session_expired" }
+      }
+    }
     if (!error) return { ok: true, data: data as T }
     if (error.code === "42501") return { ok: false, error: await rejectNotAdmin(supabase, isAdmin) }
     const code = toGameActionError(error.message)

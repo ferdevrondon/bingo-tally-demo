@@ -7,7 +7,6 @@ import { LayoutGridIcon } from "lucide-react"
 import { ActivityLogCard } from "@/components/activity-log-card"
 import { AddPlayerControl } from "@/components/add-player-control"
 import { CheckInBalanceAlert } from "@/components/check-in-balance-alert"
-import { RoundGiftsCard } from "@/components/round-gifts-card"
 import { LiveRoundHistory } from "@/components/live-round-history"
 import { OpenNumbersCard } from "@/components/open-numbers-card"
 import { PlayerActiveCard } from "@/components/player-active-card"
@@ -47,15 +46,15 @@ export function ActiveRoundPage() {
   return (
     <div className="@container/main flex flex-1 flex-col gap-6 p-4 lg:p-6">
       <PageHeadingWithActions />
-      <Separator className={"border-primary/25 border-2"}/>
+      <Separator className="h-1 bg-primary/25" />
       <OpenNumbersCard
         onNumberClick={(number) =>
           setTicketsView({ open: true, highlightNumber: number })
         }
       />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-4xl font-semibold">Jugadores</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-2xl font-semibold sm:text-4xl">Jugadores</h2>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -67,14 +66,13 @@ export function ActiveRoundPage() {
           {!readOnly && <AddPlayerControl />}
         </div>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <WinningNumbersCard />
         <CheckInBalanceAlert />
       </div>
-      <RoundGiftsCard />
 
       {activePlayers.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 @4xl/main:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @md/main:grid-cols-2 @4xl/main:grid-cols-3">
           {activePlayers.map((player) => (
             <PlayerActiveCard
               key={player.id}

@@ -113,7 +113,7 @@ export function BalanceStatusDialog({
             {error && <FieldError>{error}</FieldError>}
           </Field>
         </div>
-        <DialogFooter className="flex-row justify-end gap-2 p-4">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

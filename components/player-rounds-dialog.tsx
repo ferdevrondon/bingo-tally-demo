@@ -58,7 +58,7 @@ function NumberChips({
               won
                 ? "bg-amber-400 font-extrabold text-amber-950 shadow-sm ring-1 ring-amber-500"
                 : tone === "gift"
-                  ? "bg-red-500/10 text-red-700 dark:text-red-400"
+                  ? "bg-destructive/10 text-destructive"
                   : "bg-muted text-foreground"
             )}
           >
@@ -94,7 +94,7 @@ function MoneyRow({
     <div
       className={cn(
         "flex flex-wrap items-center gap-2 rounded-md px-2.5 py-1.5",
-        tone === "red" ? "bg-red-500/5" : tone === "green" ? "bg-green-500/10" : "bg-muted/60"
+        tone === "red" ? "bg-destructive/5" : tone === "green" ? "bg-success/10" : "bg-muted/60"
       )}
     >
       {icon}
@@ -107,8 +107,8 @@ function MoneyRow({
             <span
               className={cn(
                 "text-sm font-bold",
-                tone === "red" && "text-red-600",
-                tone === "green" && "text-green-600"
+                tone === "red" && "text-destructive",
+                tone === "green" && "text-success"
               )}
             >
               {amount}
@@ -152,7 +152,7 @@ function RoundEntry({
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
       className={cn(
         "rounded-lg border fill-mode-both motion-safe:animate-in motion-safe:fade-in",
-        hasWon && "border-amber-400/60 bg-amber-50 dark:bg-amber-500/10"
+        hasWon && "border-warning/60 bg-amber-50 dark:bg-warning/10"
       )}
     >
       <button
@@ -180,7 +180,7 @@ function RoundEntry({
               "inline-flex shrink-0 items-center gap-0.5 rounded-full border px-2 text-sm font-extrabold tabular-nums",
               won.has(n)
                 ? "border-amber-500 bg-amber-400 text-amber-950"
-                : "border-amber-400/60 bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+                : "border-warning/60 bg-amber-100 text-warning dark:bg-warning/15"
             )}
           >
             <TrophyIcon className="size-3.5" aria-hidden="true" />
@@ -193,7 +193,7 @@ function RoundEntry({
           </span>
         )}
         {winTotal > 0 && (
-          <span className="shrink-0 text-sm font-bold text-green-600 tabular-nums">
+          <span className="shrink-0 text-sm font-bold text-success tabular-nums">
             +{money(winTotal)}
           </span>
         )}
@@ -222,7 +222,7 @@ function RoundEntry({
             {gifted.length > 0 && (
               <MoneyRow
                 tone="red"
-                icon={<GiftIcon className="size-4 text-red-600" aria-hidden="true" />}
+                icon={<GiftIcon className="size-4 text-destructive" aria-hidden="true" />}
                 label="Regalados"
                 amount={round.giftedAmount > 0 ? `−${money(round.giftedAmount)}` : undefined}
               >
@@ -265,9 +265,9 @@ function RoundEntry({
             {round.wins.map((w, i) => (
               <div
                 key={`${w.ticketIndex}-${w.number}-${i}`}
-                className="flex items-center gap-2 rounded-md border border-green-500/40 bg-green-500/10 px-2.5 py-1.5 text-green-700 dark:text-green-400"
+                className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-2.5 py-1.5 text-success"
               >
-                <TrophyIcon className="size-4 text-amber-500" aria-hidden="true" />
+                <TrophyIcon className="size-4 text-warning" aria-hidden="true" />
                 <span className="text-sm font-extrabold tabular-nums">Ganó {money(w.prize)}</span>
                 <span className="text-xs font-semibold">con el #{w.number}</span>
               </div>
@@ -281,7 +281,7 @@ function RoundEntry({
             {round.recharges > 0 && (
               <MoneyRow
                 tone="green"
-                icon={<BanknoteIcon className="size-4 text-green-600" aria-hidden="true" />}
+                icon={<BanknoteIcon className="size-4 text-success" aria-hidden="true" />}
                 label="Recargó (dinero aparte de la jugada)"
                 amount={`+${money(round.recharges)}`}
               />

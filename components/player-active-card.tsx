@@ -70,14 +70,14 @@ export function PlayerActiveCard({
 
   return (
     <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <span className="font-heading text-base font-medium">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <span className="min-w-0 font-heading text-base font-medium break-words">
           {player.name}
         </span>
         <span
           className={cn(
-            "text-lg font-bold",
-            balance >= 0 ? "text-green-600" : "text-destructive"
+            "shrink-0 text-lg font-bold",
+            balance >= 0 ? "text-success" : "text-destructive"
           )}
         >
           {signedMoney(balance)}
@@ -103,7 +103,7 @@ export function PlayerActiveCard({
           </div>
         )}
         {won.length > 0 && (
-          <p className="rounded-xl border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950 dark:bg-amber-500/15 dark:text-amber-100">
+          <p className="rounded-xl border border-warning/60 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950 dark:bg-warning/15 dark:text-amber-100">
             🏆 {wonTotal > 0 ? `Ganó ${formatMoney(wonTotal)}` : "Ganó"} con el{" "}
             {won.map((w) => w.number).join(" y el ")}
           </p>
@@ -132,11 +132,11 @@ export function PlayerActiveCard({
         ) : (
           <div
             className={cn(
-              "flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors",
+              "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
               player.checkedIn
-                ? "border-green-500/40 bg-green-500/10"
+                ? "border-success/40 bg-success/10"
                 : cn(
-                    "border-amber-500/40 bg-amber-500/10",
+                    "border-warning/40 bg-warning/10",
                     balance < 0 && "animate-pulse"
                   )
             )}
@@ -145,8 +145,8 @@ export function PlayerActiveCard({
               className={cn(
                 "font-medium",
                 player.checkedIn
-                  ? "text-green-700 dark:text-green-400"
-                  : "text-amber-700 dark:text-amber-400"
+                  ? "text-success"
+                  : "text-warning"
               )}
             >
               {player.checkedIn ? "Check-in confirmado" : "Check-in pendiente"}
@@ -165,8 +165,8 @@ export function PlayerActiveCard({
                 className={cn(
                   "border transition-all duration-300",
                   player.checkedIn
-                    ? "animate-in zoom-in-50 border-green-600 bg-green-600 text-white hover:bg-green-600/90 aria-pressed:bg-green-600 aria-pressed:text-white"
-                    : "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+                    ? "animate-in zoom-in-50 border-success-solid bg-success-solid text-white hover:bg-success-solid/90 aria-pressed:bg-success-solid aria-pressed:text-white"
+                    : "border-warning/50 text-warning hover:bg-warning/10"
                 )}
               >
                 <CheckIcon />
@@ -198,7 +198,7 @@ export function PlayerActiveCard({
         <button
           type="button"
           onClick={() => setIsRoundsOpen(true)}
-          className="flex items-center justify-between text-sm text-muted-foreground hover:text-foreground"
+          className="flex min-h-9 items-center justify-between text-sm text-muted-foreground hover:text-foreground"
         >
           <span>Ver rondas</span>
           <ChevronRightIcon className="size-4" />

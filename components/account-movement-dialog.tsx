@@ -131,7 +131,7 @@ export function AccountMovementDialog({
             <div
               className={cn(
                 "text-2xl font-bold tabular-nums",
-                player.balance >= 0 ? "text-green-600" : "text-destructive"
+                player.balance >= 0 ? "text-success" : "text-destructive"
               )}
             >
               {balanceLabel(player.balance)}
@@ -210,7 +210,7 @@ export function AccountMovementDialog({
           </p>
         </div>
 
-        <DialogFooter className="bg-muted p-6">
+        <DialogFooter>
           <Button className="w-full" size="lg" disabled={!isValid || isPending} onClick={handleConfirm}>
             {direction === "in" ? "Confirmar cobro" : "Confirmar pago"}
           </Button>

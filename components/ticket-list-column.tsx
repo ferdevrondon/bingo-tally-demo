@@ -53,7 +53,7 @@ export function TicketListColumn({
                   : cn(
                       "border-border text-muted-foreground",
                       entry.number === highlightNumber &&
-                        "border-amber-500 bg-amber-500/10 text-amber-700 ring-2 ring-amber-500 dark:text-amber-400"
+                        "border-amber-500 bg-warning/10 text-warning ring-2 ring-amber-500"
                     )
               )}
             >

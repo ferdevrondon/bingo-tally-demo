@@ -13,6 +13,8 @@ export type GameSessionStatus = "active" | "ended"
 
 export interface SettlementOverview {
   status: Settlement["status"]
+  /** Players in the settlement. */
+  total: number
   /** Players not resolved yet (open settlements). */
   unresolved: number
   /** Collected and paid out from the settlement. */
@@ -197,12 +199,24 @@ export interface PeriodReport {
   label: string
   house: HouseResult
   cash: PeriodCashLine[]
-  activity: { gameSessions: number; roundsPlayed: number; players: number; tickets: number }
+  activity: {
+    gameSessions: number
+    roundsPlayed: number
+    players: number
+    tickets: number
+  }
   topPlayers: {
     played: { playerId: number; name: string; amount: number }[]
     won: { playerId: number; name: string; amount: number }[]
   }
   /** One entry per day of the period, with or without movement. */
   days: PeriodDay[]
-  gameSessions: { id: number; number: number; startedAtLabel: string }[]
+  /** Oldest first; `day` is the house day it started on. */
+  gameSessions: {
+    id: number
+    number: number
+    day: string
+    active: boolean
+    startedAtLabel: string
+  }[]
 }
