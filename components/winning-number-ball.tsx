@@ -95,50 +95,42 @@ export function WinningNumberBall({
     </div>
   )
 
-  // An empty slot is a form: the ball takes the number and a visible
-  // "Confirmar" button sends it (Enter does the same). The space of the button
-  // is reserved so the row does not jump when it appears.
+  // An empty slot is a form: the ball takes the number and a small "Confirmar"
+  // pill on the ball's lower edge sends it (Enter does the same). The pill and
+  // the error float, so an empty slot is as tall as a filled one and the balls
+  // of a row line up.
   const slot =
     value !== null || readOnly ? (
       ballWithPrize
     ) : (
-      <form
-        onSubmit={handleSubmit}
-        className="flex shrink-0 flex-col items-center gap-1.5"
-      >
+      <form onSubmit={handleSubmit} className="relative mb-3 shrink-0">
         {ballWithPrize}
-        <div className="flex min-h-9 flex-col items-center gap-1 max-lg:min-h-11">
-          {draft !== "" && (
-            <button
-              type="submit"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-success-solid px-3 text-sm font-semibold text-white transition-colors outline-none hover:bg-success-solid/90 focus-visible:ring-[3px] focus-visible:ring-ring/50 max-lg:h-11"
-            >
-              <CheckIcon
-                className="size-4"
-                strokeWidth={3}
-                aria-hidden="true"
-              />
-              Confirmar
-            </button>
-          )}
-          {error && (
-            <p
-              role="alert"
-              className="max-w-28 text-center text-xs font-medium text-destructive"
-            >
-              {error}
-            </p>
-          )}
-        </div>
+        {draft !== "" && (
+          <button
+            type="submit"
+            className="absolute top-full left-1/2 z-40 -mt-1.5 inline-flex h-6 -translate-x-1/2 items-center gap-1 rounded-full border border-success/40 bg-white px-2 text-xs font-semibold whitespace-nowrap text-success-solid shadow-sm transition-colors outline-none after:absolute after:-inset-x-2 after:-inset-y-2 hover:bg-success-solid hover:text-white focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <CheckIcon className="size-3" strokeWidth={3} aria-hidden="true" />
+            Confirmar
+          </button>
+        )}
+        {error && (
+          <p
+            role="alert"
+            className="absolute top-full left-1/2 z-40 mt-5 w-max max-w-28 -translate-x-1/2 rounded-md bg-background/90 px-1 text-center text-xs font-medium text-destructive"
+          >
+            {error}
+          </p>
+        )}
       </form>
     )
 
   const houseWins = house !== null && house.tickets > 0
   if (value === null || (winners === null && !houseWins)) return slot
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-start gap-3">
       {slot}
-      <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-h-12 min-w-0 flex-col justify-center gap-1">
         {(winners ?? []).map((w) => (
           <span
             key={w.name}

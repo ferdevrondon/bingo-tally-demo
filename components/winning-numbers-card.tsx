@@ -89,7 +89,7 @@ export function WinningNumbersCard() {
        
         <div
           className={cn(
-            "flex flex-wrap gap-x-6 gap-y-4 pt-2 justify-start",
+            "flex flex-wrap gap-x-6 items-start gap-y-4 pt-2 justify-start",
             blocked && !readOnly && "pointer-events-none opacity-50"
           )}
         >
