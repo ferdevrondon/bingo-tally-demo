@@ -1,5 +1,6 @@
 import { Separator } from "@/components/ui/separator"
 import type { CurrentHouse } from "@/lib/data/house"
+import AppearanceSettings from "./appearance-settings"
 import HouseInfo from "./house-info"
 import UserInfo, { type AccountInfo } from "./user-info"
 
@@ -8,6 +9,8 @@ const SettingsPage = ({ account, house }: { account: AccountInfo; house: Current
     <section className="px-4 py-3 lg:px-6">
       <div className="mx-auto max-w-7xl">
         <UserInfo account={account} role={house?.role ?? null} />
+        <Separator className="my-4" />
+        <AppearanceSettings />
         <Separator className="my-4" />
         {house ? (
           <HouseInfo house={house} />
