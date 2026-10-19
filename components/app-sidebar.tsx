@@ -30,6 +30,7 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 
+import { AppVersion } from "@/components/app-version"
 import { titleFont } from "@/lib/fonts"
 
 const data = {
@@ -139,6 +140,7 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} houseLogoUrl={house?.logoUrl ?? null} />
+        <AppVersion />
       </SidebarFooter>
     </Sidebar>
   )
