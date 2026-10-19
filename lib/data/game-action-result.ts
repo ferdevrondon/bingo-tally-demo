@@ -5,6 +5,7 @@
 export type GameActionError =
   | "read_only"
   | "session_replaced"
+  | "session_expired"
   | "invalid"
   | "failed"
   | "game_session_not_active"
@@ -51,6 +52,7 @@ export type GameActionResult<T = undefined> =
 export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   read_only: "Solo lectura: no tienes permiso para hacer cambios.",
   session_replaced: "Tu sesión se cerró porque se inició sesión en otro dispositivo.",
+  session_expired: "Tu sesión expiró, vuelve a iniciar sesión.",
   invalid: "Datos no válidos. Revisa e inténtalo de nuevo.",
   failed: "No se pudo guardar. Inténtalo de nuevo.",
   game_session_not_active: "La jornada ya no está activa.",

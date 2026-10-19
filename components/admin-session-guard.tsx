@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { SESSION_REPLACED_PATH } from "@/lib/admin-session-paths"
 import { createClient } from "@/lib/supabase/client"
+import { isJwtError, refreshExpiredSession } from "@/lib/supabase/expired-session"
 
 const HEARTBEAT_MS = 60_000
 
@@ -29,7 +30,13 @@ export function AdminSessionGuard() {
     }
 
     async function heartbeat() {
-      await supabase.rpc("admin_heartbeat")
+      const { error } = await supabase.rpc("admin_heartbeat")
+      // Expired access token: refresh it (then claim again), or the refresh
+      // token is gone too and this device goes to /login.
+      if (isJwtError(error)) {
+        if (!(await refreshExpiredSession(supabase))) return
+        await supabase.rpc("admin_heartbeat")
+      }
       const { data: status } = await supabase.rpc("admin_session_status")
       if (status === "other_active" || status === "other_stale") await leave()
     }
@@ -59,12 +66,21 @@ export function AdminSessionGuard() {
 
       void heartbeat()
       intervalId = setInterval(() => void heartbeat(), HEARTBEAT_MS)
+      document.addEventListener("visibilitychange", onVisible)
+    }
+
+    // A phone that slept or switched apps paused the timers (supabase-js's
+    // token refresh too): check in right away instead of waiting for the next
+    // tick, so an expired token is refreshed before the admin's next tap.
+    function onVisible() {
+      if (document.visibilityState === "visible") void heartbeat()
     }
 
     void start()
 
     return () => {
       cancelled = true
+      document.removeEventListener("visibilitychange", onVisible)
       if (intervalId) clearInterval(intervalId)
       if (channel) void supabase.removeChannel(channel)
     }
