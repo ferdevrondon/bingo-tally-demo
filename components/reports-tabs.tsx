@@ -20,7 +20,7 @@ export function ReportsTabs() {
   return (
     <nav
       aria-label="Reportes"
-      className="mx-4 w-fit max-w-full overflow-x-auto rounded-4xl bg-muted p-[3px] [scrollbar-width:none] lg:mx-6  [&::-webkit-scrollbar]:hidden"
+      className="mx-4 w-fit max-w-[calc(100%-2rem)] overflow-x-auto rounded-4xl bg-muted p-[3px] [scrollbar-width:none] lg:mx-6 lg:max-w-[calc(100%-3rem)] [&::-webkit-scrollbar]:hidden"
     >
       <ul className="flex w-max items-center gap-1">
         {TABS.map((tab) => {

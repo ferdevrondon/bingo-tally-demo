@@ -282,7 +282,7 @@ function PlayersCard({
           </p>
         </CardContent>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
             <thead className="bg-muted text-xs text-muted-foreground">
               <tr>
