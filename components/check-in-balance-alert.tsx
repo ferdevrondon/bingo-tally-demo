@@ -37,7 +37,7 @@ export function CheckInBalanceAlert() {
             check-in.
             <div className="mt-2 flex flex-wrap gap-1.5">
               {pendingCheckIn.map((p) => (
-                <Badge key={p.id} className="bg-red-600">
+                <Badge key={p.id} className="bg-red-600 text-white">
                   {p.name}
                 </Badge>
               ))}
@@ -46,7 +46,7 @@ export function CheckInBalanceAlert() {
         </Alert>
       )}
       {pendingDecision.length > 0 && (
-        <Alert className="w-fit border-none bg-amber-600/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-400">
+        <Alert className="w-fit border-none bg-warning/10 text-warning">
           <TriangleAlertIcon />
           <AlertTitle>
             {pendingDecision.length} jugador{pendingDecision.length === 1 ? "" : "es"}{" "}

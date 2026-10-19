@@ -11,7 +11,7 @@ export function SettlementList({ settlements }: { settlements: SettlementListIte
   return (
     <div className="flex flex-col gap-4 py-4 md:py-6">
       <div>
-        <h1 className="text-2xl font-semibold">Liquidaciones</h1>
+        <h2 className="text-2xl font-semibold">Liquidaciones</h2>
         <p className="text-sm text-muted-foreground">
           Al terminar cada jornada, cobra, paga o marca el saldo de cada jugador.
         </p>
@@ -44,8 +44,8 @@ export function SettlementList({ settlements }: { settlements: SettlementListIte
                     <Badge
                       className={cn(
                         s.unresolved > 0
-                          ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                          : "bg-green-500/15 text-green-700 dark:text-green-400"
+                          ? "bg-warning/15 text-warning"
+                          : "bg-success/15 text-success"
                       )}
                     >
                       {s.unresolved > 0 ? `Abierta · ${s.unresolved} por resolver` : "Abierta · todo resuelto"}

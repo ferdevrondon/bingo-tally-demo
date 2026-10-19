@@ -52,9 +52,11 @@ import { writeSucceeded } from "@/lib/write-feedback"
 function toInput(player: Player): PlayerInput {
   return {
     name: player.name,
-    username: player.username,
+    nickname: player.nickname,
     paymentMethod: player.paymentMethod,
     bank: player.bank,
+    phone: player.phone,
+    email: player.email,
     isVip: player.isVip,
   }
 }
@@ -104,7 +106,8 @@ export default function PlayerPage({
       players.map((player) => ({
         id: player.id,
         name: player.name,
-        username: player.username,
+        nickname: player.nickname,
+        contact: [player.phone, player.email].filter(Boolean).join("\n") || "—",
         paymentMethod: isAdmin
           ? (player.paymentMethod ?? "")
           : paymentMethodLabel(player.paymentMethod),
@@ -121,18 +124,20 @@ export default function PlayerPage({
   const columns = React.useMemo<DataTableColumnDef[]>(
     () => [
       { key: "name", header: "Nombre" },
-      { key: "username", header: "Usuario" },
+      { key: "nickname", header: "Nickname", hideBelow: "md" },
+      { key: "contact", header: "Contacto", type: "lines", hideBelow: "lg" },
       isAdmin
         ? {
             key: "paymentMethod",
-            header: "Método de pago",
+            header: "Método de pago (salida)",
             type: "select",
+            hideBelow: "xl",
             options: PAYMENT_METHOD_OPTIONS,
           }
-        : { key: "paymentMethod", header: "Método de pago" },
+        : { key: "paymentMethod", header: "Método de pago (salida)", hideBelow: "xl" },
       isAdmin
-        ? { key: "bank", header: "Entidad bancaria", type: "select", options: BANK_OPTIONS_WITH_NONE }
-        : { key: "bank", header: "Entidad bancaria" },
+        ? { key: "bank", header: "Entidad bancaria (ingreso)", type: "select", hideBelow: "xl", options: BANK_OPTIONS_WITH_NONE }
+        : { key: "bank", header: "Entidad bancaria (ingreso)", hideBelow: "xl" },
       { key: "isVip", header: "VIP" },
       { key: "balance", header: "Saldo" },
       { key: "status", header: "Estado" },

@@ -17,6 +17,13 @@ async function getOrigin() {
   return `${protocol}://${host}`
 }
 
+// Supabase's messages are in English; the login shows its own.
+function loginErrorMessage(code: string | undefined): string {
+  if (code === "invalid_credentials") return "Correo o contraseña incorrectos."
+  if (code === "email_not_confirmed") return "Confirma tu correo antes de entrar."
+  return "No se pudo iniciar sesión. Inténtalo de nuevo."
+}
+
 export async function signInWithPassword(
   _prevState: LoginFormState,
   formData: FormData
@@ -34,7 +41,7 @@ export async function signInWithPassword(
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
 
   if (error) {
-    return { errors: { form: [error.message] } }
+    return { errors: { form: [loginErrorMessage(error.code)] } }
   }
 
   redirect(await resolveAdminSessionAfterLogin(supabase))

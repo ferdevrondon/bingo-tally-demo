@@ -17,6 +17,7 @@ export type Database = {
       activity_log: {
         Row: {
           amount: number | null
+          bank: string | null
           created_at: string
           created_by: string | null
           game_session_id: number | null
@@ -33,6 +34,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          bank?: string | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -49,6 +51,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          bank?: string | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -319,21 +322,27 @@ export type Database = {
           created_at: string
           id: number
           identifier: string
+          logo_path: string | null
           name: string
+          phone: string | null
           timezone: string
         }
         Insert: {
           created_at?: string
           id?: never
           identifier: string
+          logo_path?: string | null
           name: string
+          phone?: string | null
           timezone?: string
         }
         Update: {
           created_at?: string
           id?: never
           identifier?: string
+          logo_path?: string | null
           name?: string
+          phone?: string | null
           timezone?: string
         }
         Relationships: []
@@ -378,34 +387,40 @@ export type Database = {
           active: boolean
           bank: string | null
           created_at: string
+          email: string | null
           house_id: number
           id: number
           is_vip: boolean
           name: string
           payment_method: string | null
-          username: string | null
+          nickname: string | null
+          phone: string | null
         }
         Insert: {
           active?: boolean
           bank?: string | null
           created_at?: string
+          email?: string | null
           house_id: number
           id?: never
           is_vip?: boolean
           name: string
           payment_method?: string | null
-          username?: string | null
+          nickname?: string | null
+          phone?: string | null
         }
         Update: {
           active?: boolean
           bank?: string | null
           created_at?: string
+          email?: string | null
           house_id?: number
           id?: never
           is_vip?: boolean
           name?: string
           payment_method?: string | null
-          username?: string | null
+          nickname?: string | null
+          phone?: string | null
         }
         Relationships: [
           {
@@ -764,6 +779,7 @@ export type Database = {
       record_account_payout: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_note: string
           p_payment_method: string
           p_player_id: number
@@ -774,6 +790,7 @@ export type Database = {
       record_account_recharge: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_note: string
           p_payment_method: string
           p_player_id: number
@@ -801,6 +818,7 @@ export type Database = {
       record_recharge: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_game_session_id: number
           p_note: string
           p_payment_method: string
@@ -854,9 +872,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_house_logo: {
+        Args: { p_house_id: number; p_logo_path: string; p_request_id: string }
+        Returns: undefined
+      }
       settlement_payout: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_game_session_id: number
           p_note: string
           p_payment_method: string
@@ -868,6 +891,7 @@ export type Database = {
       settlement_receive: {
         Args: {
           p_amount: number
+          p_bank?: string
           p_game_session_id: number
           p_note: string
           p_payment_method: string
@@ -902,6 +926,17 @@ export type Database = {
           p_game_session_id: number
           p_player_id: number
           p_request_id: string
+        }
+        Returns: undefined
+      }
+      update_house: {
+        Args: {
+          p_house_id: number
+          p_identifier: string
+          p_name: string
+          p_phone: string
+          p_request_id: string
+          p_timezone: string
         }
         Returns: undefined
       }

@@ -37,7 +37,7 @@ function CheckInDialog({
             confirma que está en esta ronda; su saldo no cambia.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex-row justify-end gap-2">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

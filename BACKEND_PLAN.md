@@ -87,7 +87,8 @@ Glossary (business term in Spanish → name in code):
 | Pago al jugador | payout |
 | Efectivo / Transferencia / Paypal / Tarjeta de crédito / Tarjeta de débito / Otro | `cash` / `transfer` / `paypal` / `credit_card` / `debit_card` / `other` |
 | (from 6a2) Efectivo / Zelle / Venmo / Majority / PayPal / Square / Otro | `cash` / `zelle` / `venmo` / `majority` / `paypal` / `square` / `other` (transfer and cards retired) |
-| Entidad bancaria | `bank` (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `other`) |
+| Entidad bancaria (ingreso) | `bank` (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `capital_one`, `first_one_bank`, `ufcu_bank`, `regional_bank`, `southwest_bank`, `southstate_bank`, `frost_bank`, `mid_bank`, `pnc_business`, `pnc_personal`, `other`) |
+| Nickname (was "Usuario") | `nickname` (`players.nickname`, was `username`); the player's name and nickname are stored in uppercase |
 | Pagado / Pendiente | `paid` / `pending` |
 | Observador | observer |
 
@@ -191,7 +192,7 @@ Ids are `bigint generated always as identity` (keeps the existing `number` ids i
 
 | table | purpose | key columns |
 |---|---|---|
-| `players` | house player catalog (no balances) | house_id, name, username, payment_method, is_vip bool, active bool |
+| `players` | house player catalog (no balances) | house_id, name, nickname (was username), payment_method, bank, is_vip bool, active bool |
 | `round_templates` | rounds configured on `/rounds` | house_id, name, kind ('regular','special'), winner_count, line_price numeric(12,2) not null check (line_price > 0), prizes numeric[] (informational only: the paid prize is always derived from `kind` and `line_price`; **from 4c** the real paid value per slot, rule E) |
 | `game_sessions` | one per day/session | house_id, number, status ('active','ended'), started_at, ended_at, house_balance, created_by |
 | `game_session_players` | who plays in this game session **+ their balances for this game session** | house_id, game_session_id, player_id, positive_balance, negative_balance, checked_in, pending_carryover, removed_at null |
@@ -520,6 +521,10 @@ Decided with the product owner after a double charge found in the data (a number
 
 `edit_player_numbers` handed `p_request_id` itself to `ensure_session_player`, which logs `player_added` with that id and `balance_opened` with `request_id_for(id, 1)`; the first purchase of the loop used the same derived id, so a player **new to the game session** failed with `activity_log_request_id_key` ("Agregar jugador" on `/active-round`). Players already in the session (or coming back) skipped that insert and worked. Migration `*_edit_player_numbers_new_player.sql` passes `request_id_for(p_request_id, 5000)` instead; test `supabase/tests/edit_player_numbers_new_player.sql` (new player, gift, already in session, removed player coming back, another player pending).
 
+### Gifts are cleared when the round closes (2026-10-07)
+
+Rule C says a gift lasts only its round, but the `is_gift` flag stayed on in the next round until the player kept or released their numbers, so the screen kept showing those numbers as gifts. `close_round` now sets `is_gift = false` right after `close_played_round` (the round's margin is computed from the flag there and the history reads the ledger, so nothing is lost). No money moves: `resolve_carryover` already charges every kept number, gifts included. Migration `*_clear_gifts_on_close_round.sql` also clears the flags of players waiting on that decision; test `supabase/tests/clear_gifts_on_close_round.sql`.
+
 ### Phase 5: Realtime and observer view
 - `activity_log` subscription + debounced `HYDRATE`; `useRole()` gating in every action component; "Solo lectura" badge.
 
@@ -550,7 +555,7 @@ Decided with the product owner (2026-09-29): Phase 6 ships in two branches, **6a
 ### Phase 6a2: Payment methods v2 and the player's bank
 Decided with the product owner (2026-09-30), before 6b because the cash reports group by payment method:
 - **Payment method** (chosen on every recharge, collection and payout, and as the player's default): Efectivo, Zelle, Venmo, Majority, PayPal, Square, Otro (`cash`, `zelle`, `venmo`, `majority`, `paypal`, `square`, `other`).
-- **Bank** (`players.bank`, a player attribute edited on `/players`, optional; not asked on each movement): Chase, Bank of America, TD Bank, Wells Fargo, Chime, Otro (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `other`). More banks will be added later (a new migration + `lib/banks.ts`).
+- **Bank** (`players.bank`, a player attribute edited on `/players`, optional; not asked on each movement): Chase, Bank of America, TD Bank, Wells Fargo, Chime, Otro (`chase`, `bank_of_america`, `td_bank`, `wells_fargo`, `chime`, `other`). More banks will be added later (a new migration + `lib/banks.ts`). **2026-10-07** (`*_player_nickname_uppercase_banks.sql`, applied by the product owner in the SQL Editor after a rolled-back dry run): Capital One, First One Bank, UFCU Bank, Regional Bank, Southwest Bank, SouthState Bank, Frost Bank, Mid Bank, PNC Negocio, PNC Personal added (all earlier banks kept); `players.username` renamed to `nickname` ("Nickname"); a trigger (`private.normalize_player_names()`) stores the name and nickname trimmed and in uppercase (an empty nickname is null), and the existing 15 players were converted. Labels on the player: "Entidad bancaria (ingreso)" and "Método de pago (salida)" (names only; recharges and payouts are recorded as before).
 - Fixed lists in code for now.
 - `transfer`, `credit_card`, `debit_card` are **retired**: ledger rows that carry them stay (the ledger is immutable) and still show "Transferencia" / "Tarjeta de …"; new rows can't use them. Players whose default was one of them moved to `other`.
 
@@ -595,8 +600,31 @@ Decided with the product owner (2026-10-01) after Phase 6: close the minor gaps 
 - Code: `lib/page-titles.ts` + `components/site-header.tsx` (Spanish titles per route); `app/not-found.tsx` (unmatched URLs; it has to live at the root, a route group's `not-found.tsx` doesn't catch them); the settlement page shows "No se encontró la liquidación" for an unknown id and links "Ver reporte de la jornada"; home "Jornada en vivo"; the live round history says when its read fails; Mensual clamps a future `?month=` to the current month; the sidebar lost its unused template data and shows "Configuración".
 - Final game session #5 (admin in the app's browser pane, the product owner as observer in Chrome): home showed "Jornada #5" and the pending-balance summary; "Iniciar jornada" warned about Juan (+$10, Por definir) and the open settlement of #4; Carlos bought #3 and #8, Ana #5; "Editar jugada" gave Ana #12 as a gift; a $20 recharge by Zelle for Ana showed "Banco: Chime" (−$10 → +$10); check-ins, winner #8 (Carlos +$100) and the round close (house −$190); "Liberar" (Carlos kept #8, released #3); "Retirar jugador" (Ana); "Terminar jornada" → "Ir a liquidación": Ana paid $10 by Venmo, Carlos "Para jugar", "Todo resuelto"; "Ver reporte de la jornada" opened `/reports/games/21` with the same numbers. The observer saw every change live, no write controls, Spanish titles and "Configuración", and walked the five Reportes tabs, the report and the settlement. SQL: computed house result = `house_balance` = −$190; opening + ledger = closing for both players (0 differences); accounts Ana $0, Carlos +$180 "Para jugar".
 
+### After the plan: the bank of each cash move (2026-10-07)
+Decided with the product owner in QA: "Recibir pago" / "Registrar pago" (`/players`, the settlement) and the recharge in the live game ask for **Banco** ("Entidad bancaria (ingreso)") and **Método** ("Método de pago (salida)"), both prefilled from the player, and both are stored on the ledger row of that move.
+- Migration `20261008120000_movement_bank.sql` (applied by the product owner in the SQL Editor on 2026-10-07; the MCP refuses destructive DDL): `activity_log.bank` (nullable, same check as `players.bank`); the ledger is append-only, so `private.log_activity` and `private.record_cash` take `p_bank` (dropped and recreated); `record_account_recharge`, `record_account_payout`, `settlement_receive`, `settlement_payout` and `record_recharge` take `p_bank text default null` as their last argument (dropped and recreated with the same grants), so callers that don't send it keep working.
+- Verified with read-only SQL: the column, the five public signatures with `p_bank`, and `execute` only for `authenticated` (private helpers for nobody).
+
+### Configuración (2026-10-07)
+Decided with the product owner while preparing the demo house: `/settings` stops being a prototype.
+- Migration `20261008170000_house_settings.sql` (dry run with rollback, then applied by the product owner in the SQL Editor): `houses.phone`, `houses.logo_path`; `update_house(p_house_id, p_name, p_identifier, p_timezone, p_phone, p_request_id)` and `set_house_logo(p_house_id, p_logo_path, p_request_id)` (admin only via `private.require_admin`, by request id, errors `invalid_name`, `invalid_identifier`, `identifier_taken`, `invalid_timezone`, `invalid_phone`, `invalid_logo_path`), each leaving a `house_updated` ledger row without a game session (so `LiveRefresh` follows); public bucket `house-logos` (1 MB, PNG/JPG/WEBP/SVG) whose writes are limited to the house admin under `{house_id}/` (`private.is_logo_admin`).
+- Dry run (as the demo house admin): anon → `not_admin`, another house's identifier → `identifier_taken`, `Mars/Base` → `invalid_timezone`, another house's folder → `invalid_logo_path`; a save trimmed/uppercased and logged two `house_updated` rows.
+- App: `getCurrentHouse()` adds `identifier`, `phone`, `logoPath`, `logoUrl`; `lib/house-settings.ts` (schemas, time zones, logo limits); Server Actions in `lib/data/settings-actions.ts` (`updateHouse`, `setHouseLogo`, `updateDisplayName` → `user_metadata.full_name`, `changePassword` → `auth.updateUser`). The logo shows in the sidebar user avatar and the Inicio greeting (never replaces the Bingo Tally logo); "Mi cuenta" in the user menu opens `/settings`.
+### Demo environment for the client (2026-10-07)
+Decided with the product owner: the client reviews the product in their own house, in **the same Supabase project** (it only holds the product owner's test data so far; RLS keeps houses apart and `getCurrentHouse()` opens the user's oldest membership).
+- Migration `20261008150000_seed_demo_house.sql` (applied with the MCP): house **CASA DEMO DAIRY** (`CASA-DEMO-DAIRY`, `America/Chicago`), admin `guiaaliadabingoo@gmail.com` (account created by hand in Authentication → Users), 12 fictitious players with payment methods and banks, 4 round templates (Regular, Doble, Especial, Gran Bingo), no game sessions. Verified with read-only SQL.
+- Round catalog replaced by `20261008210000_demo_round_catalog.sql` (applied with the MCP, same day) with the documented dynamics — Regular = 1 prize of 10 × the line, Especial = 2 prizes of 10 × and 5 × (played alternating): Regular $10 → $100, Especial $10 → $100 / $50, Regular $20 → $200, Especial $20 → $200 / $100; the invented "Doble" and "Gran Bingo" are deactivated (never played). The client's own dynamics document is still pending.
+- Branch **`bingo-dev-1`** (created from `main`) is what the demo runs: it only gets what the product owner merges into it from `main` (PR `main → bingo-dev-1`); nobody commits to it directly. Since migrations reach the shared database when applied, not when merged, they must stay backward compatible.
+- Tried first locally in production mode (`next build` + `next start` on port 3001); next, a Vercel project with Production Branch `bingo-dev-1` and an unlisted `*.vercel.app` link, plus that URL in Supabase Auth → URL Configuration.
+- Before real money: a separate Supabase project and Vercel project for production.
+
+### Player contact (2026-10-07)
+Agreed in the 2026-09-25 meeting: players get a phone and an email, and the name is the only required field.
+- Migration `20261008190000_player_contact.sql` (dry run with rollback, then applied by the product owner in the SQL Editor): `players.phone` (up to 30) and `players.email` (up to 254, basic shape check), both optional; `private.normalize_player_names()` also trims the phone and trims + lowercases the email (empty → null), and the trigger now fires on those columns too. Dry run: `' Cliente@Ejemplo.COM '` → `cliente@ejemplo.com`, a malformed email → `players_email_check`, blanks → null.
+- App: `Player.phone` / `Player.email` and the zod schema (`lib/players.ts`, tests in `lib/players.test.ts`); the player form adds Teléfono and Correo, and Nickname is no longer required; `/players` shows them in one "Contacto" column (data-table `type: "lines"`).
+
 ## Later (not now)
-House switcher, editing the house name/identifier from `/settings` (needs an admin-only function, since `houses` is select-only), transferring the admin role to another member, dashboard metrics, offline queue.
+House switcher, transferring the admin role to another member, dashboard metrics, offline queue.
 
 ## Files
 New: `supabase/migrations/*_init.sql`, `lib/supabase/database.types.ts`, `lib/data/{house,admin-session,players,rounds,load-game-session,game-session-actions}.ts`, `app/(app)/(game)/layout.tsx` (provider), `app/(app)/games/[id]/settlement/page.tsx`, `components/settlement-page.tsx`.

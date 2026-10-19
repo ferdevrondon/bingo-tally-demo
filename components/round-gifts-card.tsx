@@ -1,57 +1,76 @@
 "use client"
 
-import { GiftIcon } from "lucide-react"
-
-import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getRoundGifts } from "@/lib/round-draft/selectors"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
-// Gifts of the open round and what they cost the house (a gift that doesn't
-// win costs the line price; the gift ends with the round).
-export function RoundGiftsCard() {
+// Gifts of the open round: the "Regalados" tab of the open numbers card, built
+// like "Disponibles" (title and pills in the header, the gifts below). The
+// gifts end with the round.
+export function RoundGiftsTab() {
   const { state } = useRoundDraft()
   const gifts = getRoundGifts(state)
-  if (gifts.giftCount === 0) return null
-
+  const linePrice = state.round?.linePrice ?? 0
   const playerCount = gifts.players.length
 
   return (
-    <Card className="gap-2 border-red-500/30 bg-red-500/5">
-      <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div className="flex items-center gap-2 text-base font-semibold">
-          <GiftIcon className="size-5 text-red-600" />
-          {playerCount} jugador{playerCount === 1 ? "" : "es"} con números
-          regalados
-        </div>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          {gifts.players.map((p) => {
-            const index = state.players.findIndex((x) => x.id === p.playerId)
-            return (
-              <span
-                key={p.playerId}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold text-white",
-                  getPlayerColorClass(index)
-                )}
+    <>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle>Números regalados</CardTitle>
+        {gifts.giftCount > 0 && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {[
+              `${gifts.giftCount} número${gifts.giftCount === 1 ? "" : "s"} regalado${gifts.giftCount === 1 ? "" : "s"}`,
+              `${playerCount} jugador${playerCount === 1 ? "" : "es"} con regalo`,
+              `${formatMoney(gifts.giftCount * linePrice)} en regalos`,
+            ].map((label) => (
+              <Badge
+                key={label}
+                variant="outline"
+                className="border-destructive/40 text-sm text-destructive"
               >
-                {p.playerName} el {p.numbers.join(", ")}
-              </span>
-            )
-          })}
-        </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-red-600 tabular-nums">
-            {formatMoney(gifts.giftLoss)}
+                {label}
+              </Badge>
+            ))}
           </div>
-          <div className="text-xs text-muted-foreground">
-            pérdida de la casa · {gifts.pendingCount} de {gifts.giftCount}{" "}
-            regalo{gifts.giftCount === 1 ? "" : "s"} sin ganar
+        )}
+      </CardHeader>
+      <CardContent>
+        {gifts.giftCount === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Todavía no hay números regalados en esta ronda.
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            {gifts.players.map((p) => {
+              const index = state.players.findIndex((x) => x.id === p.playerId)
+              return (
+                <span
+                  key={p.playerId}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-2.5 text-sm font-semibold whitespace-nowrap text-white",
+                    getPlayerColorClass(index)
+                  )}
+                >
+                  {p.playerName} el
+                  {p.numbers.map((number) => (
+                    <span
+                      key={number}
+                      className="flex size-5 items-center justify-center rounded-full bg-white/25 text-xs font-bold text-white tabular-nums"
+                    >
+                      {number}
+                    </span>
+                  ))}
+                </span>
+              )
+            })}
           </div>
-        </div>
+        )}
       </CardContent>
-    </Card>
+    </>
   )
 }

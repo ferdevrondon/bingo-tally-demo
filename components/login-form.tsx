@@ -47,8 +47,8 @@ export function LoginForm({
       )}
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className={"text-xl " + titleFont.className}>Welcome back</CardTitle>
-          <CardDescription>Comienza la jornada de hoy!</CardDescription>
+          <CardTitle className={"text-xl " + titleFont.className}>Bienvenido de nuevo</CardTitle>
+          <CardDescription>¡Comienza la jornada de hoy!</CardDescription>
         </CardHeader>
         <CardContent>
           <FieldGroup>
@@ -61,22 +61,22 @@ export function LoginForm({
                       fill="currentColor"
                     />
                   </svg>
-                  Login with Google
+                  Entrar con Google
                 </Button>
               </form>
             </Field>
             <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-              Or continue with
+              O continúa con tu correo
             </FieldSeparator>
             <form action={formAction}>
               <FieldGroup>
                 <Field data-invalid={!!state.errors?.email}>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <FieldLabel htmlFor="email">Correo</FieldLabel>
                   <Input
                     id="email"
                     name="email"
                     type="email"
-                    placeholder="m@example.com"
+                    placeholder="tu@correo.com"
                     required
                   />
                   <FieldError
@@ -86,15 +86,7 @@ export function LoginForm({
                   />
                 </Field>
                 <Field data-invalid={!!state.errors?.password}>
-                  <div className="flex items-center">
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <a
-                      href="#"
-                      className="ml-auto text-sm underline-offset-4 hover:underline"
-                    >
-                      Forgot your password?
-                    </a>
-                  </div>
+                  <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                   <Input
                     id="password"
                     name="password"
@@ -106,29 +98,25 @@ export function LoginForm({
                       message,
                     }))}
                   />
+                  <FieldDescription>
+                    ¿Olvidaste tu contraseña? Pídele al administrador de tu casa que te ayude.
+                  </FieldDescription>
                 </Field>
                 <Field>
                   <Button type="submit" disabled={pending}>
-                    {pending ? "Logging in…" : "Login"}
+                    {pending ? "Entrando…" : "Iniciar sesión"}
                   </Button>
                   <FieldError
                     errors={state.errors?.form?.map((message) => ({
                       message,
                     }))}
                   />
-                  <FieldDescription className="text-center">
-                    Don&apos;t have an account? <a href="#">Sign up</a>
-                  </FieldDescription>
                 </Field>
               </FieldGroup>
             </form>
           </FieldGroup>
         </CardContent>
       </Card>
-      <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
-      </FieldDescription>
     </div>
   )
 }

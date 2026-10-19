@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { assignTicket, compactLine, movedPlays } from "./assign-ticket"
+import { assignTicket, claimFirstFree, compactLine, movedPlays } from "./assign-ticket"
 import type { Ticket } from "./types"
 
 // Ticket ids are 100 + index so they can't be confused with the index.
@@ -200,5 +200,28 @@ describe("movedPlays", () => {
 
   it("is 0 once the round has winning numbers", () => {
     expect(movedPlays(6, withLine(makeTickets(4), 6, [null, 2, 3, 4]), true)).toBe(0)
+  })
+})
+
+describe("claimFirstFree", () => {
+  it("puts a number tapped on ticket 5 on the lowest ticket where it is free", () => {
+    const tickets = makeTickets(5, { 2: [8] })
+    const result = claimFirstFree(tickets, 8, 7, false)
+    expect(result?.ticketId).toBe(101)
+    const entry = result?.tickets[0].numbers.find((n) => n.number === 8)
+    expect(entry).toEqual({ number: 8, playerId: 7, isGift: false })
+    // The input is not changed.
+    expect(tickets[0].numbers.find((n) => n.number === 8)?.playerId).toBeNull()
+  })
+
+  it("fills the row in order when the same number is bought twice", () => {
+    const first = claimFirstFree(makeTickets(3), 4, 7, false)
+    const second = first && claimFirstFree(first.tickets, 4, 7, true)
+    expect([first?.ticketId, second?.ticketId]).toEqual([101, 102])
+    expect(second?.tickets[1].numbers.find((n) => n.number === 4)?.isGift).toBe(true)
+  })
+
+  it("returns null when the number is taken on every ticket", () => {
+    expect(claimFirstFree(makeTickets(2, { 1: [3], 2: [3] }), 3, 7, false)).toBeNull()
   })
 })

@@ -33,7 +33,7 @@ export function HouseResultBreakdown({
         <dd
           className={cn(
             "text-base font-bold tabular-nums",
-            house.total >= 0 ? "text-green-600" : "text-destructive"
+            house.total >= 0 ? "text-success" : "text-destructive"
           )}
         >
           {signedMoney(house.total)}

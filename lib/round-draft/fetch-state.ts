@@ -40,7 +40,7 @@ function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number
       .order("seq"),
     supabase
       .from("activity_log")
-      .select("id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note")
+      .select("id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note, bank")
       .eq("game_session_id", id)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })

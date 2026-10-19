@@ -57,7 +57,10 @@ function BackToStartCrumb() {
   return (
     <>
       <BreadcrumbItem>
-        <BreadcrumbLink render={<Link href="/" onClick={handleClick} />}>
+        <BreadcrumbLink
+          className="inline-flex min-h-6 items-center max-lg:min-h-11"
+          render={<Link href="/" onClick={handleClick} />}
+        >
           {readOnly ? "Inicio" : "Iniciar jornada"}
         </BreadcrumbLink>
       </BreadcrumbItem>
@@ -71,7 +74,7 @@ function BackToStartCrumb() {
               borrarla junto con sus cartones.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-row justify-end gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>
               Cancelar
             </Button>

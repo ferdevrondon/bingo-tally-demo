@@ -61,7 +61,7 @@ function DebtLine({ row }: { row: DebtRow }) {
           {row.lastGameSession ? (
             <Link
               href={`/reports/games/${row.lastGameSession.id}`}
-              className="underline-offset-4 hover:underline"
+              className="inline-block py-1.5 underline-offset-4 hover:underline"
             >
               última jornada #{row.lastGameSession.number}
             </Link>
@@ -74,7 +74,7 @@ function DebtLine({ row }: { row: DebtRow }) {
       <span
         className={cn(
           "font-semibold tabular-nums",
-          row.balance < 0 ? "text-destructive" : "text-green-600"
+          row.balance < 0 ? "text-destructive" : "text-success"
         )}
       >
         {signedMoney(row.balance)}
@@ -100,7 +100,7 @@ export function DebtsReport({ rows }: { rows: DebtRow[] }) {
         <Card>
           <CardHeader>
             <CardDescription>La casa les debe</CardDescription>
-            <CardTitle className="text-2xl text-green-600 tabular-nums">{formatMoney(owing)}</CardTitle>
+            <CardTitle className="text-2xl text-success tabular-nums">{formatMoney(owing)}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -127,7 +127,7 @@ export function DebtsReport({ rows }: { rows: DebtRow[] }) {
               <span
                 className={cn(
                   "font-semibold tabular-nums",
-                  total < 0 ? "text-destructive" : "text-green-600"
+                  total < 0 ? "text-destructive" : "text-success"
                 )}
               >
                 {signedMoney(total)}

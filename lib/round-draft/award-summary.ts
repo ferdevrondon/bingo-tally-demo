@@ -1,5 +1,7 @@
+import { formatMoney } from "@/lib/rounds"
+
 import { ticketPrize } from "./prize-rules"
-import { getWinnersForNumber } from "./selectors"
+import { getHouseWin, getWinnersForNumber } from "./selectors"
 import type { RoundDraftState } from "./types"
 
 export interface AwardWinner {
@@ -20,6 +22,20 @@ export interface AwardSummary {
   prize: number
   /** Empty when nobody held the number: the prize stays with the house. */
   winners: AwardWinner[]
+  /** The tickets where the number was free and what the house wins there. */
+  house: HouseWin
+}
+
+export interface HouseWin {
+  tickets: number
+  amount: number
+}
+
+/** "La casa gana $120 (3 cartones libres)". */
+export function houseWinText(house: HouseWin): string {
+  return `La casa gana ${formatMoney(house.amount)} (${house.tickets} cartón${
+    house.tickets === 1 ? "" : "es"
+  } libre${house.tickets === 1 ? "" : "s"})`
 }
 
 /** What declaring `number` as the winner of `slotIndex` pays, per player. Call
@@ -48,5 +64,5 @@ export function buildAwardSummary(
       balanceAfter: balanceBefore + amount,
     }
   })
-  return { slotIndex, number, prize, winners }
+  return { slotIndex, number, prize, winners, house: getHouseWin(state, number, prize) }
 }

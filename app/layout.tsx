@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { Geist_Mono, Inter, Climate_Crisis } from "next/font/google"
 
 import "./globals.css"
@@ -12,6 +13,10 @@ const fontMono = Geist_Mono({
 })
 
 
+export const metadata: Metadata = {
+  title: { template: "%s · Bingo Tally", default: "Bingo Tally" },
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -20,7 +25,7 @@ export default function RootLayout({
   
   return (
     <html
-      lang="en"
+      lang="es"
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >

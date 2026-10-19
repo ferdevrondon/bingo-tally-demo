@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { CheckIcon, Crown } from "lucide-react"
+import { CheckIcon, Crown, HouseIcon } from "lucide-react"
 
+import type { HouseWin } from "@/lib/round-draft/award-summary"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +12,8 @@ export function WinningNumberBall({
   value,
   usedNumbers,
   readOnly = false,
+  winners = null,
+  house = null,
   onSubmit,
 }: {
   slotIndex: number
@@ -20,6 +23,11 @@ export function WinningNumberBall({
   usedNumbers: Set<number>
   /** An observer: an empty slot shows "?" instead of an input. */
   readOnly?: boolean
+  /** Who has won this number so far: players with what they were paid, `[]`
+   *  when nobody had it, null when unknown or not drawn yet. */
+  winners?: { name: string; amount: number }[] | null
+  /** What the house wins on the tickets where this number was free. */
+  house?: HouseWin | null
   onSubmit: (number: number) => void
 }) {
   const [draft, setDraft] = React.useState("")
@@ -37,10 +45,10 @@ export function WinningNumberBall({
   }
 
   const ball = (
-    <div className="relative flex size-12 items-center justify-center overflow-hidden rounded-full border-2 border-green-500/50 bg-gradient-to-br from-green-300 to-green-600 shadow-inner">
+    <div className="relative flex size-12 items-center justify-center overflow-hidden rounded-full border-2 border-success/50 bg-gradient-to-br from-green-300 to-green-600 shadow-inner">
       <span className="pointer-events-none absolute -top-1.5 -left-1.5 size-6 rounded-full bg-white/70 blur-sm" />
       {value !== null ? (
-        <div className="relative z-10 flex size-8 items-center justify-center rounded-full bg-white text-base font-bold text-green-700 shadow-sm">
+        <div className="relative z-10 flex size-8 items-center justify-center rounded-full bg-white text-base font-bold text-success-solid shadow-sm">
           {value}
         </div>
       ) : readOnly ? (
@@ -59,7 +67,7 @@ export function WinningNumberBall({
           }}
           aria-invalid={invalid}
           className={cn(
-            "relative z-10 size-8 appearance-none rounded-full bg-white text-center text-base font-bold text-green-700 outline-none",
+            "relative z-10 size-8 appearance-none rounded-full bg-white text-center text-base font-bold text-success-solid outline-none",
             "[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
             "focus-visible:ring-2 focus-visible:ring-green-500",
             invalid && "ring-2 ring-destructive"
@@ -69,10 +77,10 @@ export function WinningNumberBall({
     </div>
   )
 
-  return (
-    <div className="relative">
-      <Crown className="absolute -top-4 left-1/2 z-30 -translate-x-1/2 size-4 fill-green-400 text-green-600" />
-      <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full border border-green-500/50 bg-white px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap text-green-700 shadow-sm">
+  const slot = (
+    <div className="relative shrink-0">
+      <Crown className="absolute -top-4 left-1/2 z-30 -translate-x-1/2 size-4 fill-green-400 text-success" />
+      <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full border border-success/50 bg-white px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap text-success-solid shadow-sm">
         {formatMoney(prize)}
       </span>
       {value !== null || readOnly ? (
@@ -91,6 +99,44 @@ export function WinningNumberBall({
           )}
         </form>
       )}
+    </div>
+  )
+
+  const houseWins = house !== null && house.tickets > 0
+  if (value === null || (winners === null && !houseWins)) return slot
+  return (
+    <div className="flex items-center gap-3">
+      {slot}
+      <div className="flex min-w-0 flex-col gap-1">
+        {(winners ?? []).map((w) => (
+          <span
+            key={w.name}
+            className="inline-flex h-6 items-center gap-1.5 rounded-full border border-warning/60 bg-amber-100 pr-2 pl-0.5 text-xs font-semibold text-amber-950 dark:bg-warning/15 dark:text-amber-100"
+          >
+            <span className="flex size-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950">
+              {w.name.charAt(0).toUpperCase()}
+            </span>
+            {w.name}
+            <span className="text-success tabular-nums">
+              +{formatMoney(w.amount)}
+            </span>
+          </span>
+        ))}
+        {houseWins && (
+          <span
+            title={`${house.tickets} cartón${house.tickets === 1 ? "" : "es"} libre${house.tickets === 1 ? "" : "s"} con el ${value}`}
+            className="inline-flex h-6 items-center gap-1.5 rounded-full border bg-muted pr-2 pl-0.5 text-xs font-semibold"
+          >
+            <span className="flex size-5 items-center justify-center rounded-full bg-foreground/10">
+              <HouseIcon className="size-3" aria-hidden="true" />
+            </span>
+            CASA
+            <span className="text-success tabular-nums">
+              +{formatMoney(house.amount)}
+            </span>
+          </span>
+        )}
+      </div>
     </div>
   )
 }

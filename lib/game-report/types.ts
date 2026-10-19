@@ -13,6 +13,8 @@ export type GameSessionStatus = "active" | "ended"
 
 export interface SettlementOverview {
   status: Settlement["status"]
+  /** Players in the settlement. */
+  total: number
   /** Players not resolved yet (open settlements). */
   unresolved: number
   /** Collected and paid out from the settlement. */
@@ -32,6 +34,18 @@ export interface GameSessionListItem {
   /** The house result (game_sessions.house_balance). */
   houseTotal: number
   settlement: Pick<SettlementOverview, "status" | "unresolved"> | null
+}
+
+/** A number gifted in a round ("Regalados" tab of the round history). */
+export interface RoundGift {
+  playerId: number
+  playerName: string
+  ticketIndex: number
+  number: number
+  /** The gifted number won: it was paid prize - line price. */
+  won: boolean
+  /** What it cost the house: the line price, or what a winning gift was paid. */
+  cost: number
 }
 
 export interface RoundWinnerReport {
@@ -58,6 +72,8 @@ export interface RoundReport {
   /** One per winning ticket ("Cartón N · #X"). A winning number nobody had
    *  has no winner: its prize stays with the house. */
   winners: RoundWinnerReport[]
+  /** Numbers gifted in this round that are still gifts (a played round). */
+  gifts: RoundGift[]
   /** The house result of this round (an open round: sales and prizes so far). */
   house: HouseResult
 }
@@ -183,12 +199,24 @@ export interface PeriodReport {
   label: string
   house: HouseResult
   cash: PeriodCashLine[]
-  activity: { gameSessions: number; roundsPlayed: number; players: number; tickets: number }
+  activity: {
+    gameSessions: number
+    roundsPlayed: number
+    players: number
+    tickets: number
+  }
   topPlayers: {
     played: { playerId: number; name: string; amount: number }[]
     won: { playerId: number; name: string; amount: number }[]
   }
   /** One entry per day of the period, with or without movement. */
   days: PeriodDay[]
-  gameSessions: { id: number; number: number; startedAtLabel: string }[]
+  /** Oldest first; `day` is the house day it started on. */
+  gameSessions: {
+    id: number
+    number: number
+    day: string
+    active: boolean
+    startedAtLabel: string
+  }[]
 }

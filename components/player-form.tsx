@@ -29,9 +29,11 @@ import type { PlayerInput } from "@/lib/players"
 
 const emptyPlayer: PlayerInput = {
   name: "",
-  username: "",
+  nickname: "",
   paymentMethod: null,
   bank: null,
+  phone: "",
+  email: "",
   isVip: false,
 }
 
@@ -54,6 +56,8 @@ export interface PlayerFormProps {
 }
 
 // Los saldos no se capturan aquí: son por jornada (BACKEND_PLAN.md regla 7).
+// El nombre y el nickname se guardan en mayúsculas (también lo garantiza la
+// base de datos).
 export function PlayerForm({
   onSubmit,
   onCancel,
@@ -80,27 +84,54 @@ export function PlayerForm({
     <form onSubmit={handleSubmit} className={cn(variant === "plain" && className)}>
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="player-name">Nombre</FieldLabel>
+          <FieldLabel htmlFor="player-name" className="gap-1">
+            Nombre<span className="text-destructive">*</span>
+          </FieldLabel>
           <Input
             id="player-name"
             value={player.name}
-            onChange={(e) => updateField("name", e.target.value)}
-            placeholder="Juan Pérez"
+            onChange={(e) => updateField("name", e.target.value.toUpperCase())}
+            placeholder="JUAN PÉREZ"
+            className="uppercase"
             required
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="player-username">Usuario</FieldLabel>
+          <FieldLabel htmlFor="player-nickname">Nickname</FieldLabel>
           <Input
-            id="player-username"
-            value={player.username}
-            onChange={(e) => updateField("username", e.target.value)}
-            placeholder="@juanperez"
-            required
+            id="player-nickname"
+            value={player.nickname}
+            onChange={(e) => updateField("nickname", e.target.value.toUpperCase())}
+            placeholder="JUANPE"
+            className="uppercase"
           />
         </Field>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="player-phone">Teléfono</FieldLabel>
+            <Input
+              id="player-phone"
+              type="tel"
+              value={player.phone}
+              maxLength={30}
+              onChange={(e) => updateField("phone", e.target.value)}
+              placeholder="+1 (555) 123-4567"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="player-email">Correo</FieldLabel>
+            <Input
+              id="player-email"
+              type="email"
+              value={player.email}
+              maxLength={254}
+              onChange={(e) => updateField("email", e.target.value)}
+              placeholder="jugador@correo.com"
+            />
+          </Field>
+        </div>
         <Field>
-          <FieldLabel htmlFor="player-payment-method">Método de pago</FieldLabel>
+          <FieldLabel htmlFor="player-payment-method">Método de pago (salida)</FieldLabel>
           <Select
             value={player.paymentMethod ?? ""}
             onValueChange={(value) =>
@@ -123,7 +154,7 @@ export function PlayerForm({
           </Select>
         </Field>
         <Field>
-          <FieldLabel htmlFor="player-bank">Entidad bancaria</FieldLabel>
+          <FieldLabel htmlFor="player-bank">Entidad bancaria (ingreso)</FieldLabel>
           <Select
             value={player.bank ?? NO_BANK}
             onValueChange={(value) => updateField("bank", isBank(value) ? value : null)}
@@ -151,7 +182,7 @@ export function PlayerForm({
             onPressedChange={(pressed) => updateField("isVip", pressed)}
             variant="outline"
             aria-label="Marcar como jugador VIP"
-            className="w-fit data-[pressed]:border-amber-500/40 data-[pressed]:bg-amber-50 data-[pressed]:text-amber-600 dark:data-[pressed]:bg-amber-950 dark:data-[pressed]:text-amber-400"
+            className="w-fit data-[pressed]:border-warning/40 data-[pressed]:bg-amber-50 data-[pressed]:text-warning dark:data-[pressed]:bg-amber-950 dark:data-[pressed]:text-warning"
           >
             <Star className={cn("size-4", player.isVip && "fill-current")} />
             VIP

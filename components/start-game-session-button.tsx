@@ -61,7 +61,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <TriangleAlertIcon className="size-5 text-amber-600" aria-hidden="true" />
+              <TriangleAlertIcon className="size-5 text-warning" aria-hidden="true" />
               Antes de empezar
             </DialogTitle>
             <DialogDescription>
@@ -84,7 +84,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
               </div>
             )}
             {alerts && alerts.players.length > 0 && (
-              <div className="flex flex-col gap-1 text-sm">
+              <div className="flex flex-col gap-1 text-sm p-2">
                 <span className="font-medium">Jugadores con saldo pendiente</span>
                 <ul className="divide-y rounded-lg border">
                   {alerts.players.map((p) => (
@@ -94,7 +94,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
                         <span
                           className={cn(
                             "font-medium tabular-nums",
-                            p.balance < 0 ? "text-destructive" : "text-green-600"
+                            p.balance < 0 ? "text-destructive" : "text-success"
                           )}
                         >
                           {balanceLabel(p.balance)}
@@ -109,7 +109,7 @@ export function StartGameSessionButton({ className }: { className?: string }) {
               </div>
             )}
           </div>
-          <DialogFooter className="flex-row flex-wrap justify-end gap-2">
+          <DialogFooter>
             {alerts && alerts.openSettlements.length > 0 && (
               <Button variant="outline" nativeButton={false} render={<Link href="/settlement" />}>
                 Ver liquidación

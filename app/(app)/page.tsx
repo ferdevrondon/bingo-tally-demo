@@ -1,6 +1,9 @@
 import { HomePage } from "@/components/home-page"
 import { LiveRefresh } from "@/components/live-refresh"
 import { loadHome } from "@/lib/data/game-sessions"
+import { pageTitle } from "@/lib/page-titles"
+
+export const metadata = { title: pageTitle("/") }
 
 export default async function Page() {
   const home = await loadHome()

@@ -20,9 +20,9 @@ export default function PageHeadingWithActions() {
     <div className="container mx-auto px-4 py-4 md:px-6 2xl:max-w-[1400px]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl">
+          <h2 className="scroll-m-20 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
             Jornada #{state.gameNumber}
-          </h1>
+          </h2>
           <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />

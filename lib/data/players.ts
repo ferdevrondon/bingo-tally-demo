@@ -9,19 +9,24 @@ import { createClient } from "@/lib/supabase/server"
 
 type PlayerRow = Database["public"]["Tables"]["players"]["Row"]
 
-export const PLAYER_COLUMNS = "id, name, username, payment_method, bank, is_vip"
+export const PLAYER_COLUMNS = "id, name, nickname, payment_method, bank, phone, email, is_vip"
 
 export function toPlayer(
-  row: Pick<PlayerRow, "id" | "name" | "username" | "payment_method" | "bank" | "is_vip">
+  row: Pick<
+    PlayerRow,
+    "id" | "name" | "nickname" | "payment_method" | "bank" | "phone" | "email" | "is_vip"
+  >
 ): Player {
   return {
     id: row.id,
     name: row.name,
-    username: row.username ?? "",
+    nickname: row.nickname ?? "",
     paymentMethod: isPaymentMethod(row.payment_method)
       ? row.payment_method
       : null,
     bank: isBank(row.bank) ? row.bank : null,
+    phone: row.phone ?? "",
+    email: row.email ?? "",
     isVip: row.is_vip,
   }
 }
