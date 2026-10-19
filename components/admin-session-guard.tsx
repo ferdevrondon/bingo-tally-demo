@@ -4,7 +4,11 @@ import * as React from "react"
 
 import { SESSION_REPLACED_PATH } from "@/lib/admin-session-paths"
 import { createClient } from "@/lib/supabase/client"
-import { isJwtError, refreshExpiredSession } from "@/lib/supabase/expired-session"
+import {
+  isJwtError,
+  refreshExpiredSession,
+  signOutExpired,
+} from "@/lib/supabase/expired-session"
 
 const HEARTBEAT_MS = 60_000
 
@@ -30,14 +34,16 @@ export function AdminSessionGuard() {
     }
 
     async function heartbeat() {
-      const { error } = await supabase.rpc("admin_heartbeat")
       // Expired access token: refresh it (then claim again), or the refresh
-      // token is gone too and this device goes to /login.
+      // token is gone too (e.g. another device's login deleted this session)
+      // and this device goes to /login. Still a 401 after a refresh: same.
+      let { error } = await supabase.rpc("admin_heartbeat")
       if (isJwtError(error)) {
         if (!(await refreshExpiredSession(supabase))) return
-        await supabase.rpc("admin_heartbeat")
+        ;({ error } = await supabase.rpc("admin_heartbeat"))
       }
-      const { data: status } = await supabase.rpc("admin_session_status")
+      const { data: status, error: statusError } = await supabase.rpc("admin_session_status")
+      if (isJwtError(error) || isJwtError(statusError)) return signOutExpired(supabase)
       if (status === "other_active" || status === "other_stale") await leave()
     }
 
