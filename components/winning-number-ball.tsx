@@ -108,7 +108,7 @@ export function WinningNumberBall({
         {draft !== "" && (
           <button
             type="submit"
-            className="absolute top-full left-1/2 z-40 -mt-1.5 inline-flex h-6 -translate-x-1/2 items-center gap-1 rounded-full border border-success/40 bg-white px-2 text-xs font-semibold whitespace-nowrap text-success-solid shadow-sm transition-colors outline-none after:absolute after:-inset-x-2 after:-inset-y-2 hover:bg-success-solid hover:text-white focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="absolute top-full left-1/2 z-40 -mt-1.5 inline-flex h-6 -translate-x-1/2 items-center gap-1 rounded-full border border-green-600/30 bg-green-100 px-2 text-xs font-semibold whitespace-nowrap text-green-900 shadow-sm transition-colors outline-none after:absolute after:-inset-x-2 after:-inset-y-2 hover:bg-green-200 focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             <CheckIcon className="size-3" strokeWidth={3} aria-hidden="true" />
             Confirmar
