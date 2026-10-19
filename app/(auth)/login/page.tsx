@@ -5,6 +5,7 @@ import { LoginHero } from "@/components/login-hero"
 // Messages for the ?reason= / ?error= values other routes redirect here with.
 const NOTICES: Record<string, string> = {
   replaced: "Tu sesión se cerró porque se inició sesión en otro dispositivo.",
+  expired: "Tu sesión expiró, vuelve a iniciar sesión.",
   auth_callback_error: "No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.",
   oauth_error: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
 }

@@ -2,3 +2,4 @@
 // (components/admin-session-guard.tsx), so it must not import server modules.
 export const SESSION_CONFLICT_PATH = "/session-conflict"
 export const SESSION_REPLACED_PATH = "/login?reason=replaced"
+export const SESSION_EXPIRED_PATH = "/login?reason=expired"

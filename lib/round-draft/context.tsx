@@ -14,6 +14,7 @@ import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import type { Round } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
+import { isJwtError, refreshExpiredSession } from "@/lib/supabase/expired-session"
 
 import { assignTicket, claimFirstFree, compactLine, movedPlays } from "./assign-ticket"
 import { fetchGameSessionState } from "./fetch-state"
@@ -399,6 +400,12 @@ export function RoundDraftProvider({
         // The game session ended (or was discarded) elsewhere.
         else router.refresh()
       } catch (error) {
+        // Expired access token: refresh and read again, or (refresh token
+        // gone) this device was signed out and is going to /login.
+        if (isJwtError(error as { code?: string; message?: string })) {
+          if (await refreshExpiredSession(createClient())) void attempt(n + 1)
+          return
+        }
         console.error("game session re-sync failed", error)
         // Retry so an optimistic change the database rejected can't stay on screen.
         if (n < 3) setTimeout(() => void attempt(n + 1), 1000 * n)
