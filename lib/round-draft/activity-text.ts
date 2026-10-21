@@ -60,6 +60,13 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
     (entry.bank ? ` · ${bankLabel(entry.bank)}` : "")
   const note = entry.note && entry.note !== "unplayed_round_refund" ? ` · ${entry.note}` : ""
 
+  if (entry.correctsId !== null) {
+    // `amount` is what the correction changed in the balance (-$900 for a
+    // recharge of 1000 that was 100).
+    const kind = entry.type === "payout" ? "del pago a" : "de la recarga de"
+    return `Corrección ${kind} ${player}: saldo ${signedMoney(entry.amount ?? 0)}${note}`
+  }
+
   switch (entry.type) {
     case "game_session_started":
       return "Comenzó la jornada"

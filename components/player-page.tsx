@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { AccountMovementDialog, type MovementValues } from "@/components/account-movement-dialog"
 import { BalanceStatusDialog } from "@/components/balance-status-dialog"
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
+import { CorrectMovementDialog, type CorrectionValues } from "@/components/correct-movement-dialog"
 import {
   DataTable,
   type DataTableColumnDef,
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { accountStatusText, type BalanceStatus, type PlayerAccount } from "@/lib/accounts"
 import {
+  correctMovement,
   receivePayment,
   registerPayout,
   setBalanceStatus,
@@ -61,7 +63,11 @@ function toInput(player: Player): PlayerInput {
   }
 }
 
-type AccountDialog = { kind: "in" | "out" | "status"; player: Player; account: PlayerAccount } | null
+type AccountDialog = {
+  kind: "in" | "out" | "status" | "correct"
+  player: Player
+  account: PlayerAccount
+} | null
 
 /** A player with no account row yet has $0. */
 function accountFrom(accounts: Map<number, PlayerAccount>, playerId: number): PlayerAccount {
@@ -149,7 +155,7 @@ export default function PlayerPage({
     return players.find((p) => p.id === Number(id)) ?? null
   }
 
-  function openAccountDialog(kind: "in" | "out" | "status", id: DataRow["id"]) {
+  function openAccountDialog(kind: NonNullable<AccountDialog>["kind"], id: DataRow["id"]) {
     const player = findPlayer(id)
     if (!player) return
     const account = accountFrom(accountById, player.id)
@@ -161,11 +167,15 @@ export default function PlayerPage({
   }
 
   async function handleMovement(values: MovementValues): Promise<boolean> {
-    if (!accountDialog || accountDialog.kind === "status") return false
+    if (!accountDialog || (accountDialog.kind !== "in" && accountDialog.kind !== "out")) return false
     const input = { playerId: accountDialog.player.id, ...values }
     return accountDialog.kind === "in"
       ? succeeded(await receivePayment(input), "Pago recibido")
       : succeeded(await registerPayout(input), "Pago registrado")
+  }
+
+  async function handleCorrection(values: CorrectionValues): Promise<boolean> {
+    return succeeded(await correctMovement(values), "Movimiento corregido")
   }
 
   async function handleStatus(status: BalanceStatus, note: string | null, requestId: string) {
@@ -276,6 +286,11 @@ export default function PlayerPage({
                       onSelect: (row) => openAccountDialog("out", row.id),
                     },
                     {
+                      key: "correct",
+                      label: "Corregir movimiento",
+                      onSelect: (row) => openAccountDialog("correct", row.id),
+                    },
+                    {
                       key: "status",
                       label: "Estado del saldo",
                       onSelect: (row) => openAccountDialog("status", row.id),
@@ -328,7 +343,20 @@ export default function PlayerPage({
         </DialogContent>
       </Dialog>
 
-      {accountDialog && accountDialog.kind !== "status" && (
+      {accountDialog && accountDialog.kind === "correct" && (
+        <CorrectMovementDialog
+          open
+          onOpenChange={(open) => !open && setAccountDialog(null)}
+          player={{
+            id: accountDialog.player.id,
+            name: accountDialog.player.name,
+            balance: accountDialog.account.balance,
+            inGame: accountDialog.account.inGame,
+          }}
+          onConfirm={handleCorrection}
+        />
+      )}
+      {accountDialog && (accountDialog.kind === "in" || accountDialog.kind === "out") && (
         <AccountMovementDialog
           open
           onOpenChange={(open) => !open && setAccountDialog(null)}

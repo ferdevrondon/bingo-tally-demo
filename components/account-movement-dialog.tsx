@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { BankSelect } from "@/components/bank-select"
+import { LargeAmountWarning } from "@/components/large-amount-warning"
 import { PaymentMethodSelect } from "@/components/payment-method-select"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,6 +18,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import type { Bank } from "@/lib/banks"
+import { isLargeAmount } from "@/lib/movements"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { formatMoney } from "@/lib/rounds"
@@ -70,6 +72,7 @@ export function AccountMovementDialog({
   const [bank, setBank] = React.useState<Bank | null>(null)
   const [note, setNote] = React.useState("")
   const [requestId, setRequestId] = React.useState(() => crypto.randomUUID())
+  const [warnedAmount, setWarnedAmount] = React.useState<number | null>(null)
   const [isPending, startTransition] = React.useTransition()
 
   // Reset each time the dialog opens (state adjusted during render).
@@ -83,6 +86,7 @@ export function AccountMovementDialog({
       setBank(player.bank ?? null)
       setNote("")
       setRequestId(crypto.randomUUID())
+      setWarnedAmount(null)
     }
   }
 
@@ -92,9 +96,15 @@ export function AccountMovementDialog({
     ? player.balance + (direction === "in" ? parsedAmount : -parsedAmount)
     : player.balance
   const leavesOwing = direction === "out" && isValid && balanceAfter < 0
+  // A large amount needs a second click; changing the amount asks again.
+  const showWarning = isValid && warnedAmount === parsedAmount
 
   function handleConfirm() {
     if (!isValid || paymentMethod === null || isPending) return
+    if (isLargeAmount(parsedAmount) && !showWarning) {
+      setWarnedAmount(parsedAmount)
+      return
+    }
     startTransition(async () => {
       const saved = await onConfirm({
         amount: parsedAmount,
@@ -208,11 +218,25 @@ export function AccountMovementDialog({
                 ? `El pago es mayor a su saldo a favor: quedará debiendo ${formatMoney(-balanceAfter)}.`
                 : `Su saldo quedará en ${signedMoney(balanceAfter)}.`}
           </p>
+
+          {showWarning && <LargeAmountWarning amount={parsedAmount} playerName={player.name} />}
         </div>
 
         <DialogFooter>
-          <Button className="w-full" size="lg" disabled={!isValid || isPending} onClick={handleConfirm}>
-            {direction === "in" ? "Confirmar cobro" : "Confirmar pago"}
+          <Button
+            className="w-full"
+            size="lg"
+            variant={showWarning ? "destructive" : "default"}
+            disabled={!isValid || isPending}
+            onClick={handleConfirm}
+          >
+            {!isValid
+              ? direction === "in"
+                ? "Confirmar cobro"
+                : "Confirmar pago"
+              : showWarning
+                ? `Sí, ${direction === "in" ? "cobrar" : "pagar"} ${formatMoney(parsedAmount)}`
+                : `${direction === "in" ? "Confirmar cobro" : "Confirmar pago"} de ${formatMoney(parsedAmount)}`}
           </Button>
         </DialogFooter>
       </DialogContent>

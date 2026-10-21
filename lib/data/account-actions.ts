@@ -65,6 +65,36 @@ export async function registerPayout(input: MovementInput): Promise<GameActionRe
   return move("record_account_payout", input)
 }
 
+const correctionSchema = z.object({
+  movementId: z.number().int().positive(),
+  amount: z.number().min(0),
+  reason: z.string().trim().min(1).max(200),
+  requestId: z.uuid(),
+})
+
+/** "Corregir movimiento": a cash move recorded with the wrong amount gets a
+ *  linked correction row (never edited or deleted). `amount` is the correct
+ *  amount; 0 voids the move. */
+export async function correctMovement(input: {
+  movementId: number
+  amount: number
+  reason: string
+  requestId: string
+}): Promise<GameActionResult> {
+  const parsed = correctionSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: "invalid" }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("correct_movement", {
+    p_movement_id: parsed.data.movementId,
+    p_amount: parsed.data.amount,
+    p_reason: parsed.data.reason,
+    p_request_id: parsed.data.requestId,
+  })
+  if (error) return rejectGameAction(supabase, error)
+  refresh()
+  return { ok: true, data: undefined }
+}
+
 const statusSchema = z.object({
   playerId: z.number().int().positive(),
   status: z.enum(BALANCE_STATUSES),

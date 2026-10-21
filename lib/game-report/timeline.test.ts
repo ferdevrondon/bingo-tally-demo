@@ -22,6 +22,7 @@ function entry(
     paymentMethod: null,
     bank: null,
     note: null,
+    correctsId: null,
   }
 }
 

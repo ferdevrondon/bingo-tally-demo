@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { BankSelect } from "@/components/bank-select"
+import { LargeAmountWarning } from "@/components/large-amount-warning"
 import { PaymentMethodChips } from "@/components/payment-method-chips"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,10 +20,12 @@ import { Separator } from "@/components/ui/separator"
 import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { formatRelativeTime } from "@/lib/format-relative-time"
+import { isLargeAmount } from "@/lib/movements"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getLastRechargeActivity } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
+import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
 const PRESET_AMOUNTS = [10, 20,40, 50, 100, 200]
@@ -43,6 +46,7 @@ export function PlayerRechargeDialog({
   const [note, setNote] = React.useState("")
   // One recharge per dialog opening: a double click reuses the same request.
   const [requestKey, setRequestKey] = React.useState(() => crypto.randomUUID())
+  const [warnedAmount, setWarnedAmount] = React.useState<number | null>(null)
 
   // Reset the form each time the dialog opens (adjusting state during render
   // instead of in an effect, per React's "you might not need an effect"). The
@@ -56,6 +60,7 @@ export function PlayerRechargeDialog({
       setBank(player.bank ?? null)
       setNote("")
       setRequestKey(crypto.randomUUID())
+      setWarnedAmount(null)
     }
   }
 
@@ -64,9 +69,16 @@ export function PlayerRechargeDialog({
   const isValid = Number.isFinite(parsedAmount) && parsedAmount > 0 && paymentMethod !== null
 
   const lastRecharge = getLastRechargeActivity(state, player.id)
+  const usual = lastRecharge?.amount ?? null
+  // A large amount needs a second click; changing the amount asks again.
+  const showWarning = isValid && warnedAmount === parsedAmount
 
   function handleConfirm() {
     if (!isValid || paymentMethod === null) return
+    if (isLargeAmount(parsedAmount, usual) && !showWarning) {
+      setWarnedAmount(parsedAmount)
+      return
+    }
     rechargeBalance(player.id, parsedAmount, paymentMethod, bank, note.trim() || null, requestKey)
     onOpenChange(false)
   }
@@ -171,11 +183,25 @@ export function PlayerRechargeDialog({
               ? `Su saldo quedará en ${signedMoney(netBalance + parsedAmount)}.`
               : "Selecciona o ingresa un monto para agregar."}
           </p>
+
+          {showWarning && (
+            <LargeAmountWarning amount={parsedAmount} playerName={player.name} usual={usual} />
+          )}
         </div>
 
         <DialogFooter>
-          <Button className="w-full" size="lg" disabled={!isValid} onClick={handleConfirm}>
-            Confirmar recarga
+          <Button
+            className="w-full"
+            size="lg"
+            variant={showWarning ? "destructive" : "default"}
+            disabled={!isValid}
+            onClick={handleConfirm}
+          >
+            {!isValid
+              ? "Confirmar recarga"
+              : showWarning
+                ? `Sí, recargar ${formatMoney(parsedAmount)}`
+                : `Confirmar recarga de ${formatMoney(parsedAmount)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
