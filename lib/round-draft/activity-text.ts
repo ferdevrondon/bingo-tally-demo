@@ -3,42 +3,11 @@ import { paymentMethodLabel } from "@/lib/payment-methods"
 import { formatMoney } from "@/lib/rounds"
 
 import { signedMoney } from "./balance"
-import type { ActivityEntry, ActivityEntryType, RoundDraftState } from "./types"
+import type { ActivityEntry, RoundDraftState } from "./types"
 
 // activity_log rows carry structured data only (BACKEND_PLAN.md §3); the
 // Spanish text is built here. Positions are always "Cartón N · #X", so a
 // player with the same number on several tickets sees each one.
-
-export const ACTIVITY_LABELS: Record<ActivityEntryType, string> = {
-  game_session_started: "Jornada",
-  game_session_ended: "Jornada",
-  player_added: "Jugador",
-  player_removed: "Retiro",
-  ticket_added: "Cartón",
-  number_purchased: "Compra",
-  number_released: "Liberación",
-  number_reassigned: "Cambio",
-  number_moved: "Reacomodo",
-  number_gifted: "Regalo",
-  number_ungifted: "Regalo",
-  recharge: "Recarga",
-  check_in: "Check-in",
-  check_in_undone: "Check-in",
-  round_started: "Ronda",
-  round_closed: "Cierre de ronda",
-  prize_won: "Premio",
-  margin_adjustment: "Casa",
-  carryover_kept: "Jugada mantenida",
-  carryover_released: "Liberación",
-  payout: "Pago",
-  adjustment: "Ajuste",
-  balance_opened: "Saldo inicial",
-  balance_closed: "Saldo final",
-  credit_kept_for_play: "Saldo a favor",
-  credit_payout_pending: "Pago pendiente",
-  debt_noted: "Deuda",
-  settlement_closed: "Liquidación",
-}
 
 /** Names and labels a sentence needs: the live game state, or a game
  *  session report (lib/game-report). */

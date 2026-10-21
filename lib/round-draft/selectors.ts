@@ -21,13 +21,6 @@ export function getActivePlayers(state: RoundDraftState): DraftPlayer[] {
   return state.players.filter((p) => activeIds.has(p.id))
 }
 
-export function getRecentActivity(
-  state: RoundDraftState,
-  limit = 20
-): ActivityEntry[] {
-  return state.activity.slice(0, limit)
-}
-
 export interface NumberWinnerEntry {
   ticketId: number
   isGift: boolean

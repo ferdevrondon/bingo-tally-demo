@@ -23,11 +23,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { PlayerNumbersSummary } from "@/components/player-numbers-summary"
 import { TicketsViewToggle, useTicketsView } from "@/components/tickets-board"
 import { claimFirstFree } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
-import { orderTicketsByFreeNumbers } from "@/lib/round-draft/selectors"
+import {
+  getPlayerNumberSummary,
+  orderTicketsByFreeNumbers,
+} from "@/lib/round-draft/selectors"
 import type { Ticket, DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
@@ -264,6 +268,8 @@ export function PlayerEditNumbersDialog({
     .filter((t): t is Ticket => t !== undefined)
   const withFree = orderedTickets.filter((t) => t.numbers.some((n) => n.playerId === null))
   const complete = orderedTickets.filter((t) => t.numbers.every((n) => n.playerId !== null))
+  // From the draft, so it follows each tap before "Aceptar".
+  const numberSummary = getPlayerNumberSummary({ ...state, tickets: draft }, player.id)
   const pendingStealOwnerId =
     pendingSteal !== null
       ? (draftById
@@ -407,6 +413,18 @@ export function PlayerEditNumbersDialog({
               primer cartón que los tenga libres.
             </DialogDescription>
           </DialogHeader>
+
+          <section className="mx-6 mt-4 flex shrink-0 flex-col gap-2 rounded-xl border bg-muted/40 px-4 py-3">
+            <h3 className="text-sm font-semibold">Números de {player.name}</h3>
+            {numberSummary.length > 0 ? (
+              <PlayerNumbersSummary
+                numbers={numberSummary}
+                colorClass={getPlayerColorClass(playerIndexById.get(player.id) ?? -1)}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Todavía no tiene números.</p>
+            )}
+          </section>
 
           <div className="flex flex-col gap-6 overflow-y-auto p-6">
             <TicketsViewToggle className="self-end" />
