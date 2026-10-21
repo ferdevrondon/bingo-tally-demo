@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { CalculatorIcon, CheckIcon, ChevronRightIcon } from "lucide-react"
+import { CalculatorIcon, CheckIcon, ChevronRightIcon, Undo2Icon } from "lucide-react"
+import { toast } from "sonner"
 
 import { BingoBall } from "@/components/bingo-ball"
+import { CorrectMovementDialog, type CorrectionValues } from "@/components/correct-movement-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +25,8 @@ import { PlayerRechargeDialog } from "@/components/player-recharge-dialog"
 import { PlayerReleaseNumbersDialog } from "@/components/player-release-numbers-dialog"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import { useCheckInToggle } from "@/components/check-in-dialog"
+import { correctMovement } from "@/lib/data/account-actions"
+import { GAME_ACTION_ERROR_MESSAGES } from "@/lib/data/game-action-result"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getPlayerNumberSummary, getSlotWinners } from "@/lib/round-draft/selectors"
@@ -45,8 +49,20 @@ export function PlayerActiveCard({
   const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = React.useState(false)
   const [isReleaseOpen, setIsReleaseOpen] = React.useState(false)
+  const [isCorrectOpen, setIsCorrectOpen] = React.useState(false)
 
   const balance = player.balance
+
+  // "Corregir movimiento": the game session re-syncs from the new ledger row.
+  async function handleCorrection(values: CorrectionValues): Promise<boolean> {
+    const result = await correctMovement(values)
+    if (result.ok) {
+      toast.success("Movimiento corregido")
+      return true
+    }
+    if (result.error !== "session_replaced") toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
+    return false
+  }
 
   const numbers = getPlayerNumberSummary(state, player.id).map(
     ({ number, count, gifts }) => ({
@@ -184,14 +200,25 @@ export function PlayerActiveCard({
         {!readOnly && (
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Recarga</span>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setIsRechargeOpen(true)}
-              title="Recargar saldo"
-            >
-              <CalculatorIcon />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setIsCorrectOpen(true)}
+                title="Corregir movimiento"
+                aria-label="Corregir movimiento"
+              >
+                <Undo2Icon />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setIsRechargeOpen(true)}
+                title="Recargar saldo"
+              >
+                <CalculatorIcon />
+              </Button>
+            </div>
           </div>
         )}
 
@@ -244,6 +271,14 @@ export function PlayerActiveCard({
         open={isRechargeOpen}
         onOpenChange={setIsRechargeOpen}
       />
+      {isCorrectOpen && (
+        <CorrectMovementDialog
+          open
+          onOpenChange={setIsCorrectOpen}
+          player={{ id: player.id, name: player.name, balance, inGame: true }}
+          onConfirm={handleCorrection}
+        />
+      )}
       <PlayerRoundsDialog
         gameSessionId={state.gameSessionId}
         playerId={player.id}
