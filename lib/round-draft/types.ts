@@ -81,6 +81,9 @@ export interface ActivityEntry {
   /** The bank of a cash move (recharge, payout); null on older rows. */
   bank: Bank | null
   note: string | null
+  /** A correction of a cash move: the id of the move it corrects. Same type
+   *  as that move, `amount` is the difference and `note` the reason. */
+  correctsId: number | null
 }
 
 /** The open round of the game session (game_session_rounds). */

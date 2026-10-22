@@ -31,7 +31,7 @@ type Client = SupabaseClient<Database>
 const PAGE_SIZE = 1000
 
 const LEDGER_COLUMNS =
-  "id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note, bank"
+  "id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note, bank, corrects_id"
 
 type LedgerRow = Pick<
   Database["public"]["Tables"]["activity_log"]["Row"],
@@ -46,6 +46,7 @@ type LedgerRow = Pick<
   | "payment_method"
   | "note"
   | "bank"
+  | "corrects_id"
 >
 
 export function toActivityEntry(row: LedgerRow): ActivityEntry {
@@ -61,6 +62,7 @@ export function toActivityEntry(row: LedgerRow): ActivityEntry {
     paymentMethod: isRecordedPaymentMethod(row.payment_method) ? row.payment_method : null,
     bank: isBank(row.bank) ? row.bank : null,
     note: row.note,
+    correctsId: row.corrects_id,
   }
 }
 

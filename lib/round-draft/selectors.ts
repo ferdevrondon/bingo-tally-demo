@@ -131,7 +131,7 @@ export function getLastRechargeActivity(
 ): ActivityEntry | null {
   return (
     state.activity.find(
-      (a) => a.type === "recharge" && a.playerId === playerId
+      (a) => a.type === "recharge" && a.playerId === playerId && a.correctsId === null
     ) ?? null
   )
 }
