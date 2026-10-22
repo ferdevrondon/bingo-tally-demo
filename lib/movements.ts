@@ -1,13 +1,13 @@
 import { isBank, type Bank } from "@/lib/banks"
 import { isRecordedPaymentMethod, type RecordedPaymentMethod } from "@/lib/payment-methods"
 
-// "Corregir movimiento" (migration *_movement_corrections.sql): a cash move
+// "Últimos movimientos" (migration *_movement_corrections.sql): a cash move
 // recorded with the wrong amount is never edited, it gets a linked correction
 // row of the same type whose `amount` is the difference. This turns a
 // player's ledger rows into the moves the dialog lists, and predicts which of
 // them can still be corrected (correct_movement is the real guard).
 
-/** A large amount asks for a second confirmation before it is recorded. */
+/** From here the cash move confirmation marks the amount as large. */
 export const LARGE_AMOUNT = 500
 
 /** Whether `amount` deserves a second look: from LARGE_AMOUNT up, or five

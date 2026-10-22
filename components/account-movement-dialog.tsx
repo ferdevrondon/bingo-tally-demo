@@ -3,7 +3,7 @@
 import * as React from "react"
 
 import { BankSelect } from "@/components/bank-select"
-import { LargeAmountWarning } from "@/components/large-amount-warning"
+import { ConfirmMovementDialog } from "@/components/confirm-movement-dialog"
 import { PaymentMethodSelect } from "@/components/payment-method-select"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,7 +18,6 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import type { Bank } from "@/lib/banks"
-import { isLargeAmount } from "@/lib/movements"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { formatMoney } from "@/lib/rounds"
@@ -72,7 +71,7 @@ export function AccountMovementDialog({
   const [bank, setBank] = React.useState<Bank | null>(null)
   const [note, setNote] = React.useState("")
   const [requestId, setRequestId] = React.useState(() => crypto.randomUUID())
-  const [warnedAmount, setWarnedAmount] = React.useState<number | null>(null)
+  const [isConfirmOpen, setIsConfirmOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
   // Reset each time the dialog opens (state adjusted during render).
@@ -86,7 +85,7 @@ export function AccountMovementDialog({
       setBank(player.bank ?? null)
       setNote("")
       setRequestId(crypto.randomUUID())
-      setWarnedAmount(null)
+      setIsConfirmOpen(false)
     }
   }
 
@@ -96,15 +95,9 @@ export function AccountMovementDialog({
     ? player.balance + (direction === "in" ? parsedAmount : -parsedAmount)
     : player.balance
   const leavesOwing = direction === "out" && isValid && balanceAfter < 0
-  // A large amount needs a second click; changing the amount asks again.
-  const showWarning = isValid && warnedAmount === parsedAmount
-
+  // The form's button opens the confirmation; confirming records the move.
   function handleConfirm() {
     if (!isValid || paymentMethod === null || isPending) return
-    if (isLargeAmount(parsedAmount) && !showWarning) {
-      setWarnedAmount(parsedAmount)
-      return
-    }
     startTransition(async () => {
       const saved = await onConfirm({
         amount: parsedAmount,
@@ -218,28 +211,32 @@ export function AccountMovementDialog({
                 ? `El pago es mayor a su saldo a favor: quedará debiendo ${formatMoney(-balanceAfter)}.`
                 : `Su saldo quedará en ${signedMoney(balanceAfter)}.`}
           </p>
-
-          {showWarning && <LargeAmountWarning amount={parsedAmount} playerName={player.name} />}
         </div>
 
         <DialogFooter>
           <Button
             className="w-full"
             size="lg"
-            variant={showWarning ? "destructive" : "default"}
             disabled={!isValid || isPending}
-            onClick={handleConfirm}
+            onClick={() => setIsConfirmOpen(true)}
           >
-            {!isValid
-              ? direction === "in"
-                ? "Confirmar cobro"
-                : "Confirmar pago"
-              : showWarning
-                ? `Sí, ${direction === "in" ? "cobrar" : "pagar"} ${formatMoney(parsedAmount)}`
-                : `${direction === "in" ? "Confirmar cobro" : "Confirmar pago"} de ${formatMoney(parsedAmount)}`}
+            {direction === "in" ? "Confirmar cobro" : "Confirmar pago"}
+            {isValid && ` de ${formatMoney(parsedAmount)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
+      {isValid && (
+        <ConfirmMovementDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          kind={direction === "in" ? "receive" : "payout"}
+          amount={parsedAmount}
+          playerName={player.name}
+          paymentMethod={paymentMethod}
+          bank={bank}
+          onConfirm={handleConfirm}
+        />
+      )}
     </Dialog>
   )
 }

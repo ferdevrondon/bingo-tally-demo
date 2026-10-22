@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Undo2Icon } from "lucide-react"
 
 import { useHouse } from "@/components/house-provider"
 import { Button } from "@/components/ui/button"
@@ -82,11 +83,12 @@ function moveTitle(move: CashMove): string {
   return `${move.type === "recharge" ? "Cobro" : "Pago"} de ${formatMoney(move.amount)}`
 }
 
-// "Corregir movimiento" (/players): a cobro or pago recorded with the wrong
-// amount. The admin picks the move, types the correct amount (not a +/-) and
-// the reason; the database adds a correction linked to it, so the reports
-// show the correct amount and nothing pretends a payment happened.
-export function CorrectMovementDialog({
+// "Últimos movimientos" (/players, the live player card and its recharge
+// dialog): the player's latest cobros and pagos. The ones that can still be
+// corrected carry an arrow: the admin picks one, types the correct amount
+// (not a +/-) and the reason; the database adds a correction linked to it, so
+// the reports show the correct amount and nothing pretends a payment happened.
+export function RecentMovementsDialog({
   open,
   onOpenChange,
   player,
@@ -169,11 +171,13 @@ export function CorrectMovementDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md gap-0 p-0">
         <DialogHeader className="p-6">
-          <DialogTitle className="text-xl">Corregir movimiento · {player.name}</DialogTitle>
+          <DialogTitle className="text-xl">
+            {selected ? "Corregir movimiento" : "Últimos movimientos"} · {player.name}
+          </DialogTitle>
           <DialogDescription>
             {selected
               ? "Escribe el monto que debió registrarse. El movimiento original se conserva y queda la corrección con su motivo."
-              : "Elige el cobro o pago que se registró con el monto equivocado."}
+              : "Toca un movimiento con la flecha para corregirlo."}
           </DialogDescription>
         </DialogHeader>
 
@@ -191,18 +195,9 @@ export function CorrectMovementDialog({
               </p>
             ) : (
               moves.map((move) => {
-                const disabled = move.closed || move.correction !== null
-                return (
-                  <button
-                    key={move.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => choose(move)}
-                    className={cn(
-                      "flex flex-col gap-0.5 rounded-lg border p-3 text-left transition-colors",
-                      disabled ? "cursor-not-allowed opacity-60" : "hover:bg-muted"
-                    )}
-                  >
+                const correctable = !move.closed && move.correction === null
+                const details = (
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex items-baseline justify-between gap-2">
                       <span
                         className={cn(
@@ -225,17 +220,29 @@ export function CorrectMovementDialog({
                         .filter(Boolean)
                         .join(" · ") || "—"}
                     </span>
-                    {move.correction ? (
+                    {move.correction && (
                       <span className="text-xs font-medium">
                         Corregido a {formatMoney(move.correction.amount)} · {move.correction.reason}
                       </span>
-                    ) : move.closed ? (
-                      <span className="text-xs text-muted-foreground">
-                        Ya no se puede corregir: el dinero pasó a otra jornada o a una liquidación
-                        cerrada.
-                      </span>
-                    ) : null}
+                    )}
+                  </span>
+                )
+                // Only a move that can still be corrected is a button, with the arrow.
+                return correctable ? (
+                  <button
+                    key={move.id}
+                    type="button"
+                    onClick={() => choose(move)}
+                    aria-label={`Corregir: ${moveTitle(move)}`}
+                    className="flex items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted"
+                  >
+                    {details}
+                    <Undo2Icon className="size-4 shrink-0 text-primary" />
                   </button>
+                ) : (
+                  <div key={move.id} className="flex items-center gap-3 rounded-lg border p-3">
+                    {details}
+                  </div>
                 )
               })
             )}
@@ -250,7 +257,7 @@ export function CorrectMovementDialog({
                 <div className="font-semibold tabular-nums">{moveTitle(selected)}</div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
-                Cambiar
+                Volver
               </Button>
             </div>
 

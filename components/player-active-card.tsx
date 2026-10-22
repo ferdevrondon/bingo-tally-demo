@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { CalculatorIcon, CheckIcon, ChevronRightIcon, Undo2Icon } from "lucide-react"
+import { CalculatorIcon, CheckIcon, ChevronRightIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { BingoBall } from "@/components/bingo-ball"
-import { CorrectMovementDialog, type CorrectionValues } from "@/components/correct-movement-dialog"
+import { RecentMovementsDialog, type CorrectionValues } from "@/components/recent-movements-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,11 +49,12 @@ export function PlayerActiveCard({
   const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = React.useState(false)
   const [isReleaseOpen, setIsReleaseOpen] = React.useState(false)
-  const [isCorrectOpen, setIsCorrectOpen] = React.useState(false)
+  const [isMovementsOpen, setIsMovementsOpen] = React.useState(false)
 
   const balance = player.balance
 
-  // "Corregir movimiento": the game session re-syncs from the new ledger row.
+  // A correction from "Últimos movimientos": the game session re-syncs from
+  // the new ledger row.
   async function handleCorrection(values: CorrectionValues): Promise<boolean> {
     const result = await correctMovement(values)
     if (result.ok) {
@@ -200,25 +201,14 @@ export function PlayerActiveCard({
         {!readOnly && (
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Recarga</span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setIsCorrectOpen(true)}
-                title="Corregir movimiento"
-                aria-label="Corregir movimiento"
-              >
-                <Undo2Icon />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setIsRechargeOpen(true)}
-                title="Recargar saldo"
-              >
-                <CalculatorIcon />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setIsRechargeOpen(true)}
+              title="Recargar saldo"
+            >
+              <CalculatorIcon />
+            </Button>
           </div>
         )}
 
@@ -230,6 +220,17 @@ export function PlayerActiveCard({
           <span>Ver rondas</span>
           <ChevronRightIcon className="size-4" />
         </button>
+
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setIsMovementsOpen(true)}
+            className="flex min-h-9 items-center justify-between text-sm text-muted-foreground hover:text-foreground"
+          >
+            <span>Ver últimos movimientos</span>
+            <ChevronRightIcon className="size-4" />
+          </button>
+        )}
 
         {player.pendingCarryOverDecision && !readOnly && (
           <div className="flex gap-2">
@@ -270,11 +271,15 @@ export function PlayerActiveCard({
         player={player}
         open={isRechargeOpen}
         onOpenChange={setIsRechargeOpen}
+        onShowMovements={() => {
+          setIsRechargeOpen(false)
+          setIsMovementsOpen(true)
+        }}
       />
-      {isCorrectOpen && (
-        <CorrectMovementDialog
+      {isMovementsOpen && (
+        <RecentMovementsDialog
           open
-          onOpenChange={setIsCorrectOpen}
+          onOpenChange={setIsMovementsOpen}
           player={{ id: player.id, name: player.name, balance, inGame: true }}
           onConfirm={handleCorrection}
         />

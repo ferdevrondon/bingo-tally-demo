@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import { AccountMovementDialog, type MovementValues } from "@/components/account-movement-dialog"
 import { BalanceStatusDialog } from "@/components/balance-status-dialog"
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
-import { CorrectMovementDialog, type CorrectionValues } from "@/components/correct-movement-dialog"
+import { RecentMovementsDialog, type CorrectionValues } from "@/components/recent-movements-dialog"
 import {
   DataTable,
   type DataTableColumnDef,
@@ -286,8 +286,8 @@ export default function PlayerPage({
                       onSelect: (row) => openAccountDialog("out", row.id),
                     },
                     {
-                      key: "correct",
-                      label: "Corregir movimiento",
+                      key: "movements",
+                      label: "Últimos movimientos",
                       onSelect: (row) => openAccountDialog("correct", row.id),
                     },
                     {
@@ -344,7 +344,7 @@ export default function PlayerPage({
       </Dialog>
 
       {accountDialog && accountDialog.kind === "correct" && (
-        <CorrectMovementDialog
+        <RecentMovementsDialog
           open
           onOpenChange={(open) => !open && setAccountDialog(null)}
           player={{

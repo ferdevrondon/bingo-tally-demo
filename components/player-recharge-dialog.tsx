@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { ChevronRightIcon } from "lucide-react"
 
 import { BankSelect } from "@/components/bank-select"
-import { LargeAmountWarning } from "@/components/large-amount-warning"
+import { ConfirmMovementDialog } from "@/components/confirm-movement-dialog"
 import { PaymentMethodChips } from "@/components/payment-method-chips"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,7 +21,6 @@ import { Separator } from "@/components/ui/separator"
 import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { formatRelativeTime } from "@/lib/format-relative-time"
-import { isLargeAmount } from "@/lib/movements"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getLastRechargeActivity } from "@/lib/round-draft/selectors"
@@ -34,10 +34,13 @@ export function PlayerRechargeDialog({
   player,
   open,
   onOpenChange,
+  onShowMovements,
 }: {
   player: DraftPlayer
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** "Ver últimos movimientos": closes this dialog and opens the history. */
+  onShowMovements?: () => void
 }) {
   const { state, rechargeBalance } = useRoundDraft()
   const [amount, setAmount] = React.useState("")
@@ -46,7 +49,7 @@ export function PlayerRechargeDialog({
   const [note, setNote] = React.useState("")
   // One recharge per dialog opening: a double click reuses the same request.
   const [requestKey, setRequestKey] = React.useState(() => crypto.randomUUID())
-  const [warnedAmount, setWarnedAmount] = React.useState<number | null>(null)
+  const [isConfirmOpen, setIsConfirmOpen] = React.useState(false)
 
   // Reset the form each time the dialog opens (adjusting state during render
   // instead of in an effect, per React's "you might not need an effect"). The
@@ -60,7 +63,7 @@ export function PlayerRechargeDialog({
       setBank(player.bank ?? null)
       setNote("")
       setRequestKey(crypto.randomUUID())
-      setWarnedAmount(null)
+      setIsConfirmOpen(false)
     }
   }
 
@@ -69,16 +72,10 @@ export function PlayerRechargeDialog({
   const isValid = Number.isFinite(parsedAmount) && parsedAmount > 0 && paymentMethod !== null
 
   const lastRecharge = getLastRechargeActivity(state, player.id)
-  const usual = lastRecharge?.amount ?? null
-  // A large amount needs a second click; changing the amount asks again.
-  const showWarning = isValid && warnedAmount === parsedAmount
 
+  // The form's button opens the confirmation; confirming records the recharge.
   function handleConfirm() {
     if (!isValid || paymentMethod === null) return
-    if (isLargeAmount(parsedAmount, usual) && !showWarning) {
-      setWarnedAmount(parsedAmount)
-      return
-    }
     rechargeBalance(player.id, parsedAmount, paymentMethod, bank, note.trim() || null, requestKey)
     onOpenChange(false)
   }
@@ -97,6 +94,16 @@ export function PlayerRechargeDialog({
                 ? `Última recarga: ${formatRelativeTime(lastRecharge.timestamp)}`
                 : "Sin recargas previas"}
             </DialogDescription>
+            {onShowMovements && (
+              <button
+                type="button"
+                onClick={onShowMovements}
+                className="flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                Ver últimos movimientos
+                <ChevronRightIcon className="size-4" />
+              </button>
+            )}
           </div>
         </DialogHeader>
 
@@ -183,28 +190,32 @@ export function PlayerRechargeDialog({
               ? `Su saldo quedará en ${signedMoney(netBalance + parsedAmount)}.`
               : "Selecciona o ingresa un monto para agregar."}
           </p>
-
-          {showWarning && (
-            <LargeAmountWarning amount={parsedAmount} playerName={player.name} usual={usual} />
-          )}
         </div>
 
         <DialogFooter>
           <Button
             className="w-full"
             size="lg"
-            variant={showWarning ? "destructive" : "default"}
             disabled={!isValid}
-            onClick={handleConfirm}
+            onClick={() => setIsConfirmOpen(true)}
           >
-            {!isValid
-              ? "Confirmar recarga"
-              : showWarning
-                ? `Sí, recargar ${formatMoney(parsedAmount)}`
-                : `Confirmar recarga de ${formatMoney(parsedAmount)}`}
+            {isValid ? `Confirmar recarga de ${formatMoney(parsedAmount)}` : "Confirmar recarga"}
           </Button>
         </DialogFooter>
       </DialogContent>
+      {isValid && (
+        <ConfirmMovementDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          kind="recharge"
+          amount={parsedAmount}
+          playerName={player.name}
+          paymentMethod={paymentMethod}
+          bank={bank}
+          usual={lastRecharge?.amount ?? null}
+          onConfirm={handleConfirm}
+        />
+      )}
     </Dialog>
   )
 }
