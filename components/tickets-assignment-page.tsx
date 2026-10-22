@@ -178,6 +178,7 @@ export function TicketsAssignmentPage() {
                     colorClass={getPlayerColorClass(
                       state.players.findIndex((p) => p.id === player.id)
                     )}
+                    linePrice={state.round?.linePrice}
                     trailing={
                       player.balance !== 0 &&
                       !player.pendingCarryOverDecision && (
