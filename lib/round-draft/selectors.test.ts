@@ -86,11 +86,7 @@ describe("getOpenStats and getRoundGifts", () => {
     const gifts = getRoundGifts(state)
     expect(gifts.giftCount).toBe(2)
     expect(gifts.pendingCount).toBe(0)
-    expect(gifts.giftLoss).toBe(0)
     expect(gifts.players.map((p) => p.playerName)).toEqual(["JUANA", "MARÍA"])
-
-    const open = { ...state, winningNumbers: [null] } as RoundDraftState
-    expect(getRoundGifts(open).giftLoss).toBe(20)
   })
 })
 
@@ -155,13 +151,13 @@ describe("getSlotWinners", () => {
 })
 
 describe("getHouseWin", () => {
-  it("earns the prize minus the line on each ticket where the number is free", () => {
+  it("counts the tickets where the number is free, without any extra income", () => {
     const state = {
       ...makeState({ 1: [[7, 1, false]], 2: [], 3: [[7, 2, true]], 4: [] }),
       round: { linePrice: 10 },
     } as RoundDraftState
-    expect(getHouseWin(state, 7, 50)).toEqual({ tickets: 2, amount: 80 })
-    expect(getHouseWin(state, 3, 50)).toEqual({ tickets: 4, amount: 160 })
+    expect(getHouseWin(state, 7)).toEqual({ tickets: 2 })
+    expect(getHouseWin(state, 3)).toEqual({ tickets: 4 })
   })
 
   it("wins nothing when every ticket had the number sold", () => {
@@ -169,7 +165,7 @@ describe("getHouseWin", () => {
       ...makeState({ 1: [[5, 1, false]] }),
       round: { linePrice: 10 },
     } as RoundDraftState
-    expect(getHouseWin(state, 5, 50)).toEqual({ tickets: 0, amount: 0 })
+    expect(getHouseWin(state, 5)).toEqual({ tickets: 0 })
   })
 })
 

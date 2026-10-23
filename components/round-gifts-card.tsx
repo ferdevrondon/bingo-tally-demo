@@ -60,9 +60,9 @@ export function RoundGiftsTab() {
                   {p.numbers.map((number) => (
                     <span
                       key={number}
-                      className="flex size-5 items-center justify-center rounded-full bg-white/25 text-xs font-bold text-white tabular-nums"
+                      className="flex h-5 items-center justify-center rounded-full bg-white/25 px-1.5 text-xs font-bold text-white tabular-nums"
                     >
-                      {number}
+                      {number} – {formatMoney(linePrice)}
                     </span>
                   ))}
                 </span>

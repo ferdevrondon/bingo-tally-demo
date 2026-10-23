@@ -13,7 +13,8 @@ function plural(count: number, one: string, many: string) {
 
 // What a player holds without looking at the tickets: each number once
 // ("4 ×2" when it is on more than one ticket), its gifts, the total of plays
-// and, with `linePrice`, what they cost (gifts aren't charged), followed by
+// and, with `linePrice`, what each number cost ("5 – $10", gifts aren't
+// charged) and the total, followed by
 // `trailing` (the balance on /new-game and "Ver cartones").
 export function PlayerNumbersSummary({
   numbers,
@@ -43,6 +44,7 @@ export function PlayerNumbersSummary({
           title={[
             `Número ${number}`,
             plural(count, "jugada", "jugadas"),
+            linePrice !== undefined && `Cobrado ${formatMoney((count - gifts) * linePrice)}`,
             gifts > 0 && plural(gifts, "regalo", "regalos"),
           ]
             .filter(Boolean)
@@ -55,6 +57,11 @@ export function PlayerNumbersSummary({
           {number}
           {count > 1 && (
             <span className="font-medium opacity-80">×{count}</span>
+          )}
+          {linePrice !== undefined && (
+            <span className="font-medium opacity-80">
+              – {formatMoney((count - gifts) * linePrice)}
+            </span>
           )}
           {gifts > 0 && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-background px-1 text-destructive">

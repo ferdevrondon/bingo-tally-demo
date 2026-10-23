@@ -114,7 +114,7 @@ export function WinningNumbersCard() {
               winners={slotWinners[i]}
               house={
                 state.winningNumbers[i] != null
-                  ? getHouseWin(state, state.winningNumbers[i]!, prize)
+                  ? getHouseWin(state, state.winningNumbers[i]!)
                   : null
               }
               onSubmit={(number) => {

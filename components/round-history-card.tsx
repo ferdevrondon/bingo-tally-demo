@@ -149,7 +149,7 @@ function RoundSummary({ round }: { round: RoundReport }) {
           : `${plural(c.unsoldWon, "sin vender que ganó", "sin vender que ganaron")} (premio para la casa)`,
       value: house.unsoldWinning,
     },
-  ]
+  ].filter((item, i) => i < 2 || item.value !== 0) // margins exist only in rounds from before the cash basis
   return (
     <dl className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
       {items.map(({ icon: Icon, iconClass, label, value }) => (

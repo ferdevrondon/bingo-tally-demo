@@ -68,7 +68,7 @@ export function PlayerActiveCard({
   const numbers = getPlayerNumberSummary(state, player.id).map(
     ({ number, count, gifts }) => ({
       number,
-      amount: count * linePrice,
+      amount: (count - gifts) * linePrice, // gifts are not charged
       isGift: gifts > 0,
     })
   )

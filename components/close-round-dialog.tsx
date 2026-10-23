@@ -37,12 +37,9 @@ import { Alert, AlertTitle, } from "./ui/alert"
 function ClosedRoundSummaryView({
   summary,
   state,
-  linePrice,
 }: {
   summary: ClosedRoundSummary
   state: RoundDraftState
-  /** The closed round's line price (the state already holds the next round). */
-  linePrice: number
 }) {
   const playerName = (id: number) => state.players.find((p) => p.id === id)?.name ?? "Jugador"
   const ticketIndex = (id: number) => state.tickets.find((t) => t.id === id)?.index ?? "?"
@@ -76,11 +73,10 @@ function ClosedRoundSummaryView({
               // had it free, and the house wins there (unsoldWinning).
               const tickets = state.tickets.length - winners.length
               if (number === null || tickets <= 0) return null
-              const amount = ((summary.prizes[slot] ?? 0) - linePrice) * tickets
               return (
                 <p className="mt-1 flex items-center gap-1.5 text-sm font-medium">
                   <HouseIcon className="size-4 text-muted-foreground" aria-hidden="true" />
-                  {houseWinText({ tickets, amount })}
+                  {houseWinText({ tickets })}
                 </p>
               )
             })()}
@@ -110,7 +106,6 @@ export function CloseRoundDialog({
   const nextRounds = roundTemplates
   const [selectedRoundId, setSelectedRoundId] = React.useState("")
   const [summary, setSummary] = React.useState<ClosedRoundSummary | null>(null)
-  const [closedLinePrice, setClosedLinePrice] = React.useState(0)
   const [confirmRound, setConfirmRound] = React.useState<Round | null>(null)
 
   function handleSelect() {
@@ -119,14 +114,12 @@ export function CloseRoundDialog({
   }
 
   async function handleConfirm(round: Round) {
-    const linePrice = state.round?.linePrice ?? 0
     const closed = await closeRound(round.id)
     setConfirmRound(null)
     if (!closed.ok) return
     fireConfetti()
     setSelectedRoundId("")
     // The round is closed either way; without its summary, just close.
-    setClosedLinePrice(linePrice)
     if (closed.summary) setSummary(closed.summary)
     else onOpenChange(false)
   }
@@ -149,7 +142,7 @@ export function CloseRoundDialog({
               libera su jugada.
             </DialogDescription>
           </DialogHeader>
-          <ClosedRoundSummaryView summary={summary} state={state} linePrice={closedLinePrice} />
+          <ClosedRoundSummaryView summary={summary} state={state} />
           <DialogFooter>
             <Button onClick={handleSummaryDone}>Continuar</Button>
           </DialogFooter>

@@ -2,9 +2,9 @@ import { signedMoney } from "@/lib/round-draft/balance"
 import type { HouseResult } from "@/lib/game-report/ledger"
 import { cn } from "@/lib/utils"
 
-// The house result of a round or a game session, line by line (decided with
-// the product owner on 2026-09-28): sales - prizes paid + what the house
-// "plays" with gifted and unsold numbers.
+// The house result of a round or a game session, line by line. Since
+// 2026-10-23 it is cash only: sales - prizes paid. The three margin lines only
+// show for rounds closed before that, which kept their old margin.
 export function HouseResultBreakdown({
   house,
   className,
@@ -18,7 +18,7 @@ export function HouseResultBreakdown({
     { label: "Regalados que no ganaron", value: house.gifts },
     { label: "Sin vender que no ganaron", value: house.unsoldLosing },
     { label: "Sin vender que ganaron (premio para la casa)", value: house.unsoldWinning },
-  ]
+  ].filter((line, i) => i < 2 || line.value !== 0)
 
   return (
     <dl className={cn("flex flex-col gap-1.5 text-sm", className)}>
