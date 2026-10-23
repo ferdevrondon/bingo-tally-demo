@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 
+import { ChangeRoundDialog } from "@/components/change-round-dialog"
 import { CloseRoundDialog } from "@/components/close-round-dialog"
 import { WinnerCelebration } from "@/components/winner-celebration"
 import { WinningNumberBall } from "@/components/winning-number-ball"
@@ -10,13 +11,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fireConfetti } from "@/lib/confetti"
 import { buildAwardSummary, type AwardSummary } from "@/lib/round-draft/award-summary"
+import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getActivePlayers, getHouseWin, getSlotWinners } from "@/lib/round-draft/selectors"
+import { canChangeRound, getActivePlayers, getHouseWin, getSlotWinners } from "@/lib/round-draft/selectors"
 
 export function WinningNumbersCard() {
   const { state, readOnly, awardPrize } = useRoundDraft()
   const [isCloseOpen, setIsCloseOpen] = React.useState(false)
+  const [isChangeOpen, setIsChangeOpen] = React.useState(false)
   const [awards, setAwards] = React.useState<AwardSummary[]>([])
   const [celebrating, setCelebrating] = React.useState(false)
 
@@ -82,11 +85,18 @@ export function WinningNumbersCard() {
 
   return (
     <Card className="w-fit  p-4 flex-row self-start bg-gradient-to-br from-primary/25 via-primary/5 to-background dark:from-primary/30 dark:via-background dark:to-background">
-      {/* <CardHeader className="flex justify-center items-center" style={{ containerType: "normal" }}>
-        <CardTitle className="whitespace-nowrap text-center"> Ronda {state.round.name}</CardTitle>
-      </CardHeader> */}
       <CardContent className="flex flex-col gap-4">
-       
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-lg font-bold">Ronda {state.round.name}</span>
+          <span className="text-sm text-muted-foreground">
+            Línea {formatMoney(state.round.linePrice)}
+          </span>
+          {!readOnly && canChangeRound(state) && (
+            <Button variant="outline" size="sm" onClick={() => setIsChangeOpen(true)}>
+              Cambiar ronda
+            </Button>
+          )}
+        </div>
         <div
           className={cn(
             "flex flex-wrap gap-x-6 items-start gap-y-4 pt-2 justify-start",
@@ -140,6 +150,7 @@ export function WinningNumbersCard() {
         }}
       />
       <CloseRoundDialog open={isCloseOpen} onOpenChange={setIsCloseOpen} />
+      <ChangeRoundDialog open={isChangeOpen} onOpenChange={setIsChangeOpen} />
     </Card>
   )
 }

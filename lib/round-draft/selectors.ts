@@ -269,3 +269,19 @@ export function getHouseWin(
   const linePrice = state.round?.linePrice ?? 0
   return { tickets, amount: (prize - linePrice) * tickets }
 }
+
+/** Activity in a round that moves no money, so the round can still be swapped. */
+const SWAPPABLE_ACTIVITY = new Set(["round_started", "check_in", "check_in_undone"])
+
+/** The open round can be replaced by another one (`start_round`) while no
+ *  winning number is drawn and nothing in it has been charged. Players with a
+ *  pending carryover decision are charged by `resolve_carryover` at the round's
+ *  price at that moment, so they don't block it. Mirrors the SQL guard. */
+export function canChangeRound(state: RoundDraftState): boolean {
+  const round = state.round
+  if (!round) return false
+  if (state.winningNumbers.some((n) => n !== null)) return false
+  return state.activity.every(
+    (a) => a.roundId !== round.roundId || SWAPPABLE_ACTIVITY.has(a.type)
+  )
+}

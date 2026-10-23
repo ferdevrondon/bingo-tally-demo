@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  canChangeRound,
   getHouseWin,
   getOpenStats,
   getPlayerNumberSummary,
@@ -169,5 +170,44 @@ describe("getHouseWin", () => {
       round: { linePrice: 10 },
     } as RoundDraftState
     expect(getHouseWin(state, 5, 50)).toEqual({ tickets: 0, amount: 0 })
+  })
+})
+
+describe("canChangeRound", () => {
+  const base = {
+    round: { roundId: 7 },
+    winningNumbers: [null],
+    activity: [],
+  }
+  const row = (type: string, roundId: number | null = 7) => ({ type, roundId })
+
+  it("is open while the round has only starts and check-ins", () => {
+    const state = {
+      ...base,
+      activity: [row("round_started"), row("check_in"), row("number_purchased", 6)],
+    } as unknown as RoundDraftState
+    expect(canChangeRound(state)).toBe(true)
+  })
+
+  it("is closed after a purchase, a kept play or a drawn number", () => {
+    const bought = {
+      ...base,
+      activity: [row("number_purchased")],
+    } as unknown as RoundDraftState
+    const kept = {
+      ...base,
+      activity: [row("carryover_kept")],
+    } as unknown as RoundDraftState
+    const drawn = {
+      ...base,
+      winningNumbers: [4],
+    } as unknown as RoundDraftState
+    expect(canChangeRound(bought)).toBe(false)
+    expect(canChangeRound(kept)).toBe(false)
+    expect(canChangeRound(drawn)).toBe(false)
+  })
+
+  it("is false without an open round", () => {
+    expect(canChangeRound({ ...base, round: null } as unknown as RoundDraftState)).toBe(false)
   })
 })

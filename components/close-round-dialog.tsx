@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { ConfirmRoundDialog } from "@/components/confirm-round-dialog"
 import { HouseResultBreakdown } from "@/components/house-result-breakdown"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,7 +27,7 @@ import { useRoundDraft } from "@/lib/round-draft/context"
 import type { ClosedRoundSummary } from "@/lib/round-draft/game-api"
 import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import type { RoundDraftState } from "@/lib/round-draft/types"
-import { formatMoney, roundOptionLabel } from "@/lib/rounds"
+import { formatMoney, roundOptionLabel, type Round } from "@/lib/rounds"
 import { Separator } from "@base-ui/react"
 import { CircleAlertIcon, HouseIcon } from "lucide-react"
 import { Alert, AlertTitle, } from "./ui/alert"
@@ -110,22 +111,24 @@ export function CloseRoundDialog({
   const [selectedRoundId, setSelectedRoundId] = React.useState("")
   const [summary, setSummary] = React.useState<ClosedRoundSummary | null>(null)
   const [closedLinePrice, setClosedLinePrice] = React.useState(0)
-  const [isPending, startTransition] = React.useTransition()
+  const [confirmRound, setConfirmRound] = React.useState<Round | null>(null)
 
-  function handleConfirm() {
-    const templateId = Number(selectedRoundId)
-    if (!templateId) return
+  function handleSelect() {
+    const round = nextRounds.find((r) => String(r.id) === selectedRoundId)
+    if (round) setConfirmRound(round)
+  }
+
+  async function handleConfirm(round: Round) {
     const linePrice = state.round?.linePrice ?? 0
-    startTransition(async () => {
-      const closed = await closeRound(templateId)
-      if (!closed.ok) return
-      fireConfetti()
-      setSelectedRoundId("")
-      // The round is closed either way; without its summary, just close.
-      setClosedLinePrice(linePrice)
-      if (closed.summary) setSummary(closed.summary)
-      else onOpenChange(false)
-    })
+    const closed = await closeRound(round.id)
+    setConfirmRound(null)
+    if (!closed.ok) return
+    fireConfetti()
+    setSelectedRoundId("")
+    // The round is closed either way; without its summary, just close.
+    setClosedLinePrice(linePrice)
+    if (closed.summary) setSummary(closed.summary)
+    else onOpenChange(false)
   }
 
   function handleSummaryDone() {
@@ -222,10 +225,16 @@ export function CloseRoundDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button disabled={!selectedRoundId || isPending} onClick={handleConfirm}>
+          <Button disabled={!selectedRoundId} onClick={handleSelect}>
             Confirmar
           </Button>
         </DialogFooter>
+        <ConfirmRoundDialog
+          round={confirmRound}
+          onOpenChange={(next) => !next && setConfirmRound(null)}
+          description="Se cierra la ronda actual y empieza esta."
+          onConfirm={handleConfirm}
+        />
       </DialogContent>
     </Dialog>
   )
