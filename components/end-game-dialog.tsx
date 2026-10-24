@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import type { GameSessionSummary } from "@/lib/round-draft/game-api"
 import { formatMoney } from "@/lib/rounds"
+import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { FileChartColumn } from "lucide-react"
 
@@ -24,6 +25,28 @@ function formatDuration(ms: number): string {
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
   return hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`
+}
+
+/** A compact figure of the game session summary. */
+function SummaryStat({
+  label,
+  value,
+  valueClass,
+  className,
+}: {
+  label: string
+  value: string
+  valueClass?: string
+  className?: string
+}) {
+  return (
+    <div className={cn("rounded-lg border bg-muted/30 px-2.5 py-2", className)}>
+      <div className="text-[11px] tracking-wide text-muted-foreground uppercase">
+        {label}
+      </div>
+      <div className={cn("text-base font-semibold", valueClass)}>{value}</div>
+    </div>
+  )
 }
 
 export function EndGameDialog({
@@ -59,16 +82,21 @@ export function EndGameDialog({
           <DialogHeader>
             <DialogTitle>¿Terminar la jornada?</DialogTitle>
             <DialogDescription>
-              Si la ronda actual ya tiene todos sus números ganadores, se cierra con su resultado.
-              Si todavía no se jugó, se cierra sin resultado y se devuelve lo cobrado por ella.
-              Una ronda con números ganadores a medias no deja terminar.
+              Si la ronda actual ya tiene todos sus números ganadores, se cierra
+              con su resultado. Si todavía no se jugó, se cierra sin resultado y
+              se devuelve lo cobrado por ella. Una ronda con números ganadores a
+              medias no deja terminar.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" disabled={isPending} onClick={handleConfirmEnd}>
+            <Button
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmEnd}
+            >
               Terminar jornada
             </Button>
           </DialogFooter>
@@ -79,70 +107,59 @@ export function EndGameDialog({
 
   return (
     <Dialog open onOpenChange={(next) => !next && handleGoHome()}>
-      <DialogContent className={"w-3xl"}>
+      <DialogContent className="max-h-[90vh] w-[95%] sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className={"text-xl"}>
             ¡Felicidades! La jornada de hoy ha terminado.
           </DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-6 p-6 px-6">
-          {" "}
-          <p> Resumen de jornada </p>
-          <div className="px-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium">Resumen de jornada</p>
             <Button
               variant="link"
               className="h-auto p-0"
               nativeButton={false}
               render={<Link href={`/reports/games/${state.gameSessionId}`} />}
             >
-              {" "}
               <FileChartColumn />
               Ver reporte de la jornada
             </Button>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 p-6">
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs tracking-wide text-muted-foreground uppercase">
-              Rondas jugadas
-            </div>
-            <div className="text-lg font-semibold">{summary.roundsPlayed}</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <SummaryStat
+              label="Rondas jugadas"
+              value={String(summary.roundsPlayed)}
+            />
+            <SummaryStat
+              label="Jugadores activos"
+              value={String(summary.playersCount)}
+            />
+            <SummaryStat
+              label="Deben jugadores"
+              value={formatMoney(summary.owedByPlayers)}
+              valueClass="text-destructive"
+            />
+            <SummaryStat
+              label="A favor de jugadores"
+              value={formatMoney(summary.owedToPlayers)}
+              valueClass="text-success"
+            />
+            <SummaryStat
+              label="Tiempo"
+              value={formatDuration(summary.durationMs)}
+              className="col-span-2 sm:col-span-1"
+            />
           </div>
           <div className="rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs tracking-wide text-muted-foreground uppercase">
-              Jugadores activos
-            </div>
-            <div className="text-lg font-semibold">{summary.playersCount}</div>
-          </div>
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs tracking-wide text-muted-foreground uppercase">
-              Deben los jugadores
-            </div>
-            <div className="text-lg font-semibold text-destructive">
-              {formatMoney(summary.owedByPlayers)}
-            </div>
-          </div>
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs tracking-wide text-muted-foreground uppercase">
-              A favor de los jugadores
-            </div>
-            <div className="text-lg font-semibold text-success">
-              {formatMoney(summary.owedToPlayers)}
-            </div>
-          </div>
-          <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs tracking-wide text-muted-foreground uppercase">
-              Tiempo de la jornada
-            </div>
-            <div className="text-lg font-semibold">
-              {formatDuration(summary.durationMs)}
-            </div>
-          </div>
-          <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
             <div className="mb-2 text-xs tracking-wide text-muted-foreground uppercase">
               Resultado de la casa
             </div>
-            <HouseResultBreakdown house={summary.house} />
+            <HouseResultBreakdown
+              house={summary.house}
+              numbers={summary.numbers}
+              className="md:grid md:grid-cols-2 md:items-start"
+            />
           </div>
         </div>
 
@@ -150,7 +167,11 @@ export function EndGameDialog({
           <Button variant="outline" onClick={handleGoHome}>
             Ir al inicio
           </Button>
-          <Button onClick={() => router.push(`/games/${state.gameSessionId}/settlement`)}>
+          <Button
+            onClick={() =>
+              router.push(`/games/${state.gameSessionId}/settlement`)
+            }
+          >
             Ir a liquidación
           </Button>
         </DialogFooter>

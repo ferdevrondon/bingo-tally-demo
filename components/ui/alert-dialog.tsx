@@ -47,7 +47,9 @@ function AlertDialogContent({
 }) {
   return (
     <AlertDialogPortal>
-      <AlertDialogOverlay />
+      {/* forceRender: an alert opened over another dialog (e.g. the cash move
+          confirmation over the recharge form) still dims and blurs it. */}
+      <AlertDialogOverlay forceRender />
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
         data-size={size}

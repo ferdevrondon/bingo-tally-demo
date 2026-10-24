@@ -44,6 +44,12 @@ export type GameActionError =
   | "invalid_timezone"
   | "invalid_phone"
   | "invalid_logo_path"
+  | "movement_not_found"
+  | "movement_not_correctable"
+  | "movement_already_corrected"
+  | "movement_closed"
+  | "amount_unchanged"
+  | "reason_required"
 
 export type GameActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -92,6 +98,13 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   invalid_timezone: "Elige una zona horaria de la lista.",
   invalid_phone: "El teléfono puede tener hasta 30 caracteres.",
   invalid_logo_path: "No se pudo guardar el logo. Súbelo de nuevo.",
+  movement_not_found: "Ese movimiento ya no existe.",
+  movement_not_correctable: "Solo se pueden corregir cobros y pagos.",
+  movement_already_corrected: "Ese movimiento ya fue corregido.",
+  movement_closed:
+    "Ese dinero ya pasó a otra jornada o a una liquidación cerrada: no se puede corregir.",
+  amount_unchanged: "El monto correcto es igual al registrado.",
+  reason_required: "Escribe el motivo de la corrección.",
 }
 
 const KNOWN_CODES = new Set<string>(Object.keys(GAME_ACTION_ERROR_MESSAGES))

@@ -29,7 +29,7 @@ export function houseWaterfall(house: HouseResult): Waterfall {
       label: "Sin vender que ganaron (premio para la casa)",
       value: house.unsoldWinning,
     },
-  ]
+  ].filter((line, i) => i < 2 || line.value !== 0) // margins: rounds from before the cash basis only
   const spans: [number, number][] = []
   let running = 0
   for (const line of lines) {

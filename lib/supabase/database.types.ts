@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           amount: number | null
           bank: string | null
+          corrects_id: number | null
           created_at: string
           created_by: string | null
           game_session_id: number | null
@@ -29,12 +30,14 @@ export type Database = {
           player_id: number | null
           request_id: string
           round_id: number | null
+          settlement_id: number | null
           ticket_id: number | null
           type: string
         }
         Insert: {
           amount?: number | null
           bank?: string | null
+          corrects_id?: number | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -46,12 +49,14 @@ export type Database = {
           player_id?: number | null
           request_id: string
           round_id?: number | null
+          settlement_id?: number | null
           ticket_id?: number | null
           type: string
         }
         Update: {
           amount?: number | null
           bank?: string | null
+          corrects_id?: number | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -63,10 +68,18 @@ export type Database = {
           player_id?: number | null
           request_id?: string
           round_id?: number | null
+          settlement_id?: number | null
           ticket_id?: number | null
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "activity_log_corrects_id_fkey"
+            columns: ["corrects_id"]
+            isOneToOne: false
+            referencedRelation: "activity_log"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "activity_log_game_session_id_house_id_fkey"
             columns: ["game_session_id", "house_id"]
@@ -87,6 +100,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "game_session_rounds"
             referencedColumns: ["id", "house_id"]
+          },
+          {
+            foreignKeyName: "activity_log_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["game_session_id"]
           },
           {
             foreignKeyName: "activity_log_ticket_id_house_id_fkey"
@@ -783,6 +803,15 @@ export type Database = {
           p_note: string
           p_payment_method: string
           p_player_id: number
+          p_request_id: string
+        }
+        Returns: undefined
+      }
+      correct_movement: {
+        Args: {
+          p_amount: number
+          p_movement_id: number
+          p_reason: string
           p_request_id: string
         }
         Returns: undefined

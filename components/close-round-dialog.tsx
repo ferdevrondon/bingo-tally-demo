@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { ConfirmRoundDialog } from "@/components/confirm-round-dialog"
 import { HouseResultBreakdown } from "@/components/house-result-breakdown"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,9 +27,9 @@ import { useRoundDraft } from "@/lib/round-draft/context"
 import type { ClosedRoundSummary } from "@/lib/round-draft/game-api"
 import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import type { RoundDraftState } from "@/lib/round-draft/types"
-import { formatMoney, roundOptionLabel } from "@/lib/rounds"
+import { formatMoney, roundOptionLabel, type Round } from "@/lib/rounds"
 import { Separator } from "@base-ui/react"
-import { CircleAlertIcon, HouseIcon } from "lucide-react"
+import { CircleAlertIcon, GiftIcon, HouseIcon } from "lucide-react"
 import { Alert, AlertTitle, } from "./ui/alert"
 
 // Business rule F: after closing, who won, with which number and ticket
@@ -36,12 +37,9 @@ import { Alert, AlertTitle, } from "./ui/alert"
 function ClosedRoundSummaryView({
   summary,
   state,
-  linePrice,
 }: {
   summary: ClosedRoundSummary
   state: RoundDraftState
-  /** The closed round's line price (the state already holds the next round). */
-  linePrice: number
 }) {
   const playerName = (id: number) => state.players.find((p) => p.id === id)?.name ?? "Jugador"
   const ticketIndex = (id: number) => state.tickets.find((t) => t.id === id)?.index ?? "?"
@@ -61,11 +59,34 @@ function ClosedRoundSummaryView({
             {winners.length > 0 && (
               <ul className="flex flex-col gap-1 text-sm">
                 {winners.map((w) => (
-                  <li key={`${w.ticketId}-${w.number}`} className="flex justify-between gap-4">
-                    <span>
-                      {playerName(w.playerId)} · Cartón {ticketIndex(w.ticketId)} · #{w.number}
+                  <li
+                    key={`${w.ticketId}-${w.number}`}
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap">
+                        {playerName(w.playerId)} · Cartón {ticketIndex(w.ticketId)} · #{w.number}
+                      </span>
+                      {w.isGift && (
+                        <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-destructive/10 px-1.5 text-xs text-destructive">
+                          <GiftIcon className="size-3" aria-hidden="true" />
+                          regalo
+                        </span>
+                      )}
                     </span>
-                    <span className="font-medium tabular-nums">{formatMoney(w.prize)}</span>
+                    <span className="shrink-0 font-medium whitespace-nowrap tabular-nums">
+                      {w.isGift ? (
+                        <>
+                          <span className="font-normal text-muted-foreground">
+                            {formatMoney(summary.prizes[slot] ?? 0)} −{" "}
+                            {formatMoney((summary.prizes[slot] ?? 0) - w.prize)} =
+                          </span>{" "}
+                          {formatMoney(w.prize)}
+                        </>
+                      ) : (
+                        formatMoney(w.prize)
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -75,11 +96,10 @@ function ClosedRoundSummaryView({
               // had it free, and the house wins there (unsoldWinning).
               const tickets = state.tickets.length - winners.length
               if (number === null || tickets <= 0) return null
-              const amount = ((summary.prizes[slot] ?? 0) - linePrice) * tickets
               return (
                 <p className="mt-1 flex items-center gap-1.5 text-sm font-medium">
                   <HouseIcon className="size-4 text-muted-foreground" aria-hidden="true" />
-                  {houseWinText({ tickets, amount })}
+                  {houseWinText({ tickets })}
                 </p>
               )
             })()}
@@ -87,10 +107,10 @@ function ClosedRoundSummaryView({
         )
       })}
       <div className="rounded-lg border bg-muted/30 p-3">
-        <div className="mb-2 text-xs tracking-wide text-muted-foreground uppercase">
+        <div className="mb-2 text-xs font-bold tracking-wide text-foreground uppercase">
           Resultado de la casa en la ronda
         </div>
-        <HouseResultBreakdown house={summary.house} />
+        <HouseResultBreakdown house={summary.house} numbers={summary.numbers} />
       </div>
     </div>
   )
@@ -109,23 +129,22 @@ export function CloseRoundDialog({
   const nextRounds = roundTemplates
   const [selectedRoundId, setSelectedRoundId] = React.useState("")
   const [summary, setSummary] = React.useState<ClosedRoundSummary | null>(null)
-  const [closedLinePrice, setClosedLinePrice] = React.useState(0)
-  const [isPending, startTransition] = React.useTransition()
+  const [confirmRound, setConfirmRound] = React.useState<Round | null>(null)
 
-  function handleConfirm() {
-    const templateId = Number(selectedRoundId)
-    if (!templateId) return
-    const linePrice = state.round?.linePrice ?? 0
-    startTransition(async () => {
-      const closed = await closeRound(templateId)
-      if (!closed.ok) return
-      fireConfetti()
-      setSelectedRoundId("")
-      // The round is closed either way; without its summary, just close.
-      setClosedLinePrice(linePrice)
-      if (closed.summary) setSummary(closed.summary)
-      else onOpenChange(false)
-    })
+  function handleSelect() {
+    const round = nextRounds.find((r) => String(r.id) === selectedRoundId)
+    if (round) setConfirmRound(round)
+  }
+
+  async function handleConfirm(round: Round) {
+    const closed = await closeRound(round.id)
+    setConfirmRound(null)
+    if (!closed.ok) return
+    fireConfetti()
+    setSelectedRoundId("")
+    // The round is closed either way; without its summary, just close.
+    if (closed.summary) setSummary(closed.summary)
+    else onOpenChange(false)
   }
 
   function handleSummaryDone() {
@@ -136,7 +155,7 @@ export function CloseRoundDialog({
   if (summary) {
     return (
       <Dialog open={open} onOpenChange={(next) => !next && handleSummaryDone()}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="text-xl">
               Resumen de la ronda {summary.seq} · {summary.name}
@@ -146,7 +165,7 @@ export function CloseRoundDialog({
               libera su jugada.
             </DialogDescription>
           </DialogHeader>
-          <ClosedRoundSummaryView summary={summary} state={state} linePrice={closedLinePrice} />
+          <ClosedRoundSummaryView summary={summary} state={state} />
           <DialogFooter>
             <Button onClick={handleSummaryDone}>Continuar</Button>
           </DialogFooter>
@@ -222,10 +241,16 @@ export function CloseRoundDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button disabled={!selectedRoundId || isPending} onClick={handleConfirm}>
+          <Button disabled={!selectedRoundId} onClick={handleSelect}>
             Confirmar
           </Button>
         </DialogFooter>
+        <ConfirmRoundDialog
+          round={confirmRound}
+          onOpenChange={(next) => !next && setConfirmRound(null)}
+          description="Se cierra la ronda actual y empieza esta."
+          onConfirm={handleConfirm}
+        />
       </DialogContent>
     </Dialog>
   )

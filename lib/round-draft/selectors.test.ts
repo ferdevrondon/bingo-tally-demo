@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  canChangeRound,
   getHouseWin,
   getOpenStats,
   getPlayerNumberSummary,
   getRoundGifts,
   getSlotWinners,
-  orderTicketsByFreeNumbers,
 } from "./selectors"
 import type { RoundDraftState, Ticket } from "./types"
 
@@ -85,24 +85,8 @@ describe("getOpenStats and getRoundGifts", () => {
     const gifts = getRoundGifts(state)
     expect(gifts.giftCount).toBe(2)
     expect(gifts.pendingCount).toBe(0)
-    expect(gifts.giftLoss).toBe(0)
     expect(gifts.players.map((p) => p.playerName)).toEqual(["JUANA", "MARÍA"])
-
-    const open = { ...state, winningNumbers: [null] } as RoundDraftState
-    expect(getRoundGifts(open).giftLoss).toBe(20)
-  })
-})
-
-describe("orderTicketsByFreeNumbers", () => {
-  it("puts the emptiest tickets first and complete ones last", () => {
-    const full: [number, number, boolean][] = Array.from({ length: 15 }, (_, i) => [i + 1, 1, false])
-    const state = makeState({
-      1: full,
-      2: [[1, 1, false]],
-      3: [],
-      4: [[1, 1, false]],
-    })
-    expect(orderTicketsByFreeNumbers(state.tickets).map((t) => t.index)).toEqual([3, 2, 4, 1])
+    expect(gifts.players[0].numbers).toEqual([{ number: 3, tickets: 1 }])
   })
 })
 
@@ -154,13 +138,13 @@ describe("getSlotWinners", () => {
 })
 
 describe("getHouseWin", () => {
-  it("earns the prize minus the line on each ticket where the number is free", () => {
+  it("counts the tickets where the number is free, without any extra income", () => {
     const state = {
       ...makeState({ 1: [[7, 1, false]], 2: [], 3: [[7, 2, true]], 4: [] }),
       round: { linePrice: 10 },
     } as RoundDraftState
-    expect(getHouseWin(state, 7, 50)).toEqual({ tickets: 2, amount: 80 })
-    expect(getHouseWin(state, 3, 50)).toEqual({ tickets: 4, amount: 160 })
+    expect(getHouseWin(state, 7)).toEqual({ tickets: 2 })
+    expect(getHouseWin(state, 3)).toEqual({ tickets: 4 })
   })
 
   it("wins nothing when every ticket had the number sold", () => {
@@ -168,6 +152,45 @@ describe("getHouseWin", () => {
       ...makeState({ 1: [[5, 1, false]] }),
       round: { linePrice: 10 },
     } as RoundDraftState
-    expect(getHouseWin(state, 5, 50)).toEqual({ tickets: 0, amount: 0 })
+    expect(getHouseWin(state, 5)).toEqual({ tickets: 0 })
+  })
+})
+
+describe("canChangeRound", () => {
+  const base = {
+    round: { roundId: 7 },
+    winningNumbers: [null],
+    activity: [],
+  }
+  const row = (type: string, roundId: number | null = 7) => ({ type, roundId })
+
+  it("is open while the round has only starts and check-ins", () => {
+    const state = {
+      ...base,
+      activity: [row("round_started"), row("check_in"), row("number_purchased", 6)],
+    } as unknown as RoundDraftState
+    expect(canChangeRound(state)).toBe(true)
+  })
+
+  it("is closed after a purchase, a kept play or a drawn number", () => {
+    const bought = {
+      ...base,
+      activity: [row("number_purchased")],
+    } as unknown as RoundDraftState
+    const kept = {
+      ...base,
+      activity: [row("carryover_kept")],
+    } as unknown as RoundDraftState
+    const drawn = {
+      ...base,
+      winningNumbers: [4],
+    } as unknown as RoundDraftState
+    expect(canChangeRound(bought)).toBe(false)
+    expect(canChangeRound(kept)).toBe(false)
+    expect(canChangeRound(drawn)).toBe(false)
+  })
+
+  it("is false without an open round", () => {
+    expect(canChangeRound({ ...base, round: null } as unknown as RoundDraftState)).toBe(false)
   })
 })

@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRightIcon, PlusIcon } from "lucide-react"
 
+import { ConfirmRoundDialog } from "@/components/confirm-round-dialog"
 import { PlayerForm } from "@/components/player-form"
 import { PlayerNumbersSummary } from "@/components/player-numbers-summary"
 import { Button } from "@/components/ui/button"
@@ -36,9 +37,10 @@ import type { PlayerInput } from "@/lib/players"
 import { getPlayerColorClass } from "@/lib/round-draft/colors"
 import {
   getActivePlayers,
+  canChangeRound,
   getPlayerNumberSummary,
 } from "@/lib/round-draft/selectors"
-import { roundOptionLabel } from "@/lib/rounds"
+import { roundOptionLabel, type Round } from "@/lib/rounds"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 export function TicketsAssignmentPage() {
@@ -47,18 +49,10 @@ export function TicketsAssignmentPage() {
     useRoundDraft()
   const checkInToggle = useCheckInToggle()
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
-  const [isRoundPending, startRoundTransition] = React.useTransition()
 
   const activePlayers = getActivePlayers(state)
-  // start_round only swaps the picked round while nothing has happened in it
-  // (sales, kept plays, winning numbers).
-  const roundLocked =
-    state.round !== null &&
-    (state.winningNumbers.some((n) => n !== null) ||
-      state.tickets.some((t) => t.numbers.some((n) => n.playerId !== null)) ||
-      state.activity.some(
-        (a) => a.roundId === state.round?.roundId && a.type !== "round_started"
-      ))
+  const roundLocked = state.round !== null && !canChangeRound(state)
+  const [pendingRound, setPendingRound] = React.useState<Round | null>(null)
 
   // The player is saved in the catalog first; the refreshed game session
   // brings them in with their database id.
@@ -76,13 +70,21 @@ export function TicketsAssignmentPage() {
   function handleRoundChange(value: string | null) {
     const templateId = Number(value)
     if (!templateId || templateId === state.round?.templateId) return
-    startRoundTransition(async () => {
-      await startRound(templateId)
-    })
+    setPendingRound(roundTemplates.find((r) => r.id === templateId) ?? null)
+  }
+
+  async function handleRoundConfirm(round: Round) {
+    await startRound(round.id)
+    setPendingRound(null)
   }
 
   return (
     <div className="@container/main flex min-w-0 flex-1 flex-col gap-6 p-4 lg:p-6">
+      <ConfirmRoundDialog
+        round={pendingRound}
+        onOpenChange={(next) => !next && setPendingRound(null)}
+        onConfirm={handleRoundConfirm}
+      />
       <TicketsToolbar
         leading={
           <Select
@@ -92,7 +94,7 @@ export function TicketsAssignmentPage() {
                 : ""
             }
             onValueChange={handleRoundChange}
-            disabled={readOnly || isRoundPending || roundLocked}
+            disabled={readOnly || roundLocked}
             items={roundTemplates.map((r) => ({
               label: roundOptionLabel(r),
               value: String(r.id),
@@ -178,6 +180,7 @@ export function TicketsAssignmentPage() {
                     colorClass={getPlayerColorClass(
                       state.players.findIndex((p) => p.id === player.id)
                     )}
+                    linePrice={state.round?.linePrice}
                     trailing={
                       player.balance !== 0 &&
                       !player.pendingCarryOverDecision && (

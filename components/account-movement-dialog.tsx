@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { BankSelect } from "@/components/bank-select"
+import { ConfirmMovementDialog } from "@/components/confirm-movement-dialog"
 import { PaymentMethodSelect } from "@/components/payment-method-select"
 import { Button } from "@/components/ui/button"
 import {
@@ -70,6 +71,7 @@ export function AccountMovementDialog({
   const [bank, setBank] = React.useState<Bank | null>(null)
   const [note, setNote] = React.useState("")
   const [requestId, setRequestId] = React.useState(() => crypto.randomUUID())
+  const [isConfirmOpen, setIsConfirmOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
   // Reset each time the dialog opens (state adjusted during render).
@@ -83,6 +85,7 @@ export function AccountMovementDialog({
       setBank(player.bank ?? null)
       setNote("")
       setRequestId(crypto.randomUUID())
+      setIsConfirmOpen(false)
     }
   }
 
@@ -92,7 +95,7 @@ export function AccountMovementDialog({
     ? player.balance + (direction === "in" ? parsedAmount : -parsedAmount)
     : player.balance
   const leavesOwing = direction === "out" && isValid && balanceAfter < 0
-
+  // The form's button opens the confirmation; confirming records the move.
   function handleConfirm() {
     if (!isValid || paymentMethod === null || isPending) return
     startTransition(async () => {
@@ -211,11 +214,29 @@ export function AccountMovementDialog({
         </div>
 
         <DialogFooter>
-          <Button className="w-full" size="lg" disabled={!isValid || isPending} onClick={handleConfirm}>
+          <Button
+            className="w-full"
+            size="lg"
+            disabled={!isValid || isPending}
+            onClick={() => setIsConfirmOpen(true)}
+          >
             {direction === "in" ? "Confirmar cobro" : "Confirmar pago"}
+            {isValid && ` de ${formatMoney(parsedAmount)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
+      {isValid && (
+        <ConfirmMovementDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          kind={direction === "in" ? "receive" : "payout"}
+          amount={parsedAmount}
+          playerName={player.name}
+          paymentMethod={paymentMethod}
+          bank={bank}
+          onConfirm={handleConfirm}
+        />
+      )}
     </Dialog>
   )
 }

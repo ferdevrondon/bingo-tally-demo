@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { CalculatorIcon, CheckIcon, ChevronRightIcon } from "lucide-react"
+import { ArrowUpDownIcon, CalculatorIcon, CheckIcon, ChevronRightIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { BingoBall } from "@/components/bingo-ball"
+import { RecentMovementsDialog, type CorrectionValues } from "@/components/recent-movements-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +25,8 @@ import { PlayerRechargeDialog } from "@/components/player-recharge-dialog"
 import { PlayerReleaseNumbersDialog } from "@/components/player-release-numbers-dialog"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import { useCheckInToggle } from "@/components/check-in-dialog"
+import { correctMovement } from "@/lib/data/account-actions"
+import { GAME_ACTION_ERROR_MESSAGES } from "@/lib/data/game-action-result"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getPlayerNumberSummary, getSlotWinners } from "@/lib/round-draft/selectors"
@@ -45,17 +49,35 @@ export function PlayerActiveCard({
   const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = React.useState(false)
   const [isReleaseOpen, setIsReleaseOpen] = React.useState(false)
+  const [isMovementsOpen, setIsMovementsOpen] = React.useState(false)
 
   const balance = player.balance
+
+  // A correction from "Últimos movimientos": the game session re-syncs from
+  // the new ledger row.
+  async function handleCorrection(values: CorrectionValues): Promise<boolean> {
+    const result = await correctMovement(values)
+    if (result.ok) {
+      toast.success("Movimiento corregido")
+      return true
+    }
+    if (result.error !== "session_replaced") toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
+    return false
+  }
 
   const numbers = getPlayerNumberSummary(state, player.id).map(
     ({ number, count, gifts }) => ({
       number,
-      amount: count * linePrice,
+      amount: count * linePrice, // the real value; gifts are shown apart
+      plays: count,
+      giftCount: gifts,
+      giftDiscount: gifts * linePrice,
       isGift: gifts > 0,
     })
   )
   const totalPlayed = numbers.reduce((sum, n) => sum + n.amount, 0)
+  const giftsValue = numbers.reduce((sum, n) => sum + n.giftCount * linePrice, 0)
+  const giftPlays = numbers.reduce((sum, n) => sum + n.giftCount, 0)
 
   // The winning numbers of the open round this player holds, and what they
   // were paid for them (the trophy goes away when the round closes).
@@ -90,11 +112,14 @@ export function PlayerActiveCard({
           </p>
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
-            {numbers.map(({ number, amount, isGift }) => (
+            {numbers.map(({ number, amount, plays, giftCount, giftDiscount, isGift }) => (
               <BingoBall
                 key={number}
                 number={number}
                 amount={amount}
+                plays={plays}
+                giftCount={giftCount}
+                giftDiscount={giftDiscount}
                 variant="taken"
                 isGift={isGift}
                 isWinner={winningNumbers.has(number)}
@@ -180,18 +205,37 @@ export function PlayerActiveCard({
           <span className="text-muted-foreground">Total jugada</span>
           <span className="font-semibold">${totalPlayed}</span>
         </div>
+        {giftPlays > 0 && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              De los cuales {giftPlays} {giftPlays === 1 ? "regalo" : "regalos"} (−${giftsValue})
+            </span>
+            <span>Cobrado ${totalPlayed - giftsValue}</span>
+          </div>
+        )}
 
         {!readOnly && (
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Recarga</span>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setIsRechargeOpen(true)}
-              title="Recargar saldo"
-            >
-              <CalculatorIcon />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setIsMovementsOpen(true)}
+                title="Últimos movimientos"
+                aria-label="Últimos movimientos"
+              >
+                <ArrowUpDownIcon />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setIsRechargeOpen(true)}
+                title="Recargar saldo"
+              >
+                <CalculatorIcon />
+              </Button>
+            </div>
           </div>
         )}
 
@@ -243,7 +287,19 @@ export function PlayerActiveCard({
         player={player}
         open={isRechargeOpen}
         onOpenChange={setIsRechargeOpen}
+        onShowMovements={() => {
+          setIsRechargeOpen(false)
+          setIsMovementsOpen(true)
+        }}
       />
+      {isMovementsOpen && (
+        <RecentMovementsDialog
+          open
+          onOpenChange={setIsMovementsOpen}
+          player={{ id: player.id, name: player.name, balance, inGame: true }}
+          onConfirm={handleCorrection}
+        />
+      )}
       <PlayerRoundsDialog
         gameSessionId={state.gameSessionId}
         playerId={player.id}
