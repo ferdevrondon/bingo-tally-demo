@@ -5,7 +5,7 @@ import {
   ticketNumberState,
   type TicketCardProps,
 } from "@/components/ticket-card"
-import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import { FREE_NUMBER_CLASSES, getTakenNumberClasses } from "@/lib/round-draft/colors"
 import { cn } from "@/lib/utils"
 
 // The Lista view of the tickets board (/new-game and "Ver cartones"): one
@@ -44,14 +44,9 @@ export function TicketListColumn({
               className={cn(
                 "flex h-7 items-center gap-1 rounded-md border pr-1 text-xs font-medium transition-colors",
                 owner
-                  ? cn(
-                      getPlayerColorClass(playerIndexById.get(owner.id) ?? -1),
-                      "border-transparent text-white",
-                      entry.isGift &&
-                        "border-2 border-dashed border-foreground/40"
-                    )
+                  ? getTakenNumberClasses(playerIndexById.get(owner.id) ?? -1, entry.isGift)
                   : cn(
-                      "border-border text-muted-foreground",
+                      FREE_NUMBER_CLASSES,
                       entry.number === highlightNumber &&
                         "border-amber-500 bg-warning/10 text-warning ring-2 ring-amber-500"
                     )

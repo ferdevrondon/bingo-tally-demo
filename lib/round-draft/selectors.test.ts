@@ -7,7 +7,6 @@ import {
   getPlayerNumberSummary,
   getRoundGifts,
   getSlotWinners,
-  orderTicketsByFreeNumbers,
 } from "./selectors"
 import type { RoundDraftState, Ticket } from "./types"
 
@@ -88,19 +87,6 @@ describe("getOpenStats and getRoundGifts", () => {
     expect(gifts.pendingCount).toBe(0)
     expect(gifts.players.map((p) => p.playerName)).toEqual(["JUANA", "MARÍA"])
     expect(gifts.players[0].numbers).toEqual([{ number: 3, tickets: 1 }])
-  })
-})
-
-describe("orderTicketsByFreeNumbers", () => {
-  it("puts the emptiest tickets first and complete ones last", () => {
-    const full: [number, number, boolean][] = Array.from({ length: 15 }, (_, i) => [i + 1, 1, false])
-    const state = makeState({
-      1: full,
-      2: [[1, 1, false]],
-      3: [],
-      4: [[1, 1, false]],
-    })
-    expect(orderTicketsByFreeNumbers(state.tickets).map((t) => t.index)).toEqual([3, 2, 4, 1])
   })
 })
 

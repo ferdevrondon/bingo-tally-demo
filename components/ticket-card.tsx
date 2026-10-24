@@ -3,7 +3,7 @@
 import { GiftIcon } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import { FREE_NUMBER_CLASSES, FREE_NUMBER_HOVER_CLASSES, getTakenNumberClasses } from "@/lib/round-draft/colors"
 import type {
   DraftPlayer,
   NumberAssignment,
@@ -136,22 +136,20 @@ export function TicketCard({
                     "flex flex-col items-center justify-center gap-0.5 px-0.5",
                     entry.playerId !== null
                       ? cn(
-                          getPlayerColorClass(
-                            playerIndexById.get(entry.playerId) ?? -1
+                          getTakenNumberClasses(
+                            playerIndexById.get(entry.playerId) ?? -1,
+                            entry.isGift
                           ),
-                          "border-transparent text-white",
-                          entry.isGift &&
-                            "border-2 border-dashed border-foreground/40",
                           canRelease ? "cursor-pointer" : "cursor-default"
                         )
                       : cn(
-                          "border-warning/40 bg-warning/10 text-warning",
+                          FREE_NUMBER_CLASSES,
                           entry.number === highlightNumber &&
                             "ring-2 ring-amber-500 ring-offset-2 ring-offset-background",
                           readOnly
                             ? "cursor-default"
                             : canAssign
-                              ? "cursor-pointer hover:bg-warning/20"
+                              ? `cursor-pointer ${FREE_NUMBER_HOVER_CLASSES}`
                               : "cursor-not-allowed opacity-60"
                         )
                   )}

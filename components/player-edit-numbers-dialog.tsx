@@ -25,12 +25,16 @@ import {
 } from "@/components/ui/dialog"
 import { PlayerPlayBox } from "@/components/player-numbers-summary"
 import { TicketsViewToggle, useTicketsView } from "@/components/tickets-board"
-import { claimFirstFree } from "@/lib/round-draft/assign-ticket"
+import { claimFirstFree, ticketsByIndex } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
-import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import {
+  FREE_NUMBER_CLASSES,
+  FREE_NUMBER_HOVER_CLASSES,
+  getPlayerColorClass,
+  getTakenNumberClasses,
+} from "@/lib/round-draft/colors"
 import {
   getPlayerNumberSummary,
-  orderTicketsByFreeNumbers,
 } from "@/lib/round-draft/selectors"
 import type { Ticket, DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
@@ -82,12 +86,13 @@ function EditableTicket({
                   "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 text-sm font-medium transition-colors",
                   entry.playerId !== null
                     ? cn(
-                        getPlayerColorClass(playerIndexById.get(entry.playerId) ?? -1),
-                        "border-transparent text-white",
-                        isThisPlayer && "ring-2 ring-primary ring-offset-1",
-                        entry.isGift && "border-2 border-dashed border-foreground/40"
+                        getTakenNumberClasses(
+                          playerIndexById.get(entry.playerId) ?? -1,
+                          entry.isGift
+                        ),
+                        isThisPlayer && "ring-2 ring-primary ring-offset-1"
                       )
-                    : "cursor-pointer border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
+                    : cn("cursor-pointer", FREE_NUMBER_CLASSES, FREE_NUMBER_HOVER_CLASSES)
                 )}
               >
                 <span>{entry.number}</span>
@@ -165,12 +170,10 @@ function EditableTicketColumn({
                 "flex h-7 items-center gap-1 rounded-md border pr-1 text-xs font-medium transition-colors",
                 owner
                   ? cn(
-                      getPlayerColorClass(playerIndexById.get(owner.id) ?? -1),
-                      "border-transparent text-white",
-                      isThisPlayer && "ring-2 ring-primary ring-offset-1",
-                      entry.isGift && "border-2 border-dashed border-foreground/40"
+                      getTakenNumberClasses(playerIndexById.get(owner.id) ?? -1, entry.isGift),
+                      isThisPlayer && "ring-2 ring-primary ring-offset-1"
                     )
-                  : "border-warning/40 bg-warning/10 text-warning"
+                  : FREE_NUMBER_CLASSES
               )}
             >
               <button
@@ -238,11 +241,6 @@ export function PlayerEditNumbersDialog({
   const { state, editPlayerNumbers } = useRoundDraft()
   const [view] = useTicketsView()
   const [draft, setDraft] = React.useState<Ticket[]>(() => cloneTickets(state.tickets))
-  // Ticket order is fixed when the dialog opens so cards don't jump while
-  // editing: tickets with free numbers first, complete ones last.
-  const [orderedIds, setOrderedIds] = React.useState<number[]>(() =>
-    orderTicketsByFreeNumbers(state.tickets).map((t) => t.id)
-  )
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
   const [pendingSteal, setPendingSteal] = React.useState<{
     ticketId: number
@@ -255,7 +253,6 @@ export function PlayerEditNumbersDialog({
     setWasOpen(open)
     if (open) {
       setDraft(cloneTickets(state.tickets))
-      setOrderedIds(orderTicketsByFreeNumbers(state.tickets).map((t) => t.id))
     }
   }
 
@@ -263,11 +260,8 @@ export function PlayerEditNumbersDialog({
   const playerIndexById = new Map(state.players.map((p, i) => [p.id, i]))
   const playerById = new Map(state.players.map((p) => [p.id, p]))
   const draftById = new Map(draft.map((t) => [t.id, t]))
-  const orderedTickets = orderedIds
-    .map((id) => draftById.get(id))
-    .filter((t): t is Ticket => t !== undefined)
-  const withFree = orderedTickets.filter((t) => t.numbers.some((n) => n.playerId === null))
-  const complete = orderedTickets.filter((t) => t.numbers.every((n) => n.playerId !== null))
+  // Always in ticket order (1, 2, 3...), full or empty, so cards never jump.
+  const orderedTickets = ticketsByIndex(draft)
   // From the draft, so it follows each tap before "Aceptar".
   const numberSummary = getPlayerNumberSummary({ ...state, tickets: draft }, player.id)
   const pendingStealOwnerId =
@@ -424,40 +418,28 @@ export function PlayerEditNumbersDialog({
 
           <div className="flex flex-col gap-6 overflow-y-auto p-6">
             <TicketsViewToggle className="self-end" />
-            {[
-              { title: "Con números libres", tickets: withFree },
-              { title: "Completos", tickets: complete },
-            ]
-              .filter((group) => group.tickets.length > 0)
-              .map((group) => (
-                <section key={group.title} className="flex flex-col gap-3">
-                  <h3 className="text-base font-semibold">
-                    {group.title} ({group.tickets.length})
-                  </h3>
-                  <div
-                    className={
-                      view === "tickets"
-                        ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
-                        : "flex gap-3 overflow-x-auto pb-2"
-                    }
-                  >
-                    {group.tickets.map((ticket) => {
-                      const TicketView = view === "tickets" ? EditableTicket : EditableTicketColumn
-                      return (
-                        <TicketView
-                          key={ticket.id}
-                          ticket={ticket}
-                          playerId={player.id}
-                          playerIndexById={playerIndexById}
-                          playerById={playerById}
-                          onCellClick={(number) => handleCellClick(ticket.id, number)}
-                          onToggleGift={(number) => handleToggleGift(ticket.id, number)}
-                        />
-                      )
-                    })}
-                  </div>
-                </section>
-              ))}
+            <div
+              className={
+                view === "tickets"
+                  ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                  : "flex gap-3 overflow-x-auto pb-2"
+              }
+            >
+              {orderedTickets.map((ticket) => {
+                const TicketView = view === "tickets" ? EditableTicket : EditableTicketColumn
+                return (
+                  <TicketView
+                    key={ticket.id}
+                    ticket={ticket}
+                    playerId={player.id}
+                    playerIndexById={playerIndexById}
+                    playerById={playerById}
+                    onCellClick={(number) => handleCellClick(ticket.id, number)}
+                    onToggleGift={(number) => handleToggleGift(ticket.id, number)}
+                  />
+                )
+              })}
+            </div>
           </div>
 
           <DialogFooter>

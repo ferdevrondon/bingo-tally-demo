@@ -35,7 +35,7 @@ import { sumNumbers } from "@/lib/game-report/round-counts"
 import type { GameSessionReport, PlayerReport } from "@/lib/game-report/types"
 import { paymentMethodLabel } from "@/lib/payment-methods"
 import { signedMoney } from "@/lib/round-draft/balance"
-import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import { getPlayerChartColorClass } from "@/lib/round-draft/colors"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
@@ -237,7 +237,7 @@ function PlayersCard({
 }) {
   const [roundsOf, setRoundsOf] = React.useState<PlayerReport | null>(null)
   // Colors follow the order players joined, like in the live game.
-  const colorOf = new Map(players.map((p, i) => [p.id, getPlayerColorClass(i)]))
+  const colorOf = new Map(players.map((p, i) => [p.id, getPlayerChartColorClass(i)]))
   const sorted = [...players].sort((a, b) => b.closing - a.closing)
   const maxAbs = Math.max(1, ...players.map((p) => Math.abs(p.closing)))
   const owed = players.filter((p) => p.closing > 0)
