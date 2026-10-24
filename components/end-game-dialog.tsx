@@ -142,7 +142,7 @@ export function EndGameDialog({
             <div className="mb-2 text-xs tracking-wide text-muted-foreground uppercase">
               Resultado de la casa
             </div>
-            <HouseResultBreakdown house={summary.house} />
+            <HouseResultBreakdown house={summary.house} numbers={summary.numbers} />
           </div>
         </div>
 

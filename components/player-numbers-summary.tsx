@@ -13,8 +13,8 @@ function plural(count: number, one: string, many: string) {
 
 // What a player holds without looking at the tickets: each number once
 // ("4 ×2" when it is on more than one ticket), its gifts, the total of plays
-// and, with `linePrice`, what each number cost ("5 – $10", gifts aren't
-// charged) and the total, followed by
+// and, with `linePrice`, the real value of each number ("5 – $10"; gifts are
+// valued too and flagged) and the total with what was charged, followed by
 // `trailing` (the balance on /new-game and "Ver cartones").
 export function PlayerNumbersSummary({
   numbers,
@@ -44,7 +44,8 @@ export function PlayerNumbersSummary({
           title={[
             `Número ${number}`,
             plural(count, "jugada", "jugadas"),
-            linePrice !== undefined && `Cobrado ${formatMoney((count - gifts) * linePrice)}`,
+            linePrice !== undefined && `Valor ${formatMoney(count * linePrice)}`,
+            linePrice !== undefined && gifts > 0 && `Cobrado ${formatMoney((count - gifts) * linePrice)}`,
             gifts > 0 && plural(gifts, "regalo", "regalos"),
           ]
             .filter(Boolean)
@@ -60,13 +61,15 @@ export function PlayerNumbersSummary({
           )}
           {linePrice !== undefined && (
             <span className="font-medium opacity-80">
-              – {formatMoney((count - gifts) * linePrice)}
+              – {formatMoney(count * linePrice)}
             </span>
           )}
           {gifts > 0 && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-background px-1 text-destructive">
               <GiftIcon className="size-3" />
-              {gifts < count && <span className="text-[10px]">{gifts}</span>}
+              {linePrice !== undefined && (
+                <span className="text-[10px]">−{formatMoney(gifts * linePrice)}</span>
+              )}
             </span>
           )}
         </span>
@@ -79,8 +82,9 @@ export function PlayerNumbersSummary({
             <>
               {" · "}
               <span className="font-semibold text-foreground">
-                Total {formatMoney((plays - gifts) * linePrice)}
+                Total {formatMoney(plays * linePrice)}
               </span>
+              {gifts > 0 && ` (regalos −${formatMoney(gifts * linePrice)} · cobrado ${formatMoney((plays - gifts) * linePrice)})`}
             </>
           )}
         </span>

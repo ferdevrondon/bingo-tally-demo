@@ -57,12 +57,15 @@ export function RoundGiftsTab() {
                   )}
                 >
                   {p.playerName} el
-                  {p.numbers.map((number) => (
+                  {p.numbers.map(({ number, tickets }) => (
                     <span
                       key={number}
+                      title={`Número ${number} regalado en ${tickets} cartón${tickets === 1 ? "" : "es"}`}
                       className="flex h-5 items-center justify-center rounded-full bg-white/25 px-1.5 text-xs font-bold text-white tabular-nums"
                     >
-                      {number} – {formatMoney(linePrice)}
+                      {number}
+                      {tickets > 1 && <span className="opacity-80">×{tickets}</span>} –{" "}
+                      {formatMoney(tickets * linePrice)}
                     </span>
                   ))}
                 </span>

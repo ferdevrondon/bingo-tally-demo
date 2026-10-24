@@ -158,7 +158,7 @@ export async function fetchGameSessionReport(
       .from("game_session_players")
       .select("player_id, opening_balance, balance, removed_at, players(name)")
       .eq("game_session_id", gameSessionId),
-    supabase.from("tickets").select("id, index").eq("game_session_id", gameSessionId),
+    supabase.from("tickets").select("id, index, created_at").eq("game_session_id", gameSessionId),
     supabase
       .from("settlements")
       .select("status, settlement_players(resolution, received, paid)")
@@ -239,6 +239,9 @@ export async function fetchGameSessionReport(
       linePrice: Number(r.line_price),
       prizes: r.prizes.map(Number),
       winningNumbers: r.prizes.map((_, i) => r.winning_numbers[i] ?? null),
+      ticketsCount: (tickets.data ?? []).filter(
+        (t) => r.closed_at === null || Date.parse(t.created_at) <= Date.parse(r.closed_at)
+      ).length,
       winners: roundWinners,
       // A round closed without winning numbers was never played: its gifts
       // were refunded with everything else.

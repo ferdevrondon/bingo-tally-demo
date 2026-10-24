@@ -16,7 +16,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FOLDER_TAB } from "@/components/folder-tab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { roundCounts } from "@/lib/game-report/round-counts"
+import { roundNumbers } from "@/lib/game-report/round-counts"
 import type { RoundGift, RoundReport } from "@/lib/game-report/types"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { formatMoney } from "@/lib/rounds"
@@ -59,8 +59,23 @@ export function RoundWinners({ round }: { round: RoundReport }) {
                     {w.playerName.charAt(0).toUpperCase()}
                   </span>
                   {w.playerName}
-                  <span className="text-success tabular-nums">
-                    {formatMoney(w.prize)}
+                  {w.isGift && (
+                    <span
+                      title="Ganó con un número regalado: se paga el premio menos el precio del número"
+                      className="inline-flex items-center gap-0.5 rounded-full bg-destructive/10 px-1 text-[10px] text-destructive"
+                    >
+                      <GiftIcon className="size-3" aria-hidden="true" />
+                      regalo
+                    </span>
+                  )}
+                  <span className="whitespace-nowrap tabular-nums">
+                    {w.isGift && (
+                      <span className="text-muted-foreground">
+                        {formatMoney(round.prizes[slot] ?? w.prize)} −{" "}
+                        {formatMoney((round.prizes[slot] ?? w.prize) - w.prize)} ={" "}
+                      </span>
+                    )}
+                    <span className="text-success">{formatMoney(w.prize)}</span>
                   </span>
                 </span>
               ))
@@ -109,59 +124,68 @@ function Stat({
   )
 }
 
-/** Every amount of the round's result with how many numbers are behind it,
- *  in a dense grid. */
+/** What happened to the round's numbers and its result. The first lines are
+ *  money (sales, prizes paid); the gifted and house numbers are shown with
+ *  their value for reference and are not part of the result. */
 function RoundSummary({ round }: { round: RoundReport }) {
   const { house } = round
-  const c = roundCounts(round)
-  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
-  const items = [
+  const n = roundNumbers(round)
+  const plural = (count: number, one: string, many: string) =>
+    `${count} ${count === 1 ? one : many}`
+  const items: {
+    icon: typeof ShoppingBagIcon
+    iconClass: string
+    label: string
+    value: number
+    signed: boolean
+  }[] = [
     {
       icon: ShoppingBagIcon,
       iconClass: "text-success",
-      label: plural(c.sold, "número vendido", "números vendidos"),
+      label: plural(n.sold, "número vendido", "números vendidos"),
       value: house.sales,
+      signed: true,
     },
     {
       icon: TrophyIcon,
       iconClass: "text-warning",
-      label: plural(c.prizes, "premio pagado", "premios pagados"),
+      label: plural(n.prizes, "premio pagado", "premios pagados"),
       value: -house.prizes,
+      signed: true,
     },
     {
       icon: GiftIcon,
       iconClass: "text-destructive",
-      label: `${plural(c.gifted, "regalado", "regalados")} · sin ganar`,
-      value: house.gifts,
+      label: `${plural(n.gifted, "regalado", "regalados")} (valor, no suma)`,
+      value: n.giftedValue,
+      signed: false,
     },
     {
       icon: PackageOpenIcon,
       iconClass: "text-muted-foreground",
-      label: `${c.unsold} sin vender · para la casa`,
-      value: house.unsoldLosing,
+      label: `${plural(n.houseNumbers, "número se quedó la casa", "números se quedó la casa")}${
+        n.unsoldWon > 0 ? ` · ${n.unsoldWon} ganador${n.unsoldWon === 1 ? "" : "es"}` : ""
+      } (valor, no suma)`,
+      value: n.houseValue,
+      signed: false,
     },
-    {
-      icon: PackageOpenIcon,
-      iconClass: "text-warning",
-      label:
-        c.unsoldWon === null
-          ? "Sin vender que ganaron (premio para la casa)"
-          : `${plural(c.unsoldWon, "sin vender que ganó", "sin vender que ganaron")} (premio para la casa)`,
-      value: house.unsoldWinning,
-    },
-  ].filter((item, i) => i < 2 || item.value !== 0) // margins exist only in rounds from before the cash basis
+    // Margins of rounds closed before the cash basis (2026-10-23).
+    { icon: GiftIcon, iconClass: "text-destructive", label: "Regalados que no ganaron (antes)", value: house.gifts, signed: true },
+    { icon: PackageOpenIcon, iconClass: "text-muted-foreground", label: "Sin vender que no ganaron (antes)", value: house.unsoldLosing, signed: true },
+    { icon: PackageOpenIcon, iconClass: "text-warning", label: "Sin vender que ganaron (antes)", value: house.unsoldWinning, signed: true },
+  ].filter((item, i) => i < 4 || item.value !== 0)
   return (
     <dl className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
-      {items.map(({ icon: Icon, iconClass, label, value }) => (
+      {items.map(({ icon: Icon, iconClass, label, value, signed }) => (
         <div
           key={label}
           className={cn("flex items-center gap-1.5", value === 0 && "text-muted-foreground")}
         >
           <Icon className={cn("size-3.5 shrink-0", iconClass)} aria-hidden="true" />
-          <dt className="min-w-0 flex-1">
-            {label}
-          </dt>
-          <dd className="font-semibold tabular-nums">{signedMoney(value)}</dd>
+          <dt className="min-w-0 flex-1">{label}</dt>
+          <dd className="font-semibold tabular-nums">
+            {signed ? signedMoney(value) : formatMoney(value)}
+          </dd>
         </div>
       ))}
     </dl>
@@ -270,12 +294,16 @@ function RoundRow({
   )
 }
 
-/** One gifted number as a chip: number, player and what it cost; gold when it
- *  won (the house paid it). */
+/** One gifted number as a chip: number, player and its value; gold when it
+ *  won (it was paid prize - line price). */
 function GiftChip({ gift }: { gift: RoundGift }) {
   return (
     <span
-      title={gift.won ? `Ganó: la casa pagó ${formatMoney(gift.cost)}` : "No ganó"}
+      title={
+        gift.won
+          ? `Ganó: se pagó ${formatMoney(gift.paid ?? 0)} (premio − ${formatMoney(gift.value)})`
+          : `No ganó · valor ${formatMoney(gift.value)}`
+      }
       className={cn(
         "inline-flex h-7 items-center gap-1.5 rounded-full border pr-2.5 pl-1 text-xs font-medium",
         gift.won
@@ -293,7 +321,10 @@ function GiftChip({ gift }: { gift: RoundGift }) {
       </span>
       {gift.playerName}
       {gift.won && <TrophyIcon className="size-3 text-warning" aria-hidden="true" />}
-      <strong className="text-destructive tabular-nums">−{formatMoney(gift.cost)}</strong>
+      <strong className="tabular-nums">{formatMoney(gift.value)}</strong>
+      {gift.won && gift.paid !== null && (
+        <span className="text-success tabular-nums">paga {formatMoney(gift.paid)}</span>
+      )}
     </span>
   )
 }
@@ -311,7 +342,8 @@ function GiftsTab({ rounds }: { rounds: RoundReport[] }) {
   return (
     <div className="flex flex-col gap-2">
       {withGifts.map((round, i) => {
-        const cost = round.gifts.reduce((sum, g) => sum + g.cost, 0)
+        const value = round.gifts.reduce((sum, g) => sum + g.value, 0)
+        const won = round.gifts.filter((g) => g.won).length
         return (
           <section
             key={round.id}
@@ -322,8 +354,10 @@ function GiftsTab({ rounds }: { rounds: RoundReport[] }) {
               <h3 className="font-semibold">
                 R{round.seq} · {round.name}
               </h3>
-              <span className="font-bold text-destructive tabular-nums">
-                {cost > 0 ? `−${formatMoney(cost)}` : formatMoney(0)}
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {round.gifts.length} regalado{round.gifts.length === 1 ? "" : "s"} ·{" "}
+                <strong className="text-foreground">{formatMoney(value)}</strong>
+                {won > 0 && ` · ${won} ganó${won === 1 ? "" : "ron"}`}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -357,7 +391,7 @@ export function RoundHistoryCard({
   const played = rounds.filter((r) => r.played).length
   const prizes = rounds.reduce((sum, r) => sum + r.house.prizes, 0)
   const gifts = rounds.flatMap((r) => r.gifts)
-  const giftCost = gifts.reduce((sum, g) => sum + g.cost, 0)
+  const giftValue = gifts.reduce((sum, g) => sum + g.value, 0)
 
   return (
     <Tabs
@@ -413,9 +447,8 @@ export function RoundHistoryCard({
               <Stat
                 tone="red"
                 icon={<GiftIcon className="size-3.5 text-destructive" aria-hidden="true" />}
-                label={`Regalados (${gifts.length})`}
-                value={giftCost > 0 ? `−${formatMoney(giftCost)}` : formatMoney(0)}
-              
+                label={`Regalados (${gifts.length}) · valor`}
+                value={formatMoney(giftValue)}
               />
               <Stat
                 tone={houseTotal >= 0 ? "green" : "red"}

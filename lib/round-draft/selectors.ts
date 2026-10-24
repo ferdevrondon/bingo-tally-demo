@@ -164,8 +164,8 @@ export function getOpenStats(state: RoundDraftState): OpenStats {
 export interface PlayerGifts {
   playerId: number
   playerName: string
-  /** Gifted numbers of the player, one entry per gifted play. */
-  numbers: number[]
+  /** Gifted numbers of the player, each once with the tickets it was gifted on. */
+  numbers: { number: number; tickets: number }[]
 }
 
 export interface RoundGifts {
@@ -195,13 +195,15 @@ export function getRoundGifts(state: RoundDraftState): RoundGifts {
           "Jugador desconocido",
         numbers: [],
       }
-      current.numbers.push(entry.number)
+      const same = current.numbers.find((n) => n.number === entry.number)
+      if (same) same.tickets += 1
+      else current.numbers.push({ number: entry.number, tickets: 1 })
       byPlayer.set(entry.playerId, current)
     })
   })
   const players = [...byPlayer.values()].map((p) => ({
     ...p,
-    numbers: [...p.numbers].sort((a, b) => a - b),
+    numbers: [...p.numbers].sort((a, b) => a.number - b.number),
   }))
   return {
     players,

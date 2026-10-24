@@ -87,6 +87,7 @@ describe("getOpenStats and getRoundGifts", () => {
     expect(gifts.giftCount).toBe(2)
     expect(gifts.pendingCount).toBe(0)
     expect(gifts.players.map((p) => p.playerName)).toEqual(["JUANA", "MARÍA"])
+    expect(gifts.players[0].numbers).toEqual([{ number: 3, tickets: 1 }])
   })
 })
 

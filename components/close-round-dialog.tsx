@@ -29,7 +29,7 @@ import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import type { RoundDraftState } from "@/lib/round-draft/types"
 import { formatMoney, roundOptionLabel, type Round } from "@/lib/rounds"
 import { Separator } from "@base-ui/react"
-import { CircleAlertIcon, HouseIcon } from "lucide-react"
+import { CircleAlertIcon, GiftIcon, HouseIcon } from "lucide-react"
 import { Alert, AlertTitle, } from "./ui/alert"
 
 // Business rule F: after closing, who won, with which number and ticket
@@ -59,11 +59,34 @@ function ClosedRoundSummaryView({
             {winners.length > 0 && (
               <ul className="flex flex-col gap-1 text-sm">
                 {winners.map((w) => (
-                  <li key={`${w.ticketId}-${w.number}`} className="flex justify-between gap-4">
-                    <span>
-                      {playerName(w.playerId)} · Cartón {ticketIndex(w.ticketId)} · #{w.number}
+                  <li
+                    key={`${w.ticketId}-${w.number}`}
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap">
+                        {playerName(w.playerId)} · Cartón {ticketIndex(w.ticketId)} · #{w.number}
+                      </span>
+                      {w.isGift && (
+                        <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-destructive/10 px-1.5 text-xs text-destructive">
+                          <GiftIcon className="size-3" aria-hidden="true" />
+                          regalo
+                        </span>
+                      )}
                     </span>
-                    <span className="font-medium tabular-nums">{formatMoney(w.prize)}</span>
+                    <span className="shrink-0 font-medium whitespace-nowrap tabular-nums">
+                      {w.isGift ? (
+                        <>
+                          <span className="font-normal text-muted-foreground">
+                            {formatMoney(summary.prizes[slot] ?? 0)} −{" "}
+                            {formatMoney((summary.prizes[slot] ?? 0) - w.prize)} =
+                          </span>{" "}
+                          {formatMoney(w.prize)}
+                        </>
+                      ) : (
+                        formatMoney(w.prize)
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -84,10 +107,10 @@ function ClosedRoundSummaryView({
         )
       })}
       <div className="rounded-lg border bg-muted/30 p-3">
-        <div className="mb-2 text-xs tracking-wide text-muted-foreground uppercase">
+        <div className="mb-2 text-xs font-bold tracking-wide text-foreground uppercase">
           Resultado de la casa en la ronda
         </div>
-        <HouseResultBreakdown house={summary.house} />
+        <HouseResultBreakdown house={summary.house} numbers={summary.numbers} />
       </div>
     </div>
   )
@@ -132,7 +155,7 @@ export function CloseRoundDialog({
   if (summary) {
     return (
       <Dialog open={open} onOpenChange={(next) => !next && handleSummaryDone()}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="text-xl">
               Resumen de la ronda {summary.seq} · {summary.name}

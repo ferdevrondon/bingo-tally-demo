@@ -8,12 +8,21 @@ export function BingoBall({
   amount,
   variant,
   isGift = false,
+  plays = 1,
+  giftCount = 0,
+  giftDiscount = 0,
   isWinner = false,
 }: {
   number: number
   amount: number
   variant: "pending" | "taken"
   isGift?: boolean
+  /** Tickets where the player holds the number; `amount` is for all of them. */
+  plays?: number
+  /** How many of those plays are gifts (valued in `amount`, not charged). */
+  giftCount?: number
+  /** What the gifts are worth, shown on the gift badge ("−$10"). */
+  giftDiscount?: number
   /** A winning number of the open round: a trophy and a gold ring. */
   isWinner?: boolean
 }) {
@@ -56,10 +65,19 @@ export function BingoBall({
       )}
       {isGift && (
         <div
-          title="Número regalado"
-          className="absolute -bottom-1 -right-1 z-20 flex size-5 items-center justify-center rounded-full border border-destructive/60 bg-gradient-to-br from-yellow-400 to-amber-500 shadow-sm"
+          title={
+            plays > 1 && giftCount > 0
+              ? `${giftCount} de ${plays} jugadas ${giftCount === 1 ? "es regalo" : "son regalo"} (−${formatMoney(giftDiscount)})`
+              : "Número regalado"
+          }
+          className="absolute -bottom-1 -right-1 z-20 flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full border border-destructive/60 bg-gradient-to-br from-yellow-400 to-amber-500 px-1 shadow-sm"
         >
           <GiftIcon className="size-3 text-destructive" strokeWidth={2.5} />
+          {giftDiscount > 0 && (
+            <span className="text-[10px] leading-none font-bold text-destructive">
+              −{formatMoney(giftDiscount)}
+            </span>
+          )}
         </div>
       )}
     </div>
