@@ -18,7 +18,7 @@ import {
 import type { PeriodReport } from "@/lib/game-report/types"
 import { paymentMethodLabel } from "@/lib/payment-methods"
 import { signedMoney } from "@/lib/round-draft/balance"
-import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import { getPlayerChartColorClass } from "@/lib/round-draft/colors"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
@@ -255,7 +255,7 @@ function TopPlayersCard({ report }: { report: PeriodReport }) {
     ),
   ]
   const colorOf = (playerId: number) =>
-    getPlayerColorClass(ids.indexOf(playerId))
+    getPlayerChartColorClass(ids.indexOf(playerId))
   // Both lists share one scale, so what they played and won compare.
   const max = Math.max(
     1,

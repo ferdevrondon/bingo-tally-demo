@@ -1,9 +1,4 @@
-import type {
-  ActivityEntry,
-  DraftPlayer,
-  RoundDraftState,
-  Ticket,
-} from "./types"
+import type { ActivityEntry, DraftPlayer, RoundDraftState } from "./types"
 
 /** The game session has at least one round (open or closed): it can no
  *  longer be discarded ("Salir y borrar"), and /active-round has a game. */
@@ -210,13 +205,6 @@ export function getRoundGifts(state: RoundDraftState): RoundGifts {
     giftCount,
     pendingCount,
   }
-}
-
-/** Tickets with free numbers first (the emptiest first), complete ones last;
- *  ties keep the ticket order. */
-export function orderTicketsByFreeNumbers(tickets: Ticket[]): Ticket[] {
-  const free = (t: Ticket) => t.numbers.filter((n) => n.playerId === null).length
-  return [...tickets].sort((a, b) => free(b) - free(a) || a.index - b.index)
 }
 
 export interface SlotWinner {
