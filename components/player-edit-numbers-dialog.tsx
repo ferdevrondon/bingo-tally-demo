@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { PlayerNumbersSummary } from "@/components/player-numbers-summary"
+import { PlayerPlayBox } from "@/components/player-numbers-summary"
 import { TicketsViewToggle, useTicketsView } from "@/components/tickets-board"
 import { claimFirstFree } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
@@ -414,17 +414,13 @@ export function PlayerEditNumbersDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <section className="mx-6 mt-4 flex shrink-0 flex-col gap-2 rounded-xl border bg-muted/40 px-4 py-3">
-            <h3 className="text-sm font-semibold">Números de {player.name}</h3>
-            {numberSummary.length > 0 ? (
-              <PlayerNumbersSummary
-                numbers={numberSummary}
-                colorClass={getPlayerColorClass(playerIndexById.get(player.id) ?? -1)}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Todavía no tiene números.</p>
-            )}
-          </section>
+          <PlayerPlayBox
+            className="mx-6 mt-4"
+            playerName={player.name}
+            numbers={numberSummary}
+            colorClass={getPlayerColorClass(playerIndexById.get(player.id) ?? -1)}
+            linePrice={state.round?.linePrice}
+          />
 
           <div className="flex flex-col gap-6 overflow-y-auto p-6">
             <TicketsViewToggle className="self-end" />

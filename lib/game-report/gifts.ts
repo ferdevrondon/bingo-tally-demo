@@ -9,13 +9,13 @@ export interface GiftLedgerRow {
   amount: number | string | null
 }
 
-/** The numbers gifted in one round, with whom, what each cost the house and
- *  whether it won. Rows are in ledger order (oldest first). A gift stops
- *  being one when it is un-gifted, or when the gifted number is released or
- *  handed over (those rows carry no money: a gift was never paid for).
- *  Cost to the house, like the round's result (private.round_margin_parts):
- *  a gift that didn't win costs the line price; a winning one costs what it
- *  was paid (prize - line price). */
+/** The numbers gifted in one round, with whom, what each is worth and whether
+ *  it won. Rows are in ledger order (oldest first). A gift stops being one
+ *  when it is un-gifted, or when the gifted number is released or handed
+ *  over (those rows carry no money: a gift was never paid for).
+ *  A gift is worth the line price and moves no money in the house result
+ *  (cash basis); one that wins is paid prize - line price. The winners that
+ *  won with a gift get `isGift` set. */
 export function buildRoundGifts(
   rows: GiftLedgerRow[],
   round: { linePrice: number },
@@ -66,6 +66,10 @@ export function buildRoundGifts(
     if (at >= 0) take(i, at)
   })
 
+  matched.forEach((w) => {
+    if (w) w.isGift = true
+  })
+
   return open
     .map((g, i): RoundGift => {
       const winner = matched[i]
@@ -75,7 +79,8 @@ export function buildRoundGifts(
         ticketIndex: indexOf(g.ticketId),
         number: g.number,
         won: winner !== null,
-        cost: winner !== null ? winner.prize : round.linePrice,
+        value: round.linePrice,
+        paid: winner !== null ? winner.prize : null,
       }
     })
     .sort(

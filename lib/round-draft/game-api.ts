@@ -6,7 +6,9 @@ import {
   type GameActionError,
   type GameActionResult,
 } from "@/lib/data/game-action-result"
+import { fetchGameSessionReport } from "@/lib/game-report/fetch"
 import { houseResult, SALE_TYPES, saleAmount, type HouseResult } from "@/lib/game-report/ledger"
+import { roundNumbers, sumNumbers, type NumbersInfo } from "@/lib/game-report/round-counts"
 import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
 import { createClient } from "@/lib/supabase/client"
@@ -38,6 +40,8 @@ export interface NumberEdit {
 export interface GameSessionSummary {
   roundsPlayed: number
   house: HouseResult
+  /** What happened to the numbers (sold, gifted, the house's) for the summary; null if it couldn't be read. */
+  numbers: NumbersInfo | null
   playersCount: number
   /** What players owe the house (sum of negative balances, as a positive amount). */
   owedByPlayers: number
@@ -52,6 +56,8 @@ export interface RoundWinnerEntry {
   number: number
   slot: number
   prize: number
+  /** Won with a gifted number (paid prize - line price). */
+  isGift: boolean
 }
 
 /** A closed round, for the summary shown when it closes (business rule F). */
@@ -62,6 +68,8 @@ export interface ClosedRoundSummary {
   winningNumbers: (number | null)[]
   winners: RoundWinnerEntry[]
   house: HouseResult
+  /** What happened to the numbers of the round; null if it couldn't be read. */
+  numbers: NumbersInfo | null
 }
 
 type Position = { ticketId: number; number: number }
@@ -280,7 +288,7 @@ export function createGameApi(isAdmin: boolean) {
         supabase
           .from("game_session_rounds")
           .select(
-            "seq, name, prizes, winning_numbers, margin_gifts, margin_unsold_losing, margin_unsold_winning"
+            "game_session_id, seq, name, prizes, winning_numbers, margin_gifts, margin_unsold_losing, margin_unsold_winning"
           )
           .eq("id", roundId)
           .single(),
@@ -297,6 +305,9 @@ export function createGameApi(isAdmin: boolean) {
           .in("type", [...SALE_TYPES, "adjustment"]),
       ])
       if (round.error || winners.error || sales.error) return null
+      // The gifts and counts come from the same report as the history.
+      const report = await fetchGameSessionReport(supabase, round.data.game_session_id, "UTC")
+      const reported = report?.rounds.find((r) => r.id === roundId) ?? null
       const winnerRows = winners.data.map(
         (w): RoundWinnerEntry => ({
           playerId: w.player_id,
@@ -304,6 +315,10 @@ export function createGameApi(isAdmin: boolean) {
           number: w.number,
           slot: w.slot,
           prize: Number(w.prize),
+          isGift:
+            reported?.winners.some(
+              (r) => r.isGift && r.playerId === w.player_id && r.number === w.number && r.slot === w.slot
+            ) ?? false,
         })
       )
       return {
@@ -312,6 +327,7 @@ export function createGameApi(isAdmin: boolean) {
         prizes: round.data.prizes.map(Number),
         winningNumbers: round.data.winning_numbers,
         winners: winnerRows,
+        numbers: reported ? roundNumbers(reported) : null,
         house: houseResult({
           sales: sales.data.reduce((sum, a) => sum + saleAmount(a.type, a.amount), 0),
           prizes: winnerRows.reduce((sum, w) => sum + w.prize, 0),
@@ -353,7 +369,9 @@ export function createGameApi(isAdmin: boolean) {
       const prizes = sum(winners.data.map((w) => w.prize))
       const total = Number(gameSession.data.house_balance)
       const balances = players.data.map((p) => Number(p.balance))
+      const report = await fetchGameSessionReport(supabase, gameSessionId, "UTC")
       return {
+        numbers: report ? { ...sumNumbers(report.rounds), tickets: report.ticketsCount } : null,
         // A round closed without winning numbers was never played.
         roundsPlayed: closedRounds.filter((r) => r.winning_numbers.some((n) => n !== null))
           .length,

@@ -116,7 +116,7 @@ begin
   perform public.close_round(pg_temp.open_round(s), v_tpl, gen_random_uuid());
 
   perform pg_temp.chk('S2 al cerrar la ronda no queda ningún regalo', '0', pg_temp.gifts(s));
-  perform pg_temp.chk('S2 el margen de regalos de la ronda 1 se calculó antes (-2P)', '-20.00', pg_temp.round_margin(s, 1));
+  perform pg_temp.chk('S2 los regalos ya no restan margen al cerrar la ronda (base de caja)', '0.00', pg_temp.round_margin(s, 1));
 
   -- The player who had the gift keeps everything: charged for both numbers.
   perform public.resolve_carryover(s, pg_temp.pl(s, 1), '[]'::jsonb, gen_random_uuid());

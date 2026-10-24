@@ -164,8 +164,8 @@ export function getOpenStats(state: RoundDraftState): OpenStats {
 export interface PlayerGifts {
   playerId: number
   playerName: string
-  /** Gifted numbers of the player, one entry per gifted play. */
-  numbers: number[]
+  /** Gifted numbers of the player, each once with the tickets it was gifted on. */
+  numbers: { number: number; tickets: number }[]
 }
 
 export interface RoundGifts {
@@ -174,9 +174,6 @@ export interface RoundGifts {
   giftCount: number
   /** Gifted plays whose number has not won yet. */
   pendingCount: number
-  /** What the house loses: a gift that doesn't win costs the line price (a
-   *  winning one is already covered by prize - line price). */
-  giftLoss: number
 }
 
 export function getRoundGifts(state: RoundDraftState): RoundGifts {
@@ -198,19 +195,20 @@ export function getRoundGifts(state: RoundDraftState): RoundGifts {
           "Jugador desconocido",
         numbers: [],
       }
-      current.numbers.push(entry.number)
+      const same = current.numbers.find((n) => n.number === entry.number)
+      if (same) same.tickets += 1
+      else current.numbers.push({ number: entry.number, tickets: 1 })
       byPlayer.set(entry.playerId, current)
     })
   })
   const players = [...byPlayer.values()].map((p) => ({
     ...p,
-    numbers: [...p.numbers].sort((a, b) => a - b),
+    numbers: [...p.numbers].sort((a, b) => a.number - b.number),
   }))
   return {
     players,
     giftCount,
     pendingCount,
-    giftLoss: pendingCount * (state.round?.linePrice ?? 0),
   }
 }
 
@@ -255,17 +253,27 @@ export function getSlotWinners(state: RoundDraftState): (SlotWinner[] | null)[] 
   })
 }
 
-/** What the house wins with a winning number: it "plays" every ticket where
- *  the number was left free and earns the prize minus the line it didn't
- *  sell there (`unsoldWinning` in lib/game-report/ledger.ts). */
-export function getHouseWin(
-  state: RoundDraftState,
-  number: number,
-  prize: number
-): { tickets: number; amount: number } {
+/** The tickets where a winning number was left free: nobody is paid there, so
+ *  the house just keeps what it collected (no extra income, cash basis). */
+export function getHouseWin(state: RoundDraftState, number: number): { tickets: number } {
   const tickets = state.tickets.filter(
     (t) => t.numbers.find((n) => n.number === number)?.playerId === null
   ).length
-  const linePrice = state.round?.linePrice ?? 0
-  return { tickets, amount: (prize - linePrice) * tickets }
+  return { tickets }
+}
+
+/** Activity in a round that moves no money, so the round can still be swapped. */
+const SWAPPABLE_ACTIVITY = new Set(["round_started", "check_in", "check_in_undone"])
+
+/** The open round can be replaced by another one (`start_round`) while no
+ *  winning number is drawn and nothing in it has been charged. Players with a
+ *  pending carryover decision are charged by `resolve_carryover` at the round's
+ *  price at that moment, so they don't block it. Mirrors the SQL guard. */
+export function canChangeRound(state: RoundDraftState): boolean {
+  const round = state.round
+  if (!round) return false
+  if (state.winningNumbers.some((n) => n !== null)) return false
+  return state.activity.every(
+    (a) => a.roundId !== round.roundId || SWAPPABLE_ACTIVITY.has(a.type)
+  )
 }

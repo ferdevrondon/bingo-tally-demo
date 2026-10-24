@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { GameTimelineCard } from "@/components/game-timeline-card"
+import { NumbersInfoList } from "@/components/house-result-breakdown"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import {
   HouseResultWaterfall,
@@ -30,6 +31,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { formatDuration } from "@/lib/game-report/format"
+import { sumNumbers } from "@/lib/game-report/round-counts"
 import type { GameSessionReport, PlayerReport } from "@/lib/game-report/types"
 import { paymentMethodLabel } from "@/lib/payment-methods"
 import { signedMoney } from "@/lib/round-draft/balance"
@@ -55,11 +57,15 @@ function HouseCard({ report }: { report: GameSessionReport }) {
           De dónde sale el resultado
         </CardTitle>
         <CardDescription>
-          Ventas − premios + lo que la casa juega con los números regalados y
-          sin vender.
+          Ventas − premios pagados. Los números regalados y los que se quedó la
+          casa se muestran con su valor, pero no suman ni restan.
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <NumbersInfoList
+          numbers={{ ...sumNumbers(report.rounds), tickets: report.ticketsCount }}
+          className="mb-3"
+        />
         <HouseResultWaterfall house={report.house} />
       </CardContent>
     </Card>

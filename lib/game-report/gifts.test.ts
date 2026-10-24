@@ -29,12 +29,14 @@ const win = (playerId: number, number: number, prize: number, ticketIndex = 1): 
 const round = { linePrice: 10 }
 
 describe("buildRoundGifts", () => {
-  it("costs the line price when a gift didn't win and what it was paid when it did", () => {
-    const gifts = buildRoundGifts([gift(1, 4), gift(2, 7)], round, [win(2, 7, 90)], names, tickets)
+  it("values a gift at the line price and notes what a winning one was paid", () => {
+    const winners = [win(2, 7, 90)]
+    const gifts = buildRoundGifts([gift(1, 4), gift(2, 7)], round, winners, names, tickets)
     expect(gifts).toEqual([
-      { playerId: 1, playerName: "Ana", ticketIndex: 1, number: 4, won: false, cost: 10 },
-      { playerId: 2, playerName: "Beto", ticketIndex: 1, number: 7, won: true, cost: 90 },
+      { playerId: 1, playerName: "Ana", ticketIndex: 1, number: 4, won: false, value: 10, paid: null },
+      { playerId: 2, playerName: "Beto", ticketIndex: 1, number: 7, won: true, value: 10, paid: 90 },
     ])
+    expect(winners[0].isGift).toBe(true)
   })
 
   it("drops gifts that were un-gifted, released or handed over", () => {

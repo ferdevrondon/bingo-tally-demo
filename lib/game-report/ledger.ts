@@ -2,19 +2,20 @@
 // Shared by the live game summaries (lib/round-draft/game-api.ts), the
 // settlement (lib/data/settlement.ts) and the game session report.
 
-/** The house result (decided with the product owner on 2026-09-28): sales
- *  - prizes paid + the margin of each played round, where the house "plays"
- *  what it didn't sell. Recharges and payouts are cash, not part of it. */
+/** The house result on a cash basis (since 2026-10-23): sales - prizes paid.
+ *  The three margins below are 0 for new rounds (unsold and gifted numbers
+ *  move no money) and only carry the old margin of rounds closed before that.
+ *  Recharges and payouts are cash, not part of it. */
 export interface HouseResult {
   /** Numbers sold, net of refunds (unplayed round refunds included). */
   sales: number
   /** Prizes paid to players (positive amount). */
   prizes: number
-  /** -P per gifted number that didn't win. */
+  /** Historic only: -P per gifted number that didn't win. */
   gifts: number
-  /** -P per unsold number that didn't win. */
+  /** Historic only: -P per unsold number that didn't win. */
   unsoldLosing: number
-  /** prize - P per unsold number that won. */
+  /** Historic only: prize - P per unsold number that won. */
   unsoldWinning: number
   total: number
 }

@@ -26,7 +26,7 @@ export function WinningNumberBall({
   /** Who has won this number so far: players with what they were paid, `[]`
    *  when nobody had it, null when unknown or not drawn yet. */
   winners?: { name: string; amount: number }[] | null
-  /** What the house wins on the tickets where this number was free. */
+  /** The tickets where this number was free: the house keeps what it collected. */
   house?: HouseWin | null
   onSubmit: (number: number) => void
 }) {
@@ -147,16 +147,13 @@ export function WinningNumberBall({
         ))}
         {houseWins && (
           <span
-            title={`${house.tickets} cartón${house.tickets === 1 ? "" : "es"} libre${house.tickets === 1 ? "" : "s"} con el ${value}`}
+            title={`${house.tickets} cartón${house.tickets === 1 ? "" : "es"} libre${house.tickets === 1 ? "" : "s"} con el ${value}: no se paga premio`}
             className="inline-flex h-6 items-center gap-1.5 rounded-full border bg-muted pr-2 pl-0.5 text-xs font-semibold"
           >
             <span className="flex size-5 items-center justify-center rounded-full bg-foreground/10">
               <HouseIcon className="size-3" aria-hidden="true" />
             </span>
             CASA
-            <span className="text-success tabular-nums">
-              +{formatMoney(house.amount)}
-            </span>
           </span>
         )}
       </div>

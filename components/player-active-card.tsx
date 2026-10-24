@@ -68,11 +68,16 @@ export function PlayerActiveCard({
   const numbers = getPlayerNumberSummary(state, player.id).map(
     ({ number, count, gifts }) => ({
       number,
-      amount: count * linePrice,
+      amount: count * linePrice, // the real value; gifts are shown apart
+      plays: count,
+      giftCount: gifts,
+      giftDiscount: gifts * linePrice,
       isGift: gifts > 0,
     })
   )
   const totalPlayed = numbers.reduce((sum, n) => sum + n.amount, 0)
+  const giftsValue = numbers.reduce((sum, n) => sum + n.giftCount * linePrice, 0)
+  const giftPlays = numbers.reduce((sum, n) => sum + n.giftCount, 0)
 
   // The winning numbers of the open round this player holds, and what they
   // were paid for them (the trophy goes away when the round closes).
@@ -107,11 +112,14 @@ export function PlayerActiveCard({
           </p>
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
-            {numbers.map(({ number, amount, isGift }) => (
+            {numbers.map(({ number, amount, plays, giftCount, giftDiscount, isGift }) => (
               <BingoBall
                 key={number}
                 number={number}
                 amount={amount}
+                plays={plays}
+                giftCount={giftCount}
+                giftDiscount={giftDiscount}
                 variant="taken"
                 isGift={isGift}
                 isWinner={winningNumbers.has(number)}
@@ -197,6 +205,14 @@ export function PlayerActiveCard({
           <span className="text-muted-foreground">Total jugada</span>
           <span className="font-semibold">${totalPlayed}</span>
         </div>
+        {giftPlays > 0 && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              De los cuales {giftPlays} {giftPlays === 1 ? "regalo" : "regalos"} (−${giftsValue})
+            </span>
+            <span>Cobrado ${totalPlayed - giftsValue}</span>
+          </div>
+        )}
 
         {!readOnly && (
           <div className="flex items-center justify-between text-sm">

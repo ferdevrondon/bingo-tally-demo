@@ -44,8 +44,11 @@ export interface RoundGift {
   number: number
   /** The gifted number won: it was paid prize - line price. */
   won: boolean
-  /** What it cost the house: the line price, or what a winning gift was paid. */
-  cost: number
+  /** What the gift is worth: the line price. Shown, never added to the
+   *  house result (a gift moves no money until it wins). */
+  value: number
+  /** What a winning gift was paid (prize - line price); null when it didn't win. */
+  paid: number | null
 }
 
 export interface RoundWinnerReport {
@@ -55,6 +58,8 @@ export interface RoundWinnerReport {
   number: number
   slot: number
   prize: number
+  /** Won with a gifted number (paid prize - line price). Set by buildRoundGifts. */
+  isGift?: boolean
 }
 
 export interface RoundReport {
@@ -69,6 +74,8 @@ export interface RoundReport {
   /** Prize per winning ticket for each winning number, as configured. */
   prizes: number[]
   winningNumbers: (number | null)[]
+  /** Tickets of the game session when the round closed (all of them while it is open). */
+  ticketsCount: number
   /** One per winning ticket ("Cartón N · #X"). A winning number nobody had
    *  has no winner: its prize stays with the house. */
   winners: RoundWinnerReport[]
