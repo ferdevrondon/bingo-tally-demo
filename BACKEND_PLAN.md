@@ -333,7 +333,7 @@ RLS on every table:
 | `award_prize` | `AWARD_PRIZE` | computes prizes in SQL |
 | `close_round` | `CLOSE_ROUND` | computes and writes `margin_adjustment` in SQL, starts the next round with its template's `line_price`, marks active players `pending_carryover`, clears check-ins |
 | `resolve_carryover` | `RESOLVE_CARRYOVER` | |
-| `remove_player` | `REMOVE_PLAYER` | frees the player's numbers **without refund**; sets `removed_at`; the balance stays on `game_session_players` |
+| `remove_player` | `REMOVE_PLAYER` | frees the player's numbers and **voids the paid plays of the open round** (one `number_released` per play, balance credited, so the sale leaves the house result; nothing for a pending carry-over or a closed round); sets `removed_at`; the rest of the balance stays on `game_session_players` |
 | `end_game_session` | "Terminar jornada" | `status = 'ended'`, nothing is deleted |
 | `discard_game_session` | "Salir y borrar" | see below |
 | `record_payout` | (new; settlement) | allowed on ended game sessions |

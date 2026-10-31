@@ -72,7 +72,7 @@ export function ActiveRoundPage() {
       </div>
 
       {activePlayers.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 @md/main:grid-cols-2 @4xl/main:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 @xl/main:grid-cols-2 @3xl/main:grid-cols-3">
           {activePlayers.map((player) => (
             <PlayerActiveCard
               key={player.id}

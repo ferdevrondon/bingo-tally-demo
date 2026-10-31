@@ -17,8 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import { Card } from "@/components/ui/card"
 import { Toggle } from "@/components/ui/toggle"
 import { PlayerEditNumbersDialog } from "@/components/player-edit-numbers-dialog"
 import { PlayerRechargeDialog } from "@/components/player-recharge-dialog"
@@ -29,6 +28,7 @@ import { correctMovement } from "@/lib/data/account-actions"
 import { GAME_ACTION_ERROR_MESSAGES } from "@/lib/data/game-action-result"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { removalRefund } from "@/lib/round-draft/remove-player"
 import { getPlayerNumberSummary, getSlotWinners } from "@/lib/round-draft/selectors"
 import { formatMoney } from "@/lib/rounds"
 import type { DraftPlayer } from "@/lib/round-draft/types"
@@ -52,6 +52,7 @@ export function PlayerActiveCard({
   const [isMovementsOpen, setIsMovementsOpen] = React.useState(false)
 
   const balance = player.balance
+  const removedPlays = removalRefund(state, player.id)
 
   // A correction from "Últimos movimientos": the game session re-syncs from
   // the new ledger row.
@@ -91,30 +92,74 @@ export function PlayerActiveCard({
   const wonTotal = won.reduce((sum, w) => sum + w.amount, 0)
 
   return (
-    <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <span className="min-w-0 font-heading text-base font-medium break-words">
-          {player.name}
-        </span>
-        <span
-          className={cn(
-            "shrink-0 text-lg font-bold",
-            balance >= 0 ? "text-success" : "text-destructive"
-          )}
-        >
-          {signedMoney(balance)}
-        </span>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+    <Card className={cn("gap-2 px-3.5 py-3", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div className="flex min-w-36 flex-1 items-baseline gap-2">
+          <span className="truncate font-heading text-[13px] font-semibold">
+            {player.name}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 text-base font-bold",
+              balance >= 0 ? "text-success" : "text-destructive"
+            )}
+          >
+            {signedMoney(balance)}
+          </span>
+        </div>
+        {/* After a round closes the player first keeps or releases their numbers;
+            the new round's charge (and the check-in) comes after that. */}
+        {!player.pendingCarryOverDecision && (
+          <div
+            title={
+              balance < 0 && !player.checkedIn ? balanceLabel(balance) : undefined
+            }
+            className={cn(
+              "flex h-6 shrink-0 items-center gap-1 rounded-full border pr-0.5 pl-2 text-[11px] font-medium transition-colors",
+              player.checkedIn
+                ? "border-success/40 bg-success/10 text-success"
+                : cn(
+                    "border-warning bg-warning/10 text-warning-solid",
+                    balance < 0 && "animate-pulse"
+                  ),
+              readOnly && "pr-2"
+            )}
+          >
+            <span>{player.checkedIn ? "Check-in" : "Sin check-in"}</span>
+            {!readOnly && (
+              <Toggle
+                pressed={player.checkedIn}
+                onPressedChange={() => checkInToggle.toggle(player)}
+                aria-label="Check-in"
+                className={cn(
+                  "size-5 h-5 min-w-5 rounded-full border p-0 transition-all duration-300 [&_svg:not([class*='size-'])]:size-3",
+                  player.checkedIn
+                    ? "animate-in zoom-in-50 border-success-solid bg-success-solid text-white hover:bg-success-solid/90 aria-pressed:bg-success-solid aria-pressed:text-white"
+                    : "border-warning text-warning-solid hover:bg-warning/10"
+                )}
+              >
+                <CheckIcon />
+              </Toggle>
+            )}
+          </div>
+        )}
+      </div>
+      {/* Takes the spare height of the row so the money and action rows line up across cards. */}
+      <div className="flex flex-1 flex-col gap-2">
+        {balance < 0 && !player.checkedIn && !player.pendingCarryOverDecision && (
+          <span className="-mt-1 text-[11px] font-semibold text-destructive">
+            {balanceLabel(balance)}
+          </span>
+        )}
+
         {numbers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Sin números asignados.
-          </p>
+          <p className="text-xs text-muted-foreground">Sin números asignados.</p>
         ) : (
-          <div className="flex flex-wrap gap-x-4 gap-y-4 pt-2">
+          <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 pt-2.5">
             {numbers.map(({ number, amount, plays, giftCount, giftDiscount, isGift }) => (
               <BingoBall
                 key={number}
+                size="sm"
                 number={number}
                 amount={amount}
                 plays={plays}
@@ -128,154 +173,99 @@ export function PlayerActiveCard({
           </div>
         )}
         {won.length > 0 && (
-          <p className="rounded-xl border border-warning/60 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950 dark:bg-warning/15 dark:text-amber-100">
+          <p className="rounded-lg border border-warning/60 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-950 dark:bg-warning/15 dark:text-amber-100">
             🏆 {wonTotal > 0 ? `Ganó ${formatMoney(wonTotal)}` : "Ganó"} con el{" "}
             {won.map((w) => w.number).join(" y el ")}
           </p>
         )}
+      </div>
 
-        {!readOnly && (
-          <Button
-            variant="outline"
-            disabled={player.pendingCarryOverDecision}
-            title={
-              player.pendingCarryOverDecision
-                ? "Primero decide si mantiene o libera su jugada"
-                : undefined
-            }
-            onClick={() => setIsEditOpen(true)}
-          >
-            Editar jugada
-          </Button>
-        )}
-        {/* After a round closes the player first keeps or releases their numbers;
-            the new round's charge (and the check-in) comes after that. */}
-        {player.pendingCarryOverDecision ? (
-          <p className="rounded-xl border border-dashed px-3 py-2 text-sm text-muted-foreground">
-            Decide si mantiene o libera su jugada para la nueva ronda.
-          </p>
-        ) : (
-          <div
-            className={cn(
-              "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
-              player.checkedIn
-                ? "border-success/40 bg-success/10"
-                : cn(
-                    "border-warning/40 bg-warning/10",
-                    balance < 0 && "animate-pulse"
-                  )
-            )}
-          >
-            <span
-              className={cn(
-                "font-medium",
-                player.checkedIn
-                  ? "text-success"
-                  : "text-warning"
-              )}
-            >
-              {player.checkedIn ? "Check-in confirmado" : "Check-in pendiente"}
-              {balance < 0 && !player.checkedIn && (
-                <span className="ml-2 text-xs font-semibold text-destructive">
-                  {balanceLabel(balance)}
-                </span>
-              )}
+      <div className="flex items-start justify-between gap-2 border-t pt-2 text-xs">
+        <div className="flex min-w-0 flex-col">
+          <span>
+            <span className="text-muted-foreground">Total jugada </span>
+            <span className="font-semibold text-foreground">${totalPlayed}</span>
+          </span>
+          {giftPlays > 0 && (
+            <span className="text-[11px] text-muted-foreground">
+              De los cuales {giftPlays} {giftPlays === 1 ? "regalo" : "regalos"} (−${giftsValue}) · Cobrado ${totalPlayed - giftsValue}
             </span>
-            {!readOnly && (
-              <Toggle
-                pressed={player.checkedIn}
-                onPressedChange={() => checkInToggle.toggle(player)}
-                size="sm"
-                aria-label="Check-in"
-                className={cn(
-                  "border transition-all duration-300",
-                  player.checkedIn
-                    ? "animate-in zoom-in-50 border-success-solid bg-success-solid text-white hover:bg-success-solid/90 aria-pressed:bg-success-solid aria-pressed:text-white"
-                    : "border-warning/50 text-warning hover:bg-warning/10"
-                )}
-              >
-                <CheckIcon />
-              </Toggle>
-            )}
-          </div>
-        )}
-        <Separator />
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Total jugada</span>
-          <span className="font-semibold">${totalPlayed}</span>
+          )}
         </div>
-        {giftPlays > 0 && (
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              De los cuales {giftPlays} {giftPlays === 1 ? "regalo" : "regalos"} (−${giftsValue})
-            </span>
-            <span>Cobrado ${totalPlayed - giftsValue}</span>
-          </div>
-        )}
-
         {!readOnly && (
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex shrink-0 items-center gap-1.5">
             <span className="text-muted-foreground">Recarga</span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setIsMovementsOpen(true)}
-                title="Últimos movimientos"
-                aria-label="Últimos movimientos"
-              >
-                <ArrowUpDownIcon />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setIsRechargeOpen(true)}
-                title="Recargar saldo"
-              >
-                <CalculatorIcon />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="icon-xs"
+              onClick={() => setIsMovementsOpen(true)}
+              title="Últimos movimientos"
+              aria-label="Últimos movimientos"
+            >
+              <ArrowUpDownIcon />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-xs"
+              onClick={() => setIsRechargeOpen(true)}
+              title="Recargar saldo"
+              aria-label="Recargar saldo"
+            >
+              <CalculatorIcon />
+            </Button>
           </div>
         )}
+      </div>
 
+      {player.pendingCarryOverDecision && !readOnly && (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed px-2.5 py-1.5">
+          <span className="flex-1 text-[11px] text-muted-foreground">
+            ¿Mantiene su jugada?
+          </span>
+          <Button variant="outline" size="xs" onClick={() => resolveCarryOver(player.id, [])}>
+            Mantener
+          </Button>
+          <Button variant="outline" size="xs" onClick={() => setIsReleaseOpen(true)}>
+            Liberar
+          </Button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <button
           type="button"
           onClick={() => setIsRoundsOpen(true)}
-          className="flex min-h-9 items-center justify-between text-sm text-muted-foreground hover:text-foreground"
+          className="flex shrink-0 items-center gap-0.5 text-xs whitespace-nowrap text-muted-foreground hover:text-foreground"
         >
           <span>Ver rondas</span>
-          <ChevronRightIcon className="size-4" />
+          <ChevronRightIcon className="size-3.5" />
         </button>
-
-        {player.pendingCarryOverDecision && !readOnly && (
-          <div className="flex gap-2">
+        {!readOnly && (
+          <div className="flex flex-1 items-center justify-between gap-1.5 whitespace-nowrap">
             <Button
               variant="outline"
-              className="flex-1"
-              onClick={() => resolveCarryOver(player.id, [])}
+              size="xs"
+              disabled={player.pendingCarryOverDecision}
+              title={
+                player.pendingCarryOverDecision
+                  ? "Primero decide si mantiene o libera su jugada"
+                  : undefined
+              }
+              onClick={() => setIsEditOpen(true)}
             >
-              Mantener jugada
+              Editar jugada
             </Button>
             <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setIsReleaseOpen(true)}
+              variant="destructive"
+              size="xs"
+              onClick={() => setIsRemoveConfirmOpen(true)}
             >
-              Liberar
+              Retirar jugador
             </Button>
           </div>
         )}
+      </div>
 
-        {!readOnly && (
-          <Button
-            variant="destructive"
-            onClick={() => setIsRemoveConfirmOpen(true)}
-          >
-            Retirar jugador
-          </Button>
-        )}
-      </CardContent>
 
       {checkInToggle.dialog}
       <PlayerEditNumbersDialog
@@ -323,8 +313,11 @@ export function PlayerActiveCard({
               ¿Retirar a {player.name} de la jornada?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Sus números quedarán disponibles de nuevo en los cartones, sin
-              reembolso. Su saldo se conserva para la liquidación.
+              Sus números quedarán disponibles de nuevo en los cartones.
+              {removedPlays > 0
+                ? ` Se asume que sus jugadas de esta ronda no se van a pagar: $${removedPlays} no contarán como ganancia de la casa y se descuentan de lo que debe.`
+                : ""}
+              {" "}Su saldo se conserva para la liquidación.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
