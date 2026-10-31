@@ -54,6 +54,15 @@ export function CheckInBalanceAlert() {
             {pendingDecision.length === 1 ? "" : "n"} o libera
             {pendingDecision.length === 1 ? "" : "n"} su jugada
           </AlertTitle>
+          <AlertDescription>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {pendingDecision.map((p) => (
+                <Badge key={p.id} className="bg-warning/20 text-warning">
+                  {p.name}
+                </Badge>
+              ))}
+            </div>
+          </AlertDescription>
         </Alert>
       )}
     </>
