@@ -220,7 +220,10 @@ begin
   perform pg_temp.chk('S5 línea 6 tras retirar a P1', '2,3,-,-', pg_temp.row_of(s, 6));
   perform pg_temp.chk('S5 línea 7 tras retirar a P1', '2,-,-,-', pg_temp.row_of(s, 7));
   perform pg_temp.chk('S5 tres jugadas movidas', '3/0.00', pg_temp.moved(s));
-  perform pg_temp.chk('S5 sin reembolso al retirar', '-20.00', pg_temp.bal(s, 1));
+  perform pg_temp.chk('S5 se anulan sus jugadas al retirar', '0.00', pg_temp.bal(s, 1));
+  perform pg_temp.chk('S5 las ventas salen del resultado de la casa (P2 en 6 y 7, P3 en 6)', '30.00',
+    (select house_balance::text from public.game_sessions where id = s));
+  perform pg_temp.inv(s, 'S5', true, true);
 
   -- S6: releasing while deciding the carry-over ------------------------------
   s := pg_temp.mk('s6', 4);

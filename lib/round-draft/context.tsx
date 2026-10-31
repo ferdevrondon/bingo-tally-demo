@@ -25,6 +25,7 @@ import {
   type NumberEdit,
 } from "./game-api"
 import { ticketPrize } from "./prize-rules"
+import { removalRefund } from "./remove-player"
 import { getWinnersForNumber } from "./selectors"
 import type { DraftPlayer, RoundDraftState } from "./types"
 
@@ -207,17 +208,20 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       }
     }
     case "REMOVE_PLAYER": {
-      // Numbers are freed without refund; the balance stays for the settlement.
+      // The player's paid plays in the open round are voided (public.remove_player):
+      // the money goes back to their balance and out of the house result.
       const { playerId } = action.payload
+      const refund = removalRefund(state, playerId)
+      const refunded = refund > 0 ? creditPlayer(state, playerId, refund) : state
       return {
-        ...state,
+        ...refunded,
         tickets: state.tickets.map((ticket) => ({
           ...ticket,
           numbers: ticket.numbers.map((entry) =>
             entry.playerId === playerId ? { ...entry, playerId: null, isGift: false } : entry
           ),
         })),
-        players: updatePlayer(state.players, playerId, (p) => ({
+        players: updatePlayer(refunded.players, playerId, (p) => ({
           ...p,
           removed: true,
           checkedIn: false,
