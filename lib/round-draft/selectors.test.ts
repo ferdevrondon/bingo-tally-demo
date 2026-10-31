@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   canChangeRound,
   getHouseWin,
+  getActivePlayers,
   getOpenStats,
   getPlayerNumberSummary,
   getRoundGifts,
@@ -192,5 +193,33 @@ describe("canChangeRound", () => {
 
   it("is false without an open round", () => {
     expect(canChangeRound({ ...base, round: null } as unknown as RoundDraftState)).toBe(false)
+  })
+})
+
+describe("getActivePlayers", () => {
+  it("sorts the players with plays alphabetically, not by arrival", () => {
+    const state = {
+      ...makeState({
+        1: [
+          [1, 1, false],
+          [2, 2, false],
+          [3, 3, false],
+          [4, 4, false],
+        ],
+      }),
+      players: [
+        { id: 1, name: "MARTHA" },
+        { id: 2, name: "ÁNGEL" },
+        { id: 3, name: "BOLIVAR" },
+        { id: 4, name: "ADRI" },
+        { id: 5, name: "ZAVALA" },
+      ],
+    } as unknown as RoundDraftState
+    expect(getActivePlayers(state).map((p) => p.name)).toEqual([
+      "ADRI",
+      "ÁNGEL",
+      "BOLIVAR",
+      "MARTHA",
+    ])
   })
 })
