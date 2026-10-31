@@ -13,7 +13,10 @@ export function getActivePlayers(state: RoundDraftState): DraftPlayer[] {
       .filter((n) => n.playerId !== null)
       .map((n) => n.playerId as number)
   )
-  return state.players.filter((p) => activeIds.has(p.id))
+  // Alphabetical, not by order of arrival (accents and ñ sort as in Spanish).
+  return state.players
+    .filter((p) => activeIds.has(p.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
 }
 
 export interface NumberWinnerEntry {

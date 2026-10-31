@@ -28,6 +28,7 @@ import { correctMovement } from "@/lib/data/account-actions"
 import { GAME_ACTION_ERROR_MESSAGES } from "@/lib/data/game-action-result"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { removalRefund } from "@/lib/round-draft/remove-player"
 import { getPlayerNumberSummary, getSlotWinners } from "@/lib/round-draft/selectors"
 import { formatMoney } from "@/lib/rounds"
 import type { DraftPlayer } from "@/lib/round-draft/types"
@@ -51,6 +52,7 @@ export function PlayerActiveCard({
   const [isMovementsOpen, setIsMovementsOpen] = React.useState(false)
 
   const balance = player.balance
+  const removedPlays = removalRefund(state, player.id)
 
   // A correction from "Últimos movimientos": the game session re-syncs from
   // the new ledger row.
@@ -311,8 +313,11 @@ export function PlayerActiveCard({
               ¿Retirar a {player.name} de la jornada?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Sus números quedarán disponibles de nuevo en los cartones, sin
-              reembolso. Su saldo se conserva para la liquidación.
+              Sus números quedarán disponibles de nuevo en los cartones.
+              {removedPlays > 0
+                ? ` Se asume que sus jugadas de esta ronda no se van a pagar: $${removedPlays} no contarán como ganancia de la casa y se descuentan de lo que debe.`
+                : ""}
+              {" "}Su saldo se conserva para la liquidación.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

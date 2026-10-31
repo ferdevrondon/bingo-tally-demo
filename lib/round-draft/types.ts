@@ -19,7 +19,7 @@ export interface DraftPlayer {
   pendingCarryOverDecision: boolean
   /** Has a game_session_players row (joined by a purchase or recharge). */
   inSession: boolean
-  /** Removed from this game session (remove_player); keeps its balance. */
+  /** Removed from this game session (remove_player); its open-round plays are voided. */
   removed: boolean
 }
 
