@@ -42,16 +42,17 @@ export function getPlayerColorClass(playerIndex: number): string {
   return getPlayerChartColorClass(playerIndex)
 }
 
-/** A free number: a light tint (amber in multicolor). Add hover styles where
- *  the cell can be taken. */
+/** A free number: white with black text in unicolor (amber tint in
+ *  multicolor), so it reads apart from the solid taken number. Add hover
+ *  styles where the cell can be taken. */
 export const FREE_NUMBER_CLASSES =
   PLAYER_COLOR_MODE === "unicolor"
-    ? "border-primary/30 bg-primary/10 text-primary"
+    ? "border-border bg-white text-black"
     : "border-warning/40 bg-warning/10 text-warning"
 
 /** The hover tint of a free number that can be taken. */
 export const FREE_NUMBER_HOVER_CLASSES =
-  PLAYER_COLOR_MODE === "unicolor" ? "hover:bg-primary/20" : "hover:bg-warning/20"
+  PLAYER_COLOR_MODE === "unicolor" ? "hover:bg-primary/15" : "hover:bg-warning/20"
 
 /** A taken number: the player's solid color; gifts get the dashed border. */
 export function getTakenNumberClasses(playerIndex: number, isGift: boolean): string {

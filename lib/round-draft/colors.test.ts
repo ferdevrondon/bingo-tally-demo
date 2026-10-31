@@ -15,8 +15,8 @@ describe("ticket colors", () => {
     expect(getPlayerColorClass(0)).toBe("bg-primary")
   })
 
-  it("shows a free number as a tint and a taken one as the solid color", () => {
-    expect(FREE_NUMBER_CLASSES).toContain("bg-primary/10")
+  it("shows a free number as white and a taken one as the solid color", () => {
+    expect(FREE_NUMBER_CLASSES).toContain("bg-white")
     expect(getTakenNumberClasses(2, false)).toContain("bg-primary")
     expect(getTakenNumberClasses(2, false)).toContain("text-white")
     expect(getTakenNumberClasses(2, false)).not.toContain("dashed")
