@@ -6,15 +6,27 @@ import { LayoutGridIcon, ListIcon, PlusIcon } from "lucide-react"
 import { TicketCard } from "@/components/ticket-card"
 import { TicketListColumn } from "@/components/ticket-list-column"
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
+import { canRemoveTicket, sortPlayersByName } from "@/lib/round-draft/selectors"
+import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
 export type TicketsView = "tickets" | "list"
@@ -104,39 +116,75 @@ export function TicketsToolbar({
     <div className="flex flex-wrap items-center gap-3">
       {leading}
 
-      <Select
-        value={state.activePlayerId != null ? String(state.activePlayerId) : ""}
-        onValueChange={(value) => setActivePlayer(value ? Number(value) : null)}
+      <PlayerCombobox
+        players={state.players}
+        value={state.activePlayerId}
+        onChange={setActivePlayer}
         disabled={!state.round}
-        items={state.players.map((p) => ({
-          label: p.name,
-          value: String(p.id),
-        }))}
-      >
-        <SelectTrigger className="w-full sm:w-72">
-          <SelectValue
-            placeholder={
-              state.round
-                ? "Selecciona un jugador activo"
-                : "Primero elige la ronda"
-            }
-          />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {state.players.map((p) => (
-              <SelectItem key={p.id} value={String(p.id)}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+        placeholder={
+          state.round
+            ? "Selecciona un jugador activo"
+            : "Primero elige la ronda"
+        }
+        className="w-full sm:w-72"
+      />
 
       {trailing}
 
       <TicketsViewToggle className="ml-auto" />
     </div>
+  )
+}
+
+/** A player select you can type into: the list is alphabetical and the
+ *  filter runs in the browser over the players already in memory (no
+ *  request per keystroke). Accents and case are ignored ("jose" finds
+ *  "JOSÉ"). */
+export function PlayerCombobox({
+  players,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  className,
+}: {
+  players: DraftPlayer[]
+  value: number | null
+  onChange: (playerId: number | null) => void
+  disabled?: boolean
+  placeholder: string
+  className?: string
+}) {
+  const sorted = React.useMemo(() => sortPlayersByName(players), [players])
+  // The selected item must be one of `sorted` (compared by identity).
+  const selected = sorted.find((p) => p.id === value) ?? null
+
+  return (
+    <Combobox
+      items={sorted}
+      value={selected}
+      onValueChange={(player: DraftPlayer | null) =>
+        onChange(player?.id ?? null)
+      }
+      itemToStringLabel={(player: DraftPlayer) => player.name}
+      disabled={disabled}
+    >
+      <ComboboxInput
+        placeholder={placeholder}
+        disabled={disabled}
+        className={className}
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>Sin coincidencias</ComboboxEmpty>
+        <ComboboxList>
+          {(player: DraftPlayer) => (
+            <ComboboxItem key={player.id} value={player}>
+              {player.name}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   )
 }
 
@@ -147,14 +195,25 @@ export function TicketsGrid({
 }: {
   highlightNumber?: number | null
 }) {
-  const { state, readOnly, addTicket, assignNumber, toggleGift } =
+  const { state, readOnly, addTicket, removeTicket, assignNumber, toggleGift } =
     useRoundDraft()
   const [isTicketPending, startTicketTransition] = React.useTransition()
   const [view] = useTicketsView()
+  // The ticket waiting for "Retirar cartón" to be confirmed.
+  const [removing, setRemoving] = React.useState<{ id: number; index: number } | null>(null)
 
   function handleAddTicket() {
     startTicketTransition(async () => {
       await addTicket()
+    })
+  }
+
+  function handleRemoveTicket() {
+    if (!removing) return
+    const { id } = removing
+    setRemoving(null)
+    startTicketTransition(async () => {
+      await removeTicket(id)
     })
   }
 
@@ -165,7 +224,34 @@ export function TicketsGrid({
     highlightNumber,
     onAssign: (number: number) => assignNumber(ticketId, number),
     onToggleGift: (number: number) => toggleGift(ticketId, number),
+    onRemove:
+      !readOnly && !isTicketPending && canRemoveTicket(state, ticketId)
+        ? () => {
+            const ticket = state.tickets.find((t) => t.id === ticketId)
+            if (ticket) setRemoving({ id: ticket.id, index: ticket.index })
+          }
+        : undefined,
   })
+
+  const confirmRemove = (
+    <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Retirar el cartón {removing?.index}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            No tiene números jugados. Su historial se conserva y, si agregas un cartón más
+            adelante, vuelve este mismo.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={handleRemoveTicket}>
+            Retirar cartón
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 
   return view === "tickets" ? (
     <div className="flex flex-wrap gap-4">
@@ -183,6 +269,7 @@ export function TicketsGrid({
           className="w-full max-w-72"
         />
       )}
+      {confirmRemove}
     </div>
   ) : (
     <div className="flex gap-3 overflow-x-auto pb-2">
@@ -200,6 +287,7 @@ export function TicketsGrid({
           className="mt-7 w-40 shrink-0"
         />
       )}
+      {confirmRemove}
     </div>
   )
 }

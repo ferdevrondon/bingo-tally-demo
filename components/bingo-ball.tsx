@@ -89,8 +89,8 @@ export function BingoBall({
               : "Número regalado"
           }
           className={cn(
-            "absolute -right-1 -bottom-1 z-20 flex items-center justify-center gap-0.5 rounded-full border border-destructive/60 bg-gradient-to-br from-yellow-400 to-amber-500 shadow-sm",
-            sm ? "h-3.5 min-w-3.5 px-0.5" : "h-5 min-w-5 px-1"
+            "absolute -right-1 z-20 flex items-center whitespace-nowrap justify-center gap-0.5 rounded-full border border-destructive/60 bg-gradient-to-br from-yellow-400 to-amber-500 shadow-sm",
+            sm ? "-bottom-1.5 h-3.5 min-w-3.5 px-0.5" : "-bottom-1 h-5 min-w-5 px-1"
           )}
         >
           <GiftIcon

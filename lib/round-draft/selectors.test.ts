@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest"
 
 import {
   canChangeRound,
+  canRemoveTicket,
   getHouseWin,
   getActivePlayers,
   getOpenStats,
   getPlayerNumberSummary,
   getRoundGifts,
   getSlotWinners,
+  sortPlayersByName,
 } from "./selectors"
 import type { RoundDraftState, Ticket } from "./types"
 
@@ -92,7 +94,12 @@ describe("getOpenStats and getRoundGifts", () => {
 })
 
 describe("getSlotWinners", () => {
-  const prize = (playerId: number | null, number: number, amount: number, roundId = 7) => ({
+  const prize = (
+    playerId: number | null,
+    number: number,
+    amount: number,
+    roundId = 7
+  ) => ({
     type: "prize_won",
     playerId,
     number,
@@ -168,7 +175,11 @@ describe("canChangeRound", () => {
   it("is open while the round has only starts and check-ins", () => {
     const state = {
       ...base,
-      activity: [row("round_started"), row("check_in"), row("number_purchased", 6)],
+      activity: [
+        row("round_started"),
+        row("check_in"),
+        row("number_purchased", 6),
+      ],
     } as unknown as RoundDraftState
     expect(canChangeRound(state)).toBe(true)
   })
@@ -192,7 +203,9 @@ describe("canChangeRound", () => {
   })
 
   it("is false without an open round", () => {
-    expect(canChangeRound({ ...base, round: null } as unknown as RoundDraftState)).toBe(false)
+    expect(
+      canChangeRound({ ...base, round: null } as unknown as RoundDraftState)
+    ).toBe(false)
   })
 })
 
@@ -221,5 +234,58 @@ describe("getActivePlayers", () => {
       "BOLIVAR",
       "MARTHA",
     ])
+  })
+})
+
+describe("sortPlayersByName", () => {
+  it("sorts alphabetically as in Spanish, ignoring accents and case", () => {
+    const players = [
+      { name: "ÑAÑO" },
+      { name: "nora" },
+      { name: "ÁLVARO" },
+      { name: "ZOE" },
+      { name: "ANA" },
+    ]
+    expect(sortPlayersByName(players).map((p) => p.name)).toEqual([
+      "ÁLVARO",
+      "ANA",
+      "nora",
+      "ÑAÑO",
+      "ZOE",
+    ])
+  })
+
+  it("returns a copy and leaves the input untouched", () => {
+    const players = [{ name: "B" }, { name: "A" }]
+    const sorted = sortPlayersByName(players)
+    expect(sorted).not.toBe(players)
+    expect(players.map((p) => p.name)).toEqual(["B", "A"])
+  })
+})
+
+describe("canRemoveTicket", () => {
+  const withWinners = (state: RoundDraftState, winningNumbers: (number | null)[]) =>
+    ({ ...state, winningNumbers }) as RoundDraftState
+
+  it("allows an empty ticket when there are others and no winning numbers", () => {
+    const state = withWinners(makeState({ 1: [[4, 1, false]], 2: [] }), [null])
+    expect(canRemoveTicket(state, 102)).toBe(true)
+  })
+
+  it("refuses a ticket with a play, even a gift", () => {
+    const state = withWinners(makeState({ 1: [[4, 1, false]], 2: [[4, 2, true]] }), [null])
+    expect(canRemoveTicket(state, 101)).toBe(false)
+    expect(canRemoveTicket(state, 102)).toBe(false)
+  })
+
+  it("refuses the only ticket and an unknown one", () => {
+    const state = withWinners(makeState({ 1: [] }), [])
+    expect(canRemoveTicket(state, 101)).toBe(false)
+    expect(canRemoveTicket(state, 999)).toBe(false)
+  })
+
+  it("refuses once the open round has a winning number", () => {
+    const state = withWinners(makeState({ 1: [], 2: [] }), [5, null])
+    expect(canRemoveTicket(state, 102)).toBe(false)
   })
 })

@@ -14,12 +14,17 @@ import type { ActivityEntry, RoundDraftState } from "./types"
 export type ActivityContext = {
   players: Pick<RoundDraftState["players"][number], "id" | "name">[]
   tickets: Pick<RoundDraftState["tickets"][number], "id" | "index">[]
+  /** Removed tickets, still named by the rows that point to them. */
+  removedTickets?: RoundDraftState["removedTickets"]
   rounds: RoundDraftState["rounds"]
 }
 
 export function describeActivity(entry: ActivityEntry, state: ActivityContext): string {
   const player = state.players.find((p) => p.id === entry.playerId)?.name ?? "Jugador"
-  const ticketIndex = state.tickets.find((t) => t.id === entry.ticketId)?.index
+  const ticketIndex = (
+    state.tickets.find((t) => t.id === entry.ticketId) ??
+    state.removedTickets?.find((t) => t.id === entry.ticketId)
+  )?.index
   const position = `Cartón ${ticketIndex ?? "?"} · #${entry.number ?? "?"}`
   const round = state.rounds.find((r) => r.id === entry.roundId)
   const roundLabel = round ? `ronda ${round.seq} (${round.name})` : "la ronda"
@@ -47,6 +52,10 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
       return `${player} fue retirado de la jornada`
     case "ticket_added":
       return `Se agregó el cartón ${ticketIndex ?? ""}`.trim()
+    case "ticket_restored":
+      return `Se volvió a agregar el cartón ${ticketIndex ?? ""}`.trim()
+    case "ticket_removed":
+      return `Se retiró el cartón ${ticketIndex ?? ""}`.trim()
     case "number_purchased":
       return `${player} compró ${position} (${amount})`
     case "number_released":

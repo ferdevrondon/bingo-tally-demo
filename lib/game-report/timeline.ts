@@ -34,6 +34,8 @@ const CATEGORY_BY_TYPE: Record<ActivityEntryType, TimelineCategory> = {
   player_added: "other",
   player_removed: "other",
   ticket_added: "other",
+  ticket_removed: "other",
+  ticket_restored: "other",
   check_in: "other",
   check_in_undone: "other",
 }
