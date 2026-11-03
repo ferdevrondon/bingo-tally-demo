@@ -42,20 +42,62 @@ export function getPlayerColorClass(playerIndex: number): string {
   return getPlayerChartColorClass(playerIndex)
 }
 
+// Tickets (unicolor): one teal hue in three steps of lightness. The player
+// being edited, or picked to take numbers, is the bright turquoise, the numbers other players hold are the dark
+// teal and the free ones the lightest.
+const GIFT_BORDER = "border-2 border-dashed border-foreground/40"
+
+/** The numbers of the player being edited. */
+export function getEditingNumberClasses(isGift: boolean): string {
+  return [
+    "bg-[#2dd4bf] border-transparent text-[#042f2e]",
+    isGift && GIFT_BORDER,
+  ]
+    .filter(Boolean)
+    .join(" ")
+}
+
+/** The numbers other players already hold. */
+export function getOtherPlayerEditNumberClasses(isGift: boolean): string {
+  return ["bg-[#0f766e] border-transparent text-white", isGift && GIFT_BORDER]
+    .filter(Boolean)
+    .join(" ")
+}
+
+/** The numbers still free to take. */
+export const EDIT_FREE_NUMBER_CLASSES =
+  "bg-[#f0fdfa] border-[#99f6e4] text-[#115e59] dark:bg-[#0b1f1e] dark:border-[#134e4a] dark:text-[#99f6e4]"
+
+export const EDIT_FREE_NUMBER_HOVER_CLASSES =
+  "hover:bg-[#ccfbf1] dark:hover:bg-[#134e4a]"
+
 /** A free number: white with black text in unicolor (amber tint in
  *  multicolor), so it reads apart from the solid taken number. Add hover
  *  styles where the cell can be taken. */
 export const FREE_NUMBER_CLASSES =
   PLAYER_COLOR_MODE === "unicolor"
-    ? "border-border bg-white text-black"
+    ? EDIT_FREE_NUMBER_CLASSES
     : "border-warning/40 bg-warning/10 text-warning"
 
 /** The hover tint of a free number that can be taken. */
 export const FREE_NUMBER_HOVER_CLASSES =
-  PLAYER_COLOR_MODE === "unicolor" ? "hover:bg-primary/15" : "hover:bg-warning/20"
+  PLAYER_COLOR_MODE === "unicolor"
+    ? EDIT_FREE_NUMBER_HOVER_CLASSES
+    : "hover:bg-warning/20"
 
-/** A taken number: the player's solid color; gifts get the dashed border. */
-export function getTakenNumberClasses(playerIndex: number, isGift: boolean): string {
+/** A taken number: the player's solid color; gifts get the dashed border. In
+ *  unicolor, `isActive` (the player being edited or picked) is the bright
+ *  turquoise and everyone else's numbers the dark teal. */
+export function getTakenNumberClasses(
+  playerIndex: number,
+  isGift: boolean,
+  isActive = false
+): string {
+  if (PLAYER_COLOR_MODE === "unicolor") {
+    return isActive
+      ? getEditingNumberClasses(isGift)
+      : getOtherPlayerEditNumberClasses(isGift)
+  }
   return [
     getPlayerColorClass(playerIndex),
     "border-transparent text-white",

@@ -159,7 +159,8 @@ export function TicketCard({
                       ? cn(
                           getTakenNumberClasses(
                             playerIndexById.get(entry.playerId) ?? -1,
-                            entry.isGift
+                            entry.isGift,
+                            entry.playerId === activePlayerId
                           ),
                           canRelease ? "cursor-pointer" : "cursor-default"
                         )

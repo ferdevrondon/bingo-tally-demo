@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getActivePlayers } from "@/lib/round-draft/selectors"
+import { formatMoney } from "@/lib/rounds"
 
 export function CheckInBalanceAlert() {
   const { state } = useRoundDraft()
@@ -18,12 +19,18 @@ export function CheckInBalanceAlert() {
     (p) => !p.checkedIn && !p.pendingCarryOverDecision
   )
 
-  if (pendingCheckIn.length === 0 && pendingDecision.length === 0) {
+  const owing = activePlayers.filter((p) => p.balance < 0)
+
+  if (
+    pendingCheckIn.length === 0 &&
+    pendingDecision.length === 0 &&
+    owing.length === 0
+  ) {
     return null
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       {pendingCheckIn.length > 0 && (
         <Alert className="border-none bg-destructive/10 text-destructive w-fit">
           <TriangleAlertIcon />
@@ -39,6 +46,24 @@ export function CheckInBalanceAlert() {
               {pendingCheckIn.map((p) => (
                 <Badge key={p.id} className="bg-red-600 text-white">
                   {p.name}
+                </Badge>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+      {owing.length > 0 && (
+        <Alert className="w-fit border-none bg-destructive/10 text-destructive">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {owing.length} jugador{owing.length === 1 ? "" : "es"} con saldo
+            negativo
+          </AlertTitle>
+          <AlertDescription>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {owing.map((p) => (
+                <Badge key={p.id} className="bg-red-600 text-white">
+                  {p.name} · {formatMoney(Math.abs(p.balance))}
                 </Badge>
               ))}
             </div>
@@ -65,6 +90,6 @@ export function CheckInBalanceAlert() {
           </AlertDescription>
         </Alert>
       )}
-    </>
+    </div>
   )
 }
