@@ -49,7 +49,11 @@ export function TicketListColumn({
               className={cn(
                 "flex h-7 items-center gap-1 rounded-md border pr-1 text-xs font-medium transition-colors",
                 owner
-                  ? getTakenNumberClasses(playerIndexById.get(owner.id) ?? -1, entry.isGift)
+                  ? getTakenNumberClasses(
+                      playerIndexById.get(owner.id) ?? -1,
+                      entry.isGift,
+                      owner.id === activePlayerId
+                    )
                   : cn(
                       FREE_NUMBER_CLASSES,
                       entry.number === highlightNumber &&

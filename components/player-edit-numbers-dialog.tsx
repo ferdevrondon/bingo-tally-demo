@@ -28,10 +28,11 @@ import { TicketsViewToggle, useTicketsView } from "@/components/tickets-board"
 import { claimFirstFree, ticketsByIndex } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
 import {
-  FREE_NUMBER_CLASSES,
-  FREE_NUMBER_HOVER_CLASSES,
+  EDIT_FREE_NUMBER_CLASSES,
+  EDIT_FREE_NUMBER_HOVER_CLASSES,
   getPlayerColorClass,
-  getTakenNumberClasses,
+  getEditingNumberClasses,
+  getOtherPlayerEditNumberClasses,
 } from "@/lib/round-draft/colors"
 import {
   getPlayerNumberSummary,
@@ -50,14 +51,12 @@ function ticketsDiffer(a: Ticket[], b: Ticket[]): boolean {
 function EditableTicket({
   ticket,
   playerId,
-  playerIndexById,
   playerById,
   onCellClick,
   onToggleGift,
 }: {
   ticket: Ticket
   playerId: number
-  playerIndexById: Map<number, number>
   playerById: Map<number, DraftPlayer>
   onCellClick: (number: number) => void
   onToggleGift: (number: number) => void
@@ -85,14 +84,10 @@ function EditableTicket({
                 className={cn(
                   "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 text-sm font-medium transition-colors",
                   entry.playerId !== null
-                    ? cn(
-                        getTakenNumberClasses(
-                          playerIndexById.get(entry.playerId) ?? -1,
-                          entry.isGift
-                        ),
-                        isThisPlayer && "ring-2 ring-primary ring-offset-1"
-                      )
-                    : cn("cursor-pointer", FREE_NUMBER_CLASSES, FREE_NUMBER_HOVER_CLASSES)
+                    ? isThisPlayer
+                      ? getEditingNumberClasses(entry.isGift)
+                      : getOtherPlayerEditNumberClasses(entry.isGift)
+                    : cn("cursor-pointer", EDIT_FREE_NUMBER_CLASSES, EDIT_FREE_NUMBER_HOVER_CLASSES)
                 )}
               >
                 <span>{entry.number}</span>
@@ -139,14 +134,12 @@ function EditableTicket({
 function EditableTicketColumn({
   ticket,
   playerId,
-  playerIndexById,
   playerById,
   onCellClick,
   onToggleGift,
 }: {
   ticket: Ticket
   playerId: number
-  playerIndexById: Map<number, number>
   playerById: Map<number, DraftPlayer>
   onCellClick: (number: number) => void
   onToggleGift: (number: number) => void
@@ -169,11 +162,10 @@ function EditableTicketColumn({
               className={cn(
                 "flex h-7 items-center gap-1 rounded-md border pr-1 text-xs font-medium transition-colors",
                 owner
-                  ? cn(
-                      getTakenNumberClasses(playerIndexById.get(owner.id) ?? -1, entry.isGift),
-                      isThisPlayer && "ring-2 ring-primary ring-offset-1"
-                    )
-                  : FREE_NUMBER_CLASSES
+                  ? isThisPlayer
+                    ? getEditingNumberClasses(entry.isGift)
+                    : getOtherPlayerEditNumberClasses(entry.isGift)
+                  : EDIT_FREE_NUMBER_CLASSES
               )}
             >
               <button
@@ -182,7 +174,7 @@ function EditableTicketColumn({
                 title={owner?.name}
                 className={cn(
                   "flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2",
-                  !owner && "hover:bg-warning/20"
+                  !owner && EDIT_FREE_NUMBER_HOVER_CLASSES
                 )}
               >
                 {owner ? (
@@ -432,7 +424,6 @@ export function PlayerEditNumbersDialog({
                     key={ticket.id}
                     ticket={ticket}
                     playerId={player.id}
-                    playerIndexById={playerIndexById}
                     playerById={playerById}
                     onCellClick={(number) => handleCellClick(ticket.id, number)}
                     onToggleGift={(number) => handleToggleGift(ticket.id, number)}

@@ -38,42 +38,54 @@ export function PlayerNumbersSummary({
     // Under the name on narrow screens, between the name and the check-in on
     // wide ones (the row in tickets-assignment-page orders the three).
     <div className="order-3 flex min-w-0 basis-full flex-wrap items-center gap-1.5 @2xl/main:order-2 @2xl/main:flex-1 @2xl/main:basis-0">
-      {numbers.map(({ number, count, gifts }) => (
-        <span
-          key={number}
-          title={[
-            `Número ${number}`,
-            plural(count, "jugada", "jugadas"),
-            linePrice !== undefined && `Valor ${formatMoney(count * linePrice)}`,
-            linePrice !== undefined && gifts > 0 && `Cobrado ${formatMoney((count - gifts) * linePrice)}`,
-            gifts > 0 && plural(gifts, "regalo", "regalos"),
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-          className={cn(
-            "inline-flex h-6 items-center gap-1 rounded-full px-2 text-xs font-semibold text-white tabular-nums",
-            colorClass
-          )}
-        >
-          {number}
-          {count > 1 && (
-            <span className="font-medium opacity-80">×{count}</span>
-          )}
-          {linePrice !== undefined && (
-            <span className="font-medium opacity-80">
-              – {formatMoney(count * linePrice)}
-            </span>
-          )}
-          {gifts > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-background px-1 text-destructive">
-              <GiftIcon className="size-3" />
-              {linePrice !== undefined && (
-                <span className="text-[10px]">−{formatMoney(gifts * linePrice)}</span>
+      {numbers.flatMap(({ number, count, gifts }) => {
+        // A number held on several tickets with only some of them gifted shows
+        // two chips: the paid plays and the gifts.
+        const paid = count - gifts
+        return [
+          paid > 0 && { isGift: false, plays: paid },
+          gifts > 0 && { isGift: true, plays: gifts },
+        ]
+          .filter((chip) => chip !== false)
+          .map(({ isGift, plays: chipPlays }) => (
+            <span
+              key={`${number}-${isGift ? "gift" : "paid"}`}
+              title={[
+                `Número ${number}`,
+                plural(chipPlays, "jugada", "jugadas"),
+                isGift && "regalo",
+                linePrice !== undefined &&
+                  `${isGift ? "Valor" : "Cobrado"} ${formatMoney(chipPlays * linePrice)}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              className={cn(
+                "inline-flex h-6 items-center gap-1 rounded-full px-2 text-xs font-semibold text-white tabular-nums",
+                colorClass
+              )}
+            >
+              {number}
+              {chipPlays > 1 && (
+                <span className="font-medium opacity-80">×{chipPlays}</span>
+              )}
+              {linePrice !== undefined && !isGift && (
+                <span className="font-medium opacity-80">
+                  – {formatMoney(chipPlays * linePrice)}
+                </span>
+              )}
+              {isGift && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-[#f6c233d1] px-1.5 text-white">
+                  <GiftIcon className="size-3 text-destructive" />
+                  {linePrice !== undefined && (
+                    <span className="text-[10px]">
+                      {formatMoney(chipPlays * linePrice)}
+                    </span>
+                  )}
+                </span>
               )}
             </span>
-          )}
-        </span>
-      ))}
+          ))
+      })}
       {plays > 0 && (
         <span className="ml-1 text-xs whitespace-nowrap text-muted-foreground">
           {plural(plays, "jugada", "jugadas")}
