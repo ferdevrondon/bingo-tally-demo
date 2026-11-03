@@ -325,6 +325,8 @@ interface RoundDraftContextValue {
   resolveCarryOver: (playerId: number, releaseNumbers: Position[]) => void
   // Structural actions: not optimistic; they resolve once saved.
   addTicket: () => Promise<boolean>
+  /** Removes an empty ticket (soft delete, its history stays). */
+  removeTicket: (ticketId: number) => Promise<boolean>
   startRound: (roundTemplateId: number) => Promise<boolean>
   /** Resolves `ok` once the round is closed, with its summary (rule F) when
    *  it could be read. */
@@ -672,6 +674,12 @@ export function RoundDraftProvider({
       addTicket: async () =>
         (await perform([], () => api.addTicket(gameSessionId, requestId()), { resync: "await" }))
           .ok,
+      removeTicket: async (ticketId) =>
+        (
+          await perform([], () => api.removeTicket(gameSessionId, ticketId, requestId()), {
+            resync: "await",
+          })
+        ).ok,
       startRound: async (roundTemplateId) =>
         (
           await perform([], () => api.startRound(gameSessionId, roundTemplateId, requestId()), {

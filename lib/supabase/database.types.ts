@@ -209,6 +209,7 @@ export type Database = {
           seq: number
           started_at: string
           status: string
+          tickets_count: number | null
           winning_numbers: number[]
         }
         Insert: {
@@ -227,6 +228,7 @@ export type Database = {
           seq: number
           started_at?: string
           status?: string
+          tickets_count?: number | null
           winning_numbers?: number[]
         }
         Update: {
@@ -245,6 +247,7 @@ export type Database = {
           seq?: number
           started_at?: string
           status?: string
+          tickets_count?: number | null
           winning_numbers?: number[]
         }
         Relationships: [
@@ -703,6 +706,7 @@ export type Database = {
           house_id: number
           id: number
           index: number
+          removed_at: string | null
         }
         Insert: {
           created_at?: string
@@ -710,6 +714,7 @@ export type Database = {
           house_id: number
           id?: never
           index: number
+          removed_at?: string | null
         }
         Update: {
           created_at?: string
@@ -717,6 +722,7 @@ export type Database = {
           house_id?: number
           id?: never
           index?: number
+          removed_at?: string | null
         }
         Relationships: [
           {
@@ -860,6 +866,14 @@ export type Database = {
         Args: {
           p_number: number
           p_player_id: number
+          p_request_id: string
+          p_ticket_id: number
+        }
+        Returns: undefined
+      }
+      remove_ticket: {
+        Args: {
+          p_game_session_id: number
           p_request_id: string
           p_ticket_id: number
         }
