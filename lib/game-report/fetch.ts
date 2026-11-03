@@ -31,7 +31,7 @@ type Client = SupabaseClient<Database>
 const PAGE_SIZE = 1000
 
 const LEDGER_COLUMNS =
-  "id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note, bank, corrects_id"
+  "id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note, bank, corrects_id, counterparty_player_id, transfer_id"
 
 type LedgerRow = Pick<
   Database["public"]["Tables"]["activity_log"]["Row"],
@@ -47,6 +47,8 @@ type LedgerRow = Pick<
   | "note"
   | "bank"
   | "corrects_id"
+  | "counterparty_player_id"
+  | "transfer_id"
 >
 
 export function toActivityEntry(row: LedgerRow): ActivityEntry {
@@ -63,6 +65,8 @@ export function toActivityEntry(row: LedgerRow): ActivityEntry {
     bank: isBank(row.bank) ? row.bank : null,
     note: row.note,
     correctsId: row.corrects_id,
+    counterpartyPlayerId: row.counterparty_player_id,
+    transferId: row.transfer_id,
   }
 }
 
@@ -197,11 +201,12 @@ export async function fetchGameSessionReport(
       cash.set(method, line)
     }
     if (row.player_id === null) continue
-    const t = totals.get(row.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0 }
+    const t = totals.get(row.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0, transfers: 0 }
     t.played += sale
     if (row.type === "prize_won") t.prizes += Number(row.amount ?? 0)
     else if (row.type === "recharge") t.recharges += Number(row.amount ?? 0)
     else if (row.type === "payout") t.payouts += -Number(row.amount ?? 0)
+    else if (row.type === "balance_transfer") t.transfers += Number(row.amount ?? 0)
     totals.set(row.player_id, t)
   }
 
@@ -284,7 +289,7 @@ export async function fetchGameSessionReport(
       name: playerNames.get(p.player_id) ?? "Jugador",
       removed: p.removed_at !== null,
       opening: Number(p.opening_balance),
-      ...(totals.get(p.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0 }),
+      ...(totals.get(p.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0, transfers: 0 }),
       closing: Number(p.balance),
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "es"))

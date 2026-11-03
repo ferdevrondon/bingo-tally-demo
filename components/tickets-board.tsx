@@ -136,6 +136,8 @@ export function TicketsToolbar({
   )
 }
 
+export type ComboboxPlayer = Pick<DraftPlayer, "id" | "name">
+
 /** A player select you can type into: the list is alphabetical and the
  *  filter runs in the browser over the players already in memory (no
  *  request per keystroke). Accents and case are ignored ("jose" finds
@@ -148,7 +150,7 @@ export function PlayerCombobox({
   placeholder,
   className,
 }: {
-  players: DraftPlayer[]
+  players: ComboboxPlayer[]
   value: number | null
   onChange: (playerId: number | null) => void
   disabled?: boolean
@@ -163,10 +165,10 @@ export function PlayerCombobox({
     <Combobox
       items={sorted}
       value={selected}
-      onValueChange={(player: DraftPlayer | null) =>
+      onValueChange={(player: ComboboxPlayer | null) =>
         onChange(player?.id ?? null)
       }
-      itemToStringLabel={(player: DraftPlayer) => player.name}
+      itemToStringLabel={(player: ComboboxPlayer) => player.name}
       disabled={disabled}
     >
       <ComboboxInput
@@ -177,7 +179,7 @@ export function PlayerCombobox({
       <ComboboxContent>
         <ComboboxEmpty>Sin coincidencias</ComboboxEmpty>
         <ComboboxList>
-          {(player: DraftPlayer) => (
+          {(player: ComboboxPlayer) => (
             <ComboboxItem key={player.id} value={player}>
               {player.name}
             </ComboboxItem>

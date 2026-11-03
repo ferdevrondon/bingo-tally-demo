@@ -632,6 +632,17 @@ Raised in QA: an admin recharged $1000 instead of $100 and asked for a +/− inp
 - Prevention: every cash move ("Recibir pago", "Registrar pago" and the live recharge) opens a confirmation (`components/confirm-movement-dialog.tsx`): "¿Confirmas esta transacción? Vas a registrar $X para NAME", with the kind, method and bank; "Sí, registrar" is what records it. From $500 (`LARGE_AMOUNT`), or 5 × the player's last recharge in the live game, it adds "Es un monto alto: revisa que esté bien escrito."
 - Checked by Claude: typecheck, lint, the unit tests and the SQL dry run. The browser check is the product owner's (they review it themselves).
 
+### Balance transfers between players (2026-11-03)
+
+A player can hand part of their balance in favor to another one, in or out of a game session (`supabase/migrations/20261103120000_balance_transfers.sql`, test `supabase/tests/balance_transfers.sql`). It is **not cash**: the house neither collects nor pays anything, so it is neither a `recharge` nor a `payout` and never reaches `house_balance`, Diario, Mensual or the cash by payment method.
+
+- Ledger type `balance_transfer`, **two rows** linked by `activity_log.transfer_id` (the call's `request_id`): the sender's with a negative `amount`, the receiver's positive, `counterparty_player_id` = the other player, each with the game session of its own side (null on the account). The per-player reconciliation `opening + ledger = closing` includes them (`PlayerReport.transfers`; the "Jugadores" table of a game session shows a "Transferencias" column only when it had one).
+- `record_balance_transfer(p_from, p_to, p_amount, p_note, p_request_id)`: admin only, idempotent. The sender must have a balance in their favor (amount <= balance, else `insufficient_balance`); the receiver can have any balance (a debt goes down). Each side moves where the player's money lives (the active game session row, removed players included, or the account); locks go through the active game session row, so two transfers can't deadlock. A player with `pending_carryover` can't take part.
+- `void_balance_transfer(p_transfer_id, p_reason, p_request_id)`: voids the whole transfer once, with a required reason, by two rows of the same type linked by `corrects_id` (ledger stays append-only). Only while the money is still where it was put (`transfer_closed`: the game session ended, or on the account another game session started since / the player is in the active one) and while the receiver still has it (`insufficient_balance`).
+- `discard_game_session` counts transfers as money in the game session (`game_session_has_payments`).
+- UI: "Transferir saldo" (`components/balance-transfer-dialog.tsx`) from the `/players` row menu and the player card of `/active-round` (icon next to "Recargar saldo", only with a balance in favor); transfers are listed and voided in "Últimos movimientos" (`lib/movements.ts` `toTransferMoves`). Server Actions `transferBalance` / `voidTransfer` in `lib/data/account-actions.ts` (also used from the live game: the provider re-syncs from the new ledger rows, like a correction).
+- Not done yet (later): the "Gestionar saldo" dialog with tabs (Recarga/Cobro-Pago | Transferencia | Movimientos) that would replace the separate buttons.
+
 ## Later (not now)
 House switcher, transferring the admin role to another member, dashboard metrics, offline queue.
 

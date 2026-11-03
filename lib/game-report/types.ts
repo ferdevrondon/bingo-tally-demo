@@ -97,6 +97,9 @@ export interface PlayerReport {
   recharges: number
   /** Paid to the player (positive amount). */
   payouts: number
+  /** Net received from other players (a transfer of balance: negative when
+   *  they gave more than they got). Not cash. */
+  transfers: number
   closing: number
 }
 

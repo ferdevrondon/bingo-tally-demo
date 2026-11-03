@@ -1,11 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { ArrowUpDownIcon, CalculatorIcon, CheckIcon, ChevronRightIcon } from "lucide-react"
+import {
+  ArrowLeftRightIcon,
+  ArrowUpDownIcon,
+  CalculatorIcon,
+  CheckIcon,
+  ChevronRightIcon,
+} from "lucide-react"
 import { toast } from "sonner"
 
+import { BalanceTransferDialog, type TransferValues } from "@/components/balance-transfer-dialog"
 import { BingoBall } from "@/components/bingo-ball"
-import { RecentMovementsDialog, type CorrectionValues } from "@/components/recent-movements-dialog"
+import {
+  RecentMovementsDialog,
+  type CorrectionValues,
+  type VoidTransferValues,
+} from "@/components/recent-movements-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +35,7 @@ import { PlayerRechargeDialog } from "@/components/player-recharge-dialog"
 import { PlayerReleaseNumbersDialog } from "@/components/player-release-numbers-dialog"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
 import { useCheckInToggle } from "@/components/check-in-dialog"
-import { correctMovement } from "@/lib/data/account-actions"
+import { correctMovement, transferBalance, voidTransfer } from "@/lib/data/account-actions"
 import { GAME_ACTION_ERROR_MESSAGES } from "@/lib/data/game-action-result"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
@@ -50,6 +61,7 @@ export function PlayerActiveCard({
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = React.useState(false)
   const [isReleaseOpen, setIsReleaseOpen] = React.useState(false)
   const [isMovementsOpen, setIsMovementsOpen] = React.useState(false)
+  const [isTransferOpen, setIsTransferOpen] = React.useState(false)
 
   const balance = player.balance
   const removedPlays = removalRefund(state, player.id)
@@ -60,6 +72,27 @@ export function PlayerActiveCard({
     const result = await correctMovement(values)
     if (result.ok) {
       toast.success("Movimiento corregido")
+      return true
+    }
+    if (result.error !== "session_replaced") toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
+    return false
+  }
+
+  async function handleVoidTransfer(values: VoidTransferValues): Promise<boolean> {
+    const result = await voidTransfer(values)
+    if (result.ok) {
+      toast.success("Transferencia anulada")
+      return true
+    }
+    if (result.error !== "session_replaced") toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
+    return false
+  }
+
+  // "Transferir saldo": the game session re-syncs from the new ledger rows.
+  async function handleTransfer(values: TransferValues): Promise<boolean> {
+    const result = await transferBalance({ fromPlayerId: player.id, ...values })
+    if (result.ok) {
+      toast.success("Transferencia registrada")
       return true
     }
     if (result.error !== "session_replaced") toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
@@ -204,6 +237,17 @@ export function PlayerActiveCard({
             >
               <ArrowUpDownIcon />
             </Button>
+            {balance > 0 && (
+              <Button
+                variant="outline"
+                size="icon-xs"
+                onClick={() => setIsTransferOpen(true)}
+                title="Transferir saldo"
+                aria-label="Transferir saldo"
+              >
+                <ArrowLeftRightIcon />
+              </Button>
+            )}
             <Button
               variant="outline"
               size="icon-xs"
@@ -282,12 +326,24 @@ export function PlayerActiveCard({
           setIsMovementsOpen(true)
         }}
       />
+      {isTransferOpen && (
+        <BalanceTransferDialog
+          open
+          onOpenChange={setIsTransferOpen}
+          from={{ id: player.id, name: player.name, balance }}
+          candidates={state.players
+            .filter((p) => p.id !== player.id && !p.removed)
+            .map((p) => ({ id: p.id, name: p.name, balance: p.balance }))}
+          onConfirm={handleTransfer}
+        />
+      )}
       {isMovementsOpen && (
         <RecentMovementsDialog
           open
           onOpenChange={setIsMovementsOpen}
           player={{ id: player.id, name: player.name, balance, inGame: true }}
           onConfirm={handleCorrection}
+          onVoidTransfer={handleVoidTransfer}
         />
       )}
       <PlayerRoundsDialog

@@ -95,6 +95,65 @@ export async function correctMovement(input: {
   return { ok: true, data: undefined }
 }
 
+const transferSchema = z.object({
+  fromPlayerId: z.number().int().positive(),
+  toPlayerId: z.number().int().positive(),
+  amount: z.number().positive(),
+  note: z.string().trim().max(200).nullable(),
+  requestId: z.uuid(),
+})
+
+/** "Transferir saldo": a player hands part of their balance in favor to
+ *  another one, in or out of a game session. Not cash: it moves no money of
+ *  the house (see *_balance_transfers.sql). */
+export async function transferBalance(input: {
+  fromPlayerId: number
+  toPlayerId: number
+  amount: number
+  note: string | null
+  requestId: string
+}): Promise<GameActionResult> {
+  const parsed = transferSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: "invalid" }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("record_balance_transfer", {
+    p_from_player_id: parsed.data.fromPlayerId,
+    p_to_player_id: parsed.data.toPlayerId,
+    p_amount: parsed.data.amount,
+    p_note: parsed.data.note as string,
+    p_request_id: parsed.data.requestId,
+  })
+  if (error) return rejectGameAction(supabase, error)
+  refresh()
+  return { ok: true, data: undefined }
+}
+
+const voidTransferSchema = z.object({
+  transferId: z.uuid(),
+  reason: z.string().trim().min(1).max(200),
+  requestId: z.uuid(),
+})
+
+/** "Anular transferencia": both rows get a linked voiding row (never edited
+ *  or deleted); only while the money is still where it was put. */
+export async function voidTransfer(input: {
+  transferId: string
+  reason: string
+  requestId: string
+}): Promise<GameActionResult> {
+  const parsed = voidTransferSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: "invalid" }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("void_balance_transfer", {
+    p_transfer_id: parsed.data.transferId,
+    p_reason: parsed.data.reason,
+    p_request_id: parsed.data.requestId,
+  })
+  if (error) return rejectGameAction(supabase, error)
+  refresh()
+  return { ok: true, data: undefined }
+}
+
 const statusSchema = z.object({
   playerId: z.number().int().positive(),
   status: z.enum(BALANCE_STATUSES),

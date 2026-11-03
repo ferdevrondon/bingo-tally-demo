@@ -7,8 +7,13 @@ import { toast } from "sonner"
 
 import { AccountMovementDialog, type MovementValues } from "@/components/account-movement-dialog"
 import { BalanceStatusDialog } from "@/components/balance-status-dialog"
+import { BalanceTransferDialog, type TransferValues } from "@/components/balance-transfer-dialog"
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
-import { RecentMovementsDialog, type CorrectionValues } from "@/components/recent-movements-dialog"
+import {
+  RecentMovementsDialog,
+  type CorrectionValues,
+  type VoidTransferValues,
+} from "@/components/recent-movements-dialog"
 import {
   DataTable,
   type DataTableColumnDef,
@@ -31,6 +36,8 @@ import {
   receivePayment,
   registerPayout,
   setBalanceStatus,
+  transferBalance,
+  voidTransfer,
 } from "@/lib/data/account-actions"
 import {
   GAME_ACTION_ERROR_MESSAGES,
@@ -64,7 +71,7 @@ function toInput(player: Player): PlayerInput {
 }
 
 type AccountDialog = {
-  kind: "in" | "out" | "status" | "correct"
+  kind: "in" | "out" | "status" | "correct" | "transfer"
   player: Player
   account: PlayerAccount
 } | null
@@ -163,7 +170,19 @@ export default function PlayerPage({
       toast.info(`${player.name} está al día: no hay saldo que marcar.`)
       return
     }
+    if (kind === "transfer" && account.balance <= 0) {
+      toast.info(`${player.name} no tiene saldo a favor para transferir.`)
+      return
+    }
     setAccountDialog({ kind, player, account })
+  }
+
+  async function handleTransfer(values: TransferValues): Promise<boolean> {
+    if (!accountDialog || accountDialog.kind !== "transfer") return false
+    return succeeded(
+      await transferBalance({ fromPlayerId: accountDialog.player.id, ...values }),
+      "Transferencia registrada"
+    )
   }
 
   async function handleMovement(values: MovementValues): Promise<boolean> {
@@ -176,6 +195,10 @@ export default function PlayerPage({
 
   async function handleCorrection(values: CorrectionValues): Promise<boolean> {
     return succeeded(await correctMovement(values), "Movimiento corregido")
+  }
+
+  async function handleVoidTransfer(values: VoidTransferValues): Promise<boolean> {
+    return succeeded(await voidTransfer(values), "Transferencia anulada")
   }
 
   async function handleStatus(status: BalanceStatus, note: string | null, requestId: string) {
@@ -286,6 +309,11 @@ export default function PlayerPage({
                       onSelect: (row) => openAccountDialog("out", row.id),
                     },
                     {
+                      key: "transfer",
+                      label: "Transferir saldo",
+                      onSelect: (row) => openAccountDialog("transfer", row.id),
+                    },
+                    {
                       key: "movements",
                       label: "Últimos movimientos",
                       onSelect: (row) => openAccountDialog("correct", row.id),
@@ -354,6 +382,7 @@ export default function PlayerPage({
             inGame: accountDialog.account.inGame,
           }}
           onConfirm={handleCorrection}
+          onVoidTransfer={handleVoidTransfer}
         />
       )}
       {accountDialog && (accountDialog.kind === "in" || accountDialog.kind === "out") && (
@@ -368,6 +397,25 @@ export default function PlayerPage({
             bank: accountDialog.player.bank,
           }}
           onConfirm={handleMovement}
+        />
+      )}
+      {accountDialog && accountDialog.kind === "transfer" && (
+        <BalanceTransferDialog
+          open
+          onOpenChange={(open) => !open && setAccountDialog(null)}
+          from={{
+            id: accountDialog.player.id,
+            name: accountDialog.player.name,
+            balance: accountDialog.account.balance,
+          }}
+          candidates={players
+            .filter((p) => p.id !== accountDialog.player.id)
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              balance: accountFrom(accountById, p.id).balance,
+            }))}
+          onConfirm={handleTransfer}
         />
       )}
       {accountDialog && accountDialog.kind === "status" && (
