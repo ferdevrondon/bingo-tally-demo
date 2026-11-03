@@ -28,7 +28,11 @@ function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number
         "player_id, balance, checked_in, pending_carryover, removed_at, players(name, payment_method, bank)"
       )
       .eq("game_session_id", id),
-    supabase.from("tickets").select("id, index").eq("game_session_id", id).order("index"),
+    supabase
+      .from("tickets")
+      .select("id, index, removed_at")
+      .eq("game_session_id", id)
+      .order("index"),
     supabase
       .from("ticket_numbers")
       .select("ticket_id, number, player_id, is_gift")
@@ -136,11 +140,16 @@ export async function fetchGameSessionState(
   return {
     gameSessionId: id,
     gameNumber: gameSession.number,
-    tickets: (tickets.data ?? []).map((t) => ({
-      id: t.id,
-      index: t.index,
-      numbers: (numbersByTicket.get(t.id) ?? []).sort((a, b) => a.number - b.number),
-    })),
+    tickets: (tickets.data ?? [])
+      .filter((t) => t.removed_at === null)
+      .map((t) => ({
+        id: t.id,
+        index: t.index,
+        numbers: (numbersByTicket.get(t.id) ?? []).sort((a, b) => a.number - b.number),
+      })),
+    removedTickets: (tickets.data ?? [])
+      .filter((t) => t.removed_at !== null)
+      .map((t) => ({ id: t.id, index: t.index })),
     players: [...playersById.values()],
     activePlayerId: null,
     activity: (activity.data ?? []).map(toActivityEntry),

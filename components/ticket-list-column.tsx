@@ -2,6 +2,7 @@
 
 import {
   GiftToggle,
+  RemoveTicketButton,
   ticketNumberState,
   type TicketCardProps,
 } from "@/components/ticket-card"
@@ -19,6 +20,7 @@ export function TicketListColumn({
   onAssign,
   onToggleGift,
   highlightNumber = null,
+  onRemove,
 }: TicketCardProps) {
   const assignedCount = ticket.numbers.filter((n) => n.playerId !== null).length
   const playerIndexById = new Map(players.map((p, i) => [p.id, i]))
@@ -26,9 +28,12 @@ export function TicketListColumn({
 
   return (
     <div className="flex w-40 shrink-0 flex-col gap-2">
-      <span className="w-fit rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-        Cartón {ticket.index}
-      </span>
+      <div className="flex h-7 items-center justify-between">
+        <span className="w-fit rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+          Cartón {ticket.index}
+        </span>
+        {onRemove && !readOnly && <RemoveTicketButton onClick={onRemove} />}
+      </div>
       <div className="flex flex-col gap-1 rounded-2xl border border-primary/30 bg-card p-2">
         {ticket.numbers.map((entry) => {
           const owner =

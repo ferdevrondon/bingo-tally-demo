@@ -42,6 +42,8 @@ export type ActivityEntryType =
   | "player_added"
   | "player_removed"
   | "ticket_added"
+  | "ticket_removed"
+  | "ticket_restored"
   | "number_purchased"
   | "number_released"
   | "number_reassigned"
@@ -112,7 +114,11 @@ export interface RoundDraftState {
   gameSessionId: number
   /** "Jornada #N" (game_sessions.number). */
   gameNumber: number
+  /** Active tickets, by index. */
   tickets: Ticket[]
+  /** Tickets removed in this game session (empty, kept for history): only
+   *  their index, so the timeline can still name them. */
+  removedTickets: { id: number; index: number }[]
   players: DraftPlayer[]
   /** UI only: the player numbers are assigned to. Not persisted. */
   activePlayerId: number | null

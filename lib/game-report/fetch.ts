@@ -144,7 +144,7 @@ export async function fetchGameSessionReport(
     supabase
       .from("game_session_rounds")
       .select(
-        "id, seq, name, status, closed_at, line_price, prizes, winning_numbers, margin_gifts, margin_unsold_losing, margin_unsold_winning"
+        "id, seq, name, status, closed_at, line_price, prizes, winning_numbers, tickets_count, margin_gifts, margin_unsold_losing, margin_unsold_winning"
       )
       .eq("game_session_id", gameSessionId)
       .order("seq"),
@@ -158,7 +158,10 @@ export async function fetchGameSessionReport(
       .from("game_session_players")
       .select("player_id, opening_balance, balance, removed_at, players(name)")
       .eq("game_session_id", gameSessionId),
-    supabase.from("tickets").select("id, index, created_at").eq("game_session_id", gameSessionId),
+    supabase
+      .from("tickets")
+      .select("id, index, created_at, removed_at")
+      .eq("game_session_id", gameSessionId),
     supabase
       .from("settlements")
       .select("status, settlement_players(resolution, received, paid)")
@@ -239,9 +242,16 @@ export async function fetchGameSessionReport(
       linePrice: Number(r.line_price),
       prizes: r.prizes.map(Number),
       winningNumbers: r.prizes.map((_, i) => r.winning_numbers[i] ?? null),
-      ticketsCount: (tickets.data ?? []).filter(
-        (t) => r.closed_at === null || Date.parse(t.created_at) <= Date.parse(r.closed_at)
-      ).length,
+      // Snapshot taken when the round closed (*_remove_ticket.sql); the open
+      // round counts its active tickets, and rounds closed before the
+      // snapshot existed the tickets created by then.
+      ticketsCount:
+        r.tickets_count ??
+        (tickets.data ?? []).filter((t) =>
+          r.closed_at === null
+            ? t.removed_at === null
+            : Date.parse(t.created_at) <= Date.parse(r.closed_at)
+        ).length,
       winners: roundWinners,
       // A round closed without winning numbers was never played: its gifts
       // were refunded with everything else.
