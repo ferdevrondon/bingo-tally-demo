@@ -13,10 +13,19 @@ export function getActivePlayers(state: RoundDraftState): DraftPlayer[] {
       .filter((n) => n.playerId !== null)
       .map((n) => n.playerId as number)
   )
-  // Alphabetical, not by order of arrival (accents and ñ sort as in Spanish).
-  return state.players
-    .filter((p) => activeIds.has(p.id))
-    .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
+  return sortPlayersByName(state.players.filter((p) => activeIds.has(p.id)))
+}
+
+// One collator for every sort: building it per comparison is what makes
+// localeCompare slow on long lists.
+const playerNameCollator = new Intl.Collator("es", { sensitivity: "base" })
+
+/** A sorted copy, alphabetical by name rather than by order of arrival
+ *  (accents and ñ sort as in Spanish). */
+export function sortPlayersByName<T extends { name: string }>(
+  players: readonly T[]
+): T[] {
+  return [...players].sort((a, b) => playerNameCollator.compare(a.name, b.name))
 }
 
 export interface NumberWinnerEntry {
@@ -129,7 +138,10 @@ export function getLastRechargeActivity(
 ): ActivityEntry | null {
   return (
     state.activity.find(
-      (a) => a.type === "recharge" && a.playerId === playerId && a.correctsId === null
+      (a) =>
+        a.type === "recharge" &&
+        a.playerId === playerId &&
+        a.correctsId === null
     ) ?? null
   )
 }
@@ -221,12 +233,15 @@ export interface SlotWinner {
  *  `prize_won` rows of the recent activity. An entry is `[]` when the number
  *  was drawn and nobody had it (its row has no player), and `null` when the
  *  slot is empty or its rows are not in the recent activity. */
-export function getSlotWinners(state: RoundDraftState): (SlotWinner[] | null)[] {
+export function getSlotWinners(
+  state: RoundDraftState
+): (SlotWinner[] | null)[] {
   const roundId = state.round?.roundId ?? null
   return state.winningNumbers.map((number) => {
     if (number === null || roundId === null) return null
     const rows = state.activity.filter(
-      (a) => a.type === "prize_won" && a.roundId === roundId && a.number === number
+      (a) =>
+        a.type === "prize_won" && a.roundId === roundId && a.number === number
     )
     if (rows.length === 0) return null
     const byPlayer = new Map<number, SlotWinner>()
@@ -234,7 +249,8 @@ export function getSlotWinners(state: RoundDraftState): (SlotWinner[] | null)[] 
       if (row.playerId === null) continue
       const winner = byPlayer.get(row.playerId) ?? {
         playerId: row.playerId,
-        name: state.players.find((p) => p.id === row.playerId)?.name ?? "Jugador",
+        name:
+          state.players.find((p) => p.id === row.playerId)?.name ?? "Jugador",
         amount: 0,
       }
       winner.amount += row.amount ?? 0
@@ -246,7 +262,10 @@ export function getSlotWinners(state: RoundDraftState): (SlotWinner[] | null)[] 
 
 /** The tickets where a winning number was left free: nobody is paid there, so
  *  the house just keeps what it collected (no extra income, cash basis). */
-export function getHouseWin(state: RoundDraftState, number: number): { tickets: number } {
+export function getHouseWin(
+  state: RoundDraftState,
+  number: number
+): { tickets: number } {
   const tickets = state.tickets.filter(
     (t) => t.numbers.find((n) => n.number === number)?.playerId === null
   ).length
@@ -254,7 +273,11 @@ export function getHouseWin(state: RoundDraftState, number: number): { tickets: 
 }
 
 /** Activity in a round that moves no money, so the round can still be swapped. */
-const SWAPPABLE_ACTIVITY = new Set(["round_started", "check_in", "check_in_undone"])
+const SWAPPABLE_ACTIVITY = new Set([
+  "round_started",
+  "check_in",
+  "check_in_undone",
+])
 
 /** The open round can be replaced by another one (`start_round`) while no
  *  winning number is drawn and nothing in it has been charged. Players with a

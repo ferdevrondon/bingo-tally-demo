@@ -14,27 +14,44 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
 import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { getActivePlayers } from "@/lib/round-draft/selectors"
+import {
+  getActivePlayers,
+  sortPlayersByName,
+} from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 export function AddPlayerControl() {
   const { state, setActivePlayer } = useRoundDraft()
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false)
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
-  const [editingPlayerId, setEditingPlayerId] = React.useState<number | null>(null)
+  const [editingPlayerId, setEditingPlayerId] = React.useState<number | null>(
+    null
+  )
 
-  const activeIds = new Set(getActivePlayers(state).map((p) => p.id))
-  const inactivePlayers = state.players.filter((p) => !activeIds.has(p.id))
-  const editingPlayer = state.players.find((p) => p.id === editingPlayerId) ?? null
+  // Alphabetical; recomputed only when the game session changes, and the
+  // search filters this list in the browser (no request per keystroke).
+  const inactivePlayers = React.useMemo(() => {
+    const activeIds = new Set(getActivePlayers(state).map((p) => p.id))
+    return sortPlayersByName(state.players.filter((p) => !activeIds.has(p.id)))
+  }, [state])
+  const editingPlayer =
+    state.players.find((p) => p.id === editingPlayerId) ?? null
 
   // The player is saved in the catalog first; the refreshed game session
   // brings them in, and the number-picking dialog opens for them then.
@@ -47,30 +64,66 @@ export function AddPlayerControl() {
   }
 
   function handleSelectExisting(player: DraftPlayer) {
+    setIsMenuOpen(false)
     setActivePlayer(player.id)
     setEditingPlayerId(player.id)
   }
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="outline" />}>
+      <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+        <PopoverTrigger render={<Button variant="outline" />}>
           <PlusIcon />
           Agregar jugador
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onClick={() => setIsAddPlayerOpen(true)}>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="flex w-72 flex-col gap-1 p-1">
+          <Button
+            variant="ghost"
+            className="justify-start"
+            onClick={() => {
+              setIsMenuOpen(false)
+              setIsAddPlayerOpen(true)
+            }}
+          >
             <PlusIcon />
             Agregar nuevo
-          </DropdownMenuItem>
-          {inactivePlayers.length > 0 && <DropdownMenuSeparator />}
-          {inactivePlayers.map((p) => (
-            <DropdownMenuItem key={p.id} onClick={() => handleSelectExisting(p)}>
-              {p.name}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </Button>
+          {inactivePlayers.length > 0 && (
+            <>
+              <Separator />
+              {/* Inline list inside the popover; `open` follows the popover
+                  so the search resets each time it opens. */}
+              <Combobox
+                inline
+                open={isMenuOpen}
+                items={inactivePlayers}
+                value={null}
+                onValueChange={(player: DraftPlayer | null) => {
+                  if (player) handleSelectExisting(player)
+                }}
+                itemToStringLabel={(player: DraftPlayer) => player.name}
+              >
+                <ComboboxInput
+                  placeholder="Buscar jugador…"
+                  showTrigger={false}
+                  autoFocus
+                  className="w-full"
+                />
+                <ComboboxEmpty className="flex empty:py-0">
+                  Sin coincidencias
+                </ComboboxEmpty>
+                <ComboboxList className="max-h-64">
+                  {(player: DraftPlayer) => (
+                    <ComboboxItem key={player.id} value={player}>
+                      {player.name}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </Combobox>
+            </>
+          )}
+        </PopoverContent>
+      </Popover>
 
       <Dialog open={isAddPlayerOpen} onOpenChange={setIsAddPlayerOpen}>
         <DialogContent>

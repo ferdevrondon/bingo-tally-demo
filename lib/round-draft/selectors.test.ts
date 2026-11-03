@@ -8,6 +8,7 @@ import {
   getPlayerNumberSummary,
   getRoundGifts,
   getSlotWinners,
+  sortPlayersByName,
 } from "./selectors"
 import type { RoundDraftState, Ticket } from "./types"
 
@@ -92,7 +93,12 @@ describe("getOpenStats and getRoundGifts", () => {
 })
 
 describe("getSlotWinners", () => {
-  const prize = (playerId: number | null, number: number, amount: number, roundId = 7) => ({
+  const prize = (
+    playerId: number | null,
+    number: number,
+    amount: number,
+    roundId = 7
+  ) => ({
     type: "prize_won",
     playerId,
     number,
@@ -168,7 +174,11 @@ describe("canChangeRound", () => {
   it("is open while the round has only starts and check-ins", () => {
     const state = {
       ...base,
-      activity: [row("round_started"), row("check_in"), row("number_purchased", 6)],
+      activity: [
+        row("round_started"),
+        row("check_in"),
+        row("number_purchased", 6),
+      ],
     } as unknown as RoundDraftState
     expect(canChangeRound(state)).toBe(true)
   })
@@ -192,7 +202,9 @@ describe("canChangeRound", () => {
   })
 
   it("is false without an open round", () => {
-    expect(canChangeRound({ ...base, round: null } as unknown as RoundDraftState)).toBe(false)
+    expect(
+      canChangeRound({ ...base, round: null } as unknown as RoundDraftState)
+    ).toBe(false)
   })
 })
 
@@ -221,5 +233,31 @@ describe("getActivePlayers", () => {
       "BOLIVAR",
       "MARTHA",
     ])
+  })
+})
+
+describe("sortPlayersByName", () => {
+  it("sorts alphabetically as in Spanish, ignoring accents and case", () => {
+    const players = [
+      { name: "ÑAÑO" },
+      { name: "nora" },
+      { name: "ÁLVARO" },
+      { name: "ZOE" },
+      { name: "ANA" },
+    ]
+    expect(sortPlayersByName(players).map((p) => p.name)).toEqual([
+      "ÁLVARO",
+      "ANA",
+      "nora",
+      "ÑAÑO",
+      "ZOE",
+    ])
+  })
+
+  it("returns a copy and leaves the input untouched", () => {
+    const players = [{ name: "B" }, { name: "A" }]
+    const sorted = sortPlayersByName(players)
+    expect(sorted).not.toBe(players)
+    expect(players.map((p) => p.name)).toEqual(["B", "A"])
   })
 })
