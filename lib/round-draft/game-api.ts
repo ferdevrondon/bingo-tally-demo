@@ -118,6 +118,15 @@ export function createGameApi(isAdmin: boolean) {
     addTicket: (gameSessionId: number, requestId: string) =>
       run((s) => s.rpc("add_ticket", { p_game_session_id: gameSessionId, p_request_id: requestId })),
 
+    removeTicket: (gameSessionId: number, ticketId: number, requestId: string) =>
+      run((s) =>
+        s.rpc("remove_ticket", {
+          p_game_session_id: gameSessionId,
+          p_ticket_id: ticketId,
+          p_request_id: requestId,
+        })
+      ),
+
     startRound: (gameSessionId: number, roundTemplateId: number, requestId: string) =>
       run((s) =>
         s.rpc("start_round", {

@@ -14,8 +14,18 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { sortPlayersByName } from "@/lib/round-draft/selectors"
+import { canRemoveTicket, sortPlayersByName } from "@/lib/round-draft/selectors"
 import type { DraftPlayer } from "@/lib/round-draft/types"
 import { cn } from "@/lib/utils"
 
@@ -185,14 +195,25 @@ export function TicketsGrid({
 }: {
   highlightNumber?: number | null
 }) {
-  const { state, readOnly, addTicket, assignNumber, toggleGift } =
+  const { state, readOnly, addTicket, removeTicket, assignNumber, toggleGift } =
     useRoundDraft()
   const [isTicketPending, startTicketTransition] = React.useTransition()
   const [view] = useTicketsView()
+  // The ticket waiting for "Retirar cartón" to be confirmed.
+  const [removing, setRemoving] = React.useState<{ id: number; index: number } | null>(null)
 
   function handleAddTicket() {
     startTicketTransition(async () => {
       await addTicket()
+    })
+  }
+
+  function handleRemoveTicket() {
+    if (!removing) return
+    const { id } = removing
+    setRemoving(null)
+    startTicketTransition(async () => {
+      await removeTicket(id)
     })
   }
 
@@ -203,7 +224,34 @@ export function TicketsGrid({
     highlightNumber,
     onAssign: (number: number) => assignNumber(ticketId, number),
     onToggleGift: (number: number) => toggleGift(ticketId, number),
+    onRemove:
+      !readOnly && !isTicketPending && canRemoveTicket(state, ticketId)
+        ? () => {
+            const ticket = state.tickets.find((t) => t.id === ticketId)
+            if (ticket) setRemoving({ id: ticket.id, index: ticket.index })
+          }
+        : undefined,
   })
+
+  const confirmRemove = (
+    <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Retirar el cartón {removing?.index}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            No tiene números jugados. Su historial se conserva y, si agregas un cartón más
+            adelante, vuelve este mismo.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={handleRemoveTicket}>
+            Retirar cartón
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 
   return view === "tickets" ? (
     <div className="flex flex-wrap gap-4">
@@ -221,6 +269,7 @@ export function TicketsGrid({
           className="w-full max-w-72"
         />
       )}
+      {confirmRemove}
     </div>
   ) : (
     <div className="flex gap-3 overflow-x-auto pb-2">
@@ -238,6 +287,7 @@ export function TicketsGrid({
           className="mt-7 w-40 shrink-0"
         />
       )}
+      {confirmRemove}
     </div>
   )
 }

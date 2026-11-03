@@ -1,6 +1,6 @@
 "use client"
 
-import { GiftIcon } from "lucide-react"
+import { GiftIcon, Trash2Icon } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FREE_NUMBER_CLASSES, FREE_NUMBER_HOVER_CLASSES, getTakenNumberClasses } from "@/lib/round-draft/colors"
@@ -89,6 +89,23 @@ export interface TicketCardProps {
   onToggleGift: (number: number) => void
   /** A number to point out where it is still free ("Números disponibles"). */
   highlightNumber?: number | null
+  /** Set when the ticket can be removed: shows "Retirar cartón". */
+  onRemove?: () => void
+}
+
+/** "Retirar cartón": the trash button in a ticket's header (both views). */
+export function RemoveTicketButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Retirar cartón"
+      aria-label="Retirar cartón"
+      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+    >
+      <Trash2Icon className="size-4" />
+    </button>
+  )
 }
 
 export function TicketCard({
@@ -99,6 +116,7 @@ export function TicketCard({
   onAssign,
   onToggleGift,
   highlightNumber = null,
+  onRemove,
 }: TicketCardProps) {
   const assignedCount = ticket.numbers.filter((n) => n.playerId !== null).length
   const playerIndexById = new Map(players.map((p, i) => [p.id, i]))
@@ -108,9 +126,12 @@ export function TicketCard({
     <Card className="w-full max-w-80">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Cartón #{ticket.index}</CardTitle>
-        <span className="text-xs text-muted-foreground">
-          {assignedCount}/15
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">
+            {assignedCount}/15
+          </span>
+          {onRemove && !readOnly && <RemoveTicketButton onClick={onRemove} />}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-5 gap-1.5">
@@ -138,7 +159,8 @@ export function TicketCard({
                       ? cn(
                           getTakenNumberClasses(
                             playerIndexById.get(entry.playerId) ?? -1,
-                            entry.isGift
+                            entry.isGift,
+                            entry.playerId === activePlayerId
                           ),
                           canRelease ? "cursor-pointer" : "cursor-default"
                         )

@@ -50,6 +50,10 @@ export type GameActionError =
   | "movement_closed"
   | "amount_unchanged"
   | "reason_required"
+  | "ticket_not_found"
+  | "ticket_not_empty"
+  | "last_ticket"
+  | "round_has_winners"
 
 export type GameActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -105,6 +109,11 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
     "Ese dinero ya pasó a otra jornada o a una liquidación cerrada: no se puede corregir.",
   amount_unchanged: "El monto correcto es igual al registrado.",
   reason_required: "Escribe el motivo de la corrección.",
+  ticket_not_found: "Ese cartón ya fue retirado.",
+  ticket_not_empty: "Solo se puede retirar un cartón sin números jugados.",
+  last_ticket: "La jornada necesita al menos un cartón.",
+  round_has_winners:
+    "La ronda ya tiene números ganadores: retira el cartón cuando empiece la siguiente.",
 }
 
 const KNOWN_CODES = new Set<string>(Object.keys(GAME_ACTION_ERROR_MESSAGES))

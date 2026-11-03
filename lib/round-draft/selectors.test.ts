@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   canChangeRound,
+  canRemoveTicket,
   getHouseWin,
   getActivePlayers,
   getOpenStats,
@@ -259,5 +260,32 @@ describe("sortPlayersByName", () => {
     const sorted = sortPlayersByName(players)
     expect(sorted).not.toBe(players)
     expect(players.map((p) => p.name)).toEqual(["B", "A"])
+  })
+})
+
+describe("canRemoveTicket", () => {
+  const withWinners = (state: RoundDraftState, winningNumbers: (number | null)[]) =>
+    ({ ...state, winningNumbers }) as RoundDraftState
+
+  it("allows an empty ticket when there are others and no winning numbers", () => {
+    const state = withWinners(makeState({ 1: [[4, 1, false]], 2: [] }), [null])
+    expect(canRemoveTicket(state, 102)).toBe(true)
+  })
+
+  it("refuses a ticket with a play, even a gift", () => {
+    const state = withWinners(makeState({ 1: [[4, 1, false]], 2: [[4, 2, true]] }), [null])
+    expect(canRemoveTicket(state, 101)).toBe(false)
+    expect(canRemoveTicket(state, 102)).toBe(false)
+  })
+
+  it("refuses the only ticket and an unknown one", () => {
+    const state = withWinners(makeState({ 1: [] }), [])
+    expect(canRemoveTicket(state, 101)).toBe(false)
+    expect(canRemoveTicket(state, 999)).toBe(false)
+  })
+
+  it("refuses once the open round has a winning number", () => {
+    const state = withWinners(makeState({ 1: [], 2: [] }), [5, null])
+    expect(canRemoveTicket(state, 102)).toBe(false)
   })
 })

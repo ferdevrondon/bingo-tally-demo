@@ -15,11 +15,12 @@ describe("ticket colors", () => {
     expect(getPlayerColorClass(0)).toBe("bg-primary")
   })
 
-  it("shows a free number as white and a taken one as the solid color", () => {
-    expect(FREE_NUMBER_CLASSES).toContain("bg-white")
-    expect(getTakenNumberClasses(2, false)).toContain("bg-primary")
+  it("shows free, taken and active numbers in three teal steps", () => {
+    expect(FREE_NUMBER_CLASSES).toContain("bg-[#f0fdfa]")
+    expect(getTakenNumberClasses(2, false)).toContain("bg-[#0f766e]")
     expect(getTakenNumberClasses(2, false)).toContain("text-white")
     expect(getTakenNumberClasses(2, false)).not.toContain("dashed")
+    expect(getTakenNumberClasses(2, false, true)).toContain("bg-[#2dd4bf]")
   })
 
   it("marks a gift with the dashed border", () => {

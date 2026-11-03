@@ -155,7 +155,7 @@ export function PlayerActiveCard({
         {numbers.length === 0 ? (
           <p className="text-xs text-muted-foreground">Sin números asignados.</p>
         ) : (
-          <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 pt-2.5">
+          <div className="flex flex-wrap gap-x-1.5 gap-y-4 pt-2.5">
             {numbers.map(({ number, amount, plays, giftCount, giftDiscount, isGift }) => (
               <BingoBall
                 key={number}

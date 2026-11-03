@@ -6,6 +6,16 @@ export function hasRounds(state: RoundDraftState): boolean {
   return state.round !== null || state.rounds.length > 0
 }
 
+/** Whether a ticket can be removed ("Retirar cartón"); mirrors
+ *  public.remove_ticket: no number taken, not the only ticket, and the open
+ *  round has no winning numbers yet. */
+export function canRemoveTicket(state: RoundDraftState, ticketId: number): boolean {
+  const ticket = state.tickets.find((t) => t.id === ticketId)
+  if (!ticket || state.tickets.length <= 1) return false
+  if (ticket.numbers.some((n) => n.playerId !== null)) return false
+  return !state.winningNumbers.some((n) => n !== null)
+}
+
 export function getActivePlayers(state: RoundDraftState): DraftPlayer[] {
   const activeIds = new Set(
     state.tickets
