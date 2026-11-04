@@ -23,6 +23,8 @@ function entry(
     bank: null,
     note: null,
     correctsId: null,
+    counterpartyPlayerId: null,
+    transferId: null,
   }
 }
 

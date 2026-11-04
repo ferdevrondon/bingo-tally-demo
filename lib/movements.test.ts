@@ -4,8 +4,10 @@ import {
   correctionDelta,
   isLargeAmount,
   toCashMoves,
+  toTransferMoves,
   type CashMoveContext,
   type LedgerCashRow,
+  type LedgerTransferRow,
 } from "./movements"
 
 function row(partial: Partial<LedgerCashRow>): LedgerCashRow {
@@ -94,5 +96,60 @@ describe("isLargeAmount", () => {
     expect(isLargeAmount(500)).toBe(true)
     expect(isLargeAmount(250, 50)).toBe(true)
     expect(isLargeAmount(200, 50)).toBe(false)
+  })
+})
+
+function transferRow(partial: Partial<LedgerTransferRow>): LedgerTransferRow {
+  return {
+    ...row({ type: "balance_transfer", payment_method: null, amount: -40 }),
+    transfer_id: "t-1",
+    counterparty_player_id: 9,
+    ...partial,
+  }
+}
+
+describe("toTransferMoves", () => {
+  it("lists the player's transfers newest first, with their direction", () => {
+    const moves = toTransferMoves(
+      [
+        transferRow({ id: 1, transfer_id: "t-1", amount: -40, counterparty_player_id: 9 }),
+        transferRow({ id: 2, transfer_id: "t-2", amount: 15, counterparty_player_id: 8 }),
+        row({ id: 3, type: "recharge" }),
+      ] as LedgerTransferRow[],
+      noGames
+    )
+    expect(moves.map((m) => [m.transferId, m.direction, m.amount, m.counterpartyId])).toEqual([
+      ["t-2", "in", 15, 8],
+      ["t-1", "out", 40, 9],
+    ])
+  })
+
+  it("marks a transfer as voided with its reason and leaves the voiding out", () => {
+    const moves = toTransferMoves(
+      [
+        transferRow({ id: 1 }),
+        transferRow({ id: 5, amount: 40, corrects_id: 1, note: "se equivocó de jugador" }),
+      ],
+      noGames
+    )
+    expect(moves).toHaveLength(1)
+    expect(moves[0].voided).toEqual({ reason: "se equivocó de jugador" })
+  })
+
+  it("closes a transfer on the account once a game session started after it", () => {
+    const [move] = toTransferMoves([transferRow({})], {
+      ...noGames,
+      latestGameSession: { id: 7, status: "ended", startedAt: "2026-10-20T18:00:00Z" },
+    })
+    expect(move.closed).toBe(true)
+  })
+
+  it("keeps a transfer of the active game session open", () => {
+    const [move] = toTransferMoves([transferRow({ game_session_id: 7 })], {
+      ...noGames,
+      latestGameSession: { id: 7, status: "active", startedAt: "2026-10-20T14:00:00Z" },
+      inGame: true,
+    })
+    expect(move.closed).toBe(false)
   })
 })

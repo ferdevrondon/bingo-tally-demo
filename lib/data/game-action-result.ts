@@ -54,6 +54,11 @@ export type GameActionError =
   | "ticket_not_empty"
   | "last_ticket"
   | "round_has_winners"
+  | "transfer_same_player"
+  | "insufficient_balance"
+  | "transfer_not_found"
+  | "transfer_closed"
+  | "transfer_already_voided"
 
 export type GameActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -114,6 +119,12 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   last_ticket: "La jornada necesita al menos un cartón.",
   round_has_winners:
     "La ronda ya tiene números ganadores: retira el cartón cuando empiece la siguiente.",
+  transfer_same_player: "Elige otro jugador: no se puede transferir a sí mismo.",
+  insufficient_balance: "No alcanza el saldo a favor para esa transferencia.",
+  transfer_not_found: "Esa transferencia ya no existe.",
+  transfer_closed:
+    "Ese saldo ya pasó a otra jornada o cuenta: no se puede anular la transferencia.",
+  transfer_already_voided: "Esa transferencia ya fue anulada.",
 }
 
 const KNOWN_CODES = new Set<string>(Object.keys(GAME_ACTION_ERROR_MESSAGES))

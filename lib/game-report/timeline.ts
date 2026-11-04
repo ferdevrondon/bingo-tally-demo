@@ -31,6 +31,7 @@ const CATEGORY_BY_TYPE: Record<ActivityEntryType, TimelineCategory> = {
   credit_payout_pending: "balances",
   debt_noted: "balances",
   adjustment: "balances",
+  balance_transfer: "balances",
   player_added: "other",
   player_removed: "other",
   ticket_added: "other",
