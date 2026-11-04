@@ -9,6 +9,14 @@ export function formatHouseDateTime(value: string, timeZone: string): string {
   }).format(new Date(value))
 }
 
+/** "3:45 p. m." */
+export function formatHouseTime(value: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("es-MX", {
+    timeStyle: "short",
+    timeZone,
+  }).format(new Date(value))
+}
+
 export function formatHouseDate(value: string | number, timeZone: string): string {
   return new Intl.DateTimeFormat("es-MX", {
     weekday: "long",

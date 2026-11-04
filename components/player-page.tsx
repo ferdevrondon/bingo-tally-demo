@@ -5,15 +5,23 @@ import { useRouter } from "next/navigation"
 import { PlusIcon } from "lucide-react"
 import { toast } from "sonner"
 
-import { AccountMovementDialog, type MovementValues } from "@/components/account-movement-dialog"
-import { BalanceStatusDialog } from "@/components/balance-status-dialog"
-import { BalanceTransferDialog, type TransferValues } from "@/components/balance-transfer-dialog"
-import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
 import {
-  RecentMovementsDialog,
+  AccountMovementForm,
+  type MovementDirection,
+  type MovementValues,
+} from "@/components/account-movement-dialog"
+import { BalanceStatusDialog } from "@/components/balance-status-dialog"
+import {
+  BalanceTransferForm,
+  type TransferValues,
+} from "@/components/balance-transfer-form"
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
+import { PlayerBalanceDialog } from "@/components/player-balance-dialog"
+import {
+  RecentMovementsPanel,
   type CorrectionValues,
   type VoidTransferValues,
-} from "@/components/recent-movements-dialog"
+} from "@/components/recent-movements-panel"
 import {
   DataTable,
   type DataTableColumnDef,
@@ -30,7 +38,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { accountStatusText, type BalanceStatus, type PlayerAccount } from "@/lib/accounts"
+import {
+  accountStatusText,
+  type BalanceStatus,
+  type PlayerAccount,
+} from "@/lib/accounts"
 import {
   correctMovement,
   receivePayment,
@@ -56,6 +68,7 @@ import {
 } from "@/lib/payment-methods"
 import type { Player, PlayerInput } from "@/lib/players"
 import { signedMoney } from "@/lib/round-draft/balance"
+import { cn } from "@/lib/utils"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 function toInput(player: Player): PlayerInput {
@@ -71,14 +84,25 @@ function toInput(player: Player): PlayerInput {
 }
 
 type AccountDialog = {
-  kind: "in" | "out" | "status" | "correct" | "transfer"
+  kind: "balance" | "status"
   player: Player
   account: PlayerAccount
 } | null
 
 /** A player with no account row yet has $0. */
-function accountFrom(accounts: Map<number, PlayerAccount>, playerId: number): PlayerAccount {
-  return accounts.get(playerId) ?? { playerId, balance: 0, status: null, note: null, inGame: false }
+function accountFrom(
+  accounts: Map<number, PlayerAccount>,
+  playerId: number
+): PlayerAccount {
+  return (
+    accounts.get(playerId) ?? {
+      playerId,
+      balance: 0,
+      status: null,
+      note: null,
+      inGame: false,
+    }
+  )
 }
 
 function succeeded(result: GameActionResult, message: string): boolean {
@@ -86,8 +110,76 @@ function succeeded(result: GameActionResult, message: string): boolean {
     toast.success(message)
     return true
   }
-  if (result.error !== "session_replaced") toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
+  if (result.error !== "session_replaced")
+    toast.error(GAME_ACTION_ERROR_MESSAGES[result.error])
   return false
+}
+
+/** "Cobro / Pago" tab: the player pays the house or the house pays them. It
+ *  opens on the direction that settles a debt (cobro) or a balance in favor
+ *  (pago); each direction is its own form, so its amount starts fresh. */
+function MoneyTab({
+  player,
+  account,
+  onConfirm,
+  onDone,
+}: {
+  player: Player
+  account: PlayerAccount
+  onConfirm: (
+    direction: MovementDirection,
+    values: MovementValues
+  ) => Promise<boolean>
+  onDone: () => void
+}) {
+  const [direction, setDirection] = React.useState<MovementDirection>(
+    account.balance < 0 ? "in" : "out"
+  )
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-4 flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          aria-pressed={direction === "in"}
+          className={cn(
+            "rounded-full font-normal",
+            direction === "in" && "border-foreground/50 bg-muted font-medium"
+          )}
+          onClick={() => setDirection("in")}
+        >
+          Recibir pago
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          aria-pressed={direction === "out"}
+          className={cn(
+            "rounded-full font-normal",
+            direction === "out" && "border-foreground/50 bg-muted font-medium"
+          )}
+          onClick={() => setDirection("out")}
+        >
+          Registrar pago
+        </Button>
+      </div>
+      <AccountMovementForm
+        key={direction}
+        direction={direction}
+        showBalance={false}
+        player={{
+          name: player.name,
+          balance: account.balance,
+          paymentMethod: player.paymentMethod,
+          bank: player.bank,
+        }}
+        onConfirm={(values) => onConfirm(direction, values)}
+        onDone={onDone}
+      />
+    </div>
+  )
 }
 
 // /players: catálogo de jugadores de la casa con el saldo de su cuenta (pasa
@@ -124,7 +216,9 @@ export default function PlayerPage({
         paymentMethod: isAdmin
           ? (player.paymentMethod ?? "")
           : paymentMethodLabel(player.paymentMethod),
-        bank: isAdmin ? (player.bank ?? NO_BANK) : bankLabel(player.bank) || "—",
+        bank: isAdmin
+          ? (player.bank ?? NO_BANK)
+          : bankLabel(player.bank) || "—",
         isVip: player.isVip ? "VIP" : "—",
         balance: signedMoney(accountFrom(accountById, player.id).balance),
         status: accountFrom(accountById, player.id).inGame
@@ -147,10 +241,24 @@ export default function PlayerPage({
             hideBelow: "xl",
             options: PAYMENT_METHOD_OPTIONS,
           }
-        : { key: "paymentMethod", header: "Método de pago (salida)", hideBelow: "xl" },
+        : {
+            key: "paymentMethod",
+            header: "Método de pago (salida)",
+            hideBelow: "xl",
+          },
       isAdmin
-        ? { key: "bank", header: "Entidad bancaria (ingreso)", type: "select", hideBelow: "xl", options: BANK_OPTIONS_WITH_NONE }
-        : { key: "bank", header: "Entidad bancaria (ingreso)", hideBelow: "xl" },
+        ? {
+            key: "bank",
+            header: "Entidad bancaria (ingreso)",
+            type: "select",
+            hideBelow: "xl",
+            options: BANK_OPTIONS_WITH_NONE,
+          }
+        : {
+            key: "bank",
+            header: "Entidad bancaria (ingreso)",
+            hideBelow: "xl",
+          },
       { key: "isVip", header: "VIP" },
       { key: "balance", header: "Saldo" },
       { key: "status", header: "Estado" },
@@ -162,7 +270,10 @@ export default function PlayerPage({
     return players.find((p) => p.id === Number(id)) ?? null
   }
 
-  function openAccountDialog(kind: NonNullable<AccountDialog>["kind"], id: DataRow["id"]) {
+  function openAccountDialog(
+    kind: NonNullable<AccountDialog>["kind"],
+    id: DataRow["id"]
+  ) {
     const player = findPlayer(id)
     if (!player) return
     const account = accountFrom(accountById, player.id)
@@ -170,25 +281,27 @@ export default function PlayerPage({
       toast.info(`${player.name} está al día: no hay saldo que marcar.`)
       return
     }
-    if (kind === "transfer" && account.balance <= 0) {
-      toast.info(`${player.name} no tiene saldo a favor para transferir.`)
-      return
-    }
     setAccountDialog({ kind, player, account })
   }
 
   async function handleTransfer(values: TransferValues): Promise<boolean> {
-    if (!accountDialog || accountDialog.kind !== "transfer") return false
+    if (!accountDialog || accountDialog.kind !== "balance") return false
     return succeeded(
-      await transferBalance({ fromPlayerId: accountDialog.player.id, ...values }),
+      await transferBalance({
+        fromPlayerId: accountDialog.player.id,
+        ...values,
+      }),
       "Transferencia registrada"
     )
   }
 
-  async function handleMovement(values: MovementValues): Promise<boolean> {
-    if (!accountDialog || (accountDialog.kind !== "in" && accountDialog.kind !== "out")) return false
+  async function handleMovement(
+    direction: MovementDirection,
+    values: MovementValues
+  ): Promise<boolean> {
+    if (!accountDialog || accountDialog.kind !== "balance") return false
     const input = { playerId: accountDialog.player.id, ...values }
-    return accountDialog.kind === "in"
+    return direction === "in"
       ? succeeded(await receivePayment(input), "Pago recibido")
       : succeeded(await registerPayout(input), "Pago registrado")
   }
@@ -197,14 +310,25 @@ export default function PlayerPage({
     return succeeded(await correctMovement(values), "Movimiento corregido")
   }
 
-  async function handleVoidTransfer(values: VoidTransferValues): Promise<boolean> {
+  async function handleVoidTransfer(
+    values: VoidTransferValues
+  ): Promise<boolean> {
     return succeeded(await voidTransfer(values), "Transferencia anulada")
   }
 
-  async function handleStatus(status: BalanceStatus, note: string | null, requestId: string) {
+  async function handleStatus(
+    status: BalanceStatus,
+    note: string | null,
+    requestId: string
+  ) {
     if (!accountDialog) return false
     return succeeded(
-      await setBalanceStatus({ playerId: accountDialog.player.id, status, note, requestId }),
+      await setBalanceStatus({
+        playerId: accountDialog.player.id,
+        status,
+        note,
+        requestId,
+      }),
       "Estado guardado"
     )
   }
@@ -299,24 +423,9 @@ export default function PlayerPage({
               isAdmin
                 ? [
                     {
-                      key: "receive",
-                      label: "Recibir pago",
-                      onSelect: (row) => openAccountDialog("in", row.id),
-                    },
-                    {
-                      key: "payout",
-                      label: "Registrar pago",
-                      onSelect: (row) => openAccountDialog("out", row.id),
-                    },
-                    {
-                      key: "transfer",
-                      label: "Transferir saldo",
-                      onSelect: (row) => openAccountDialog("transfer", row.id),
-                    },
-                    {
-                      key: "movements",
-                      label: "Últimos movimientos",
-                      onSelect: (row) => openAccountDialog("correct", row.id),
+                      key: "balance",
+                      label: "Gestionar saldo",
+                      onSelect: (row) => openAccountDialog("balance", row.id),
                     },
                     {
                       key: "status",
@@ -371,51 +480,66 @@ export default function PlayerPage({
         </DialogContent>
       </Dialog>
 
-      {accountDialog && accountDialog.kind === "correct" && (
-        <RecentMovementsDialog
+      {accountDialog && accountDialog.kind === "balance" && (
+        <PlayerBalanceDialog
           open
           onOpenChange={(open) => !open && setAccountDialog(null)}
-          player={{
-            id: accountDialog.player.id,
-            name: accountDialog.player.name,
-            balance: accountDialog.account.balance,
-            inGame: accountDialog.account.inGame,
-          }}
-          onConfirm={handleCorrection}
-          onVoidTransfer={handleVoidTransfer}
-        />
-      )}
-      {accountDialog && (accountDialog.kind === "in" || accountDialog.kind === "out") && (
-        <AccountMovementDialog
-          open
-          onOpenChange={(open) => !open && setAccountDialog(null)}
-          direction={accountDialog.kind}
-          player={{
-            name: accountDialog.player.name,
-            balance: accountDialog.account.balance,
-            paymentMethod: accountDialog.player.paymentMethod,
-            bank: accountDialog.player.bank,
-          }}
-          onConfirm={handleMovement}
-        />
-      )}
-      {accountDialog && accountDialog.kind === "transfer" && (
-        <BalanceTransferDialog
-          open
-          onOpenChange={(open) => !open && setAccountDialog(null)}
-          from={{
-            id: accountDialog.player.id,
-            name: accountDialog.player.name,
-            balance: accountDialog.account.balance,
-          }}
-          candidates={players
-            .filter((p) => p.id !== accountDialog.player.id)
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              balance: accountFrom(accountById, p.id).balance,
-            }))}
-          onConfirm={handleTransfer}
+          name={accountDialog.player.name}
+          balance={accountDialog.account.balance}
+          tabs={[
+            {
+              value: "money",
+              label: "Cobro / Pago",
+              content: (
+                <MoneyTab
+                  player={accountDialog.player}
+                  account={accountDialog.account}
+                  onConfirm={handleMovement}
+                  onDone={() => setAccountDialog(null)}
+                />
+              ),
+            },
+            {
+              value: "transfer",
+              label: "Transferencia",
+              disabled: accountDialog.account.balance <= 0,
+              content: (
+                <BalanceTransferForm
+                  from={{
+                    id: accountDialog.player.id,
+                    name: accountDialog.player.name,
+                    balance: accountDialog.account.balance,
+                  }}
+                  candidates={players
+                    .filter((p) => p.id !== accountDialog.player.id)
+                    .map((p) => ({
+                      id: p.id,
+                      name: p.name,
+                      balance: accountFrom(accountById, p.id).balance,
+                    }))}
+                  onConfirm={handleTransfer}
+                  onDone={() => setAccountDialog(null)}
+                />
+              ),
+            },
+            {
+              value: "movements",
+              label: "Movimientos",
+              content: (
+                <RecentMovementsPanel
+                  player={{
+                    id: accountDialog.player.id,
+                    name: accountDialog.player.name,
+                    balance: accountDialog.account.balance,
+                    inGame: accountDialog.account.inGame,
+                  }}
+                  onConfirm={handleCorrection}
+                  onVoidTransfer={handleVoidTransfer}
+                  onDone={() => setAccountDialog(null)}
+                />
+              ),
+            },
+          ]}
         />
       )}
       {accountDialog && accountDialog.kind === "status" && (
