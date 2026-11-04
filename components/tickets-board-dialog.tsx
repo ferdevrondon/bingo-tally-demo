@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { balanceLabel } from "@/lib/round-draft/balance"
-import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import { getTakenNumberClasses } from "@/lib/round-draft/colors"
 import { useRoundDraft } from "@/lib/round-draft/context"
 import { getPlayerNumberSummary } from "@/lib/round-draft/selectors"
 
@@ -29,7 +29,9 @@ export function TicketsBoardDialog({
   highlightNumber?: number | null
 }) {
   const { state, readOnly } = useRoundDraft()
-  const playerIndex = state.players.findIndex((p) => p.id === state.activePlayerId)
+  const playerIndex = state.players.findIndex(
+    (p) => p.id === state.activePlayerId
+  )
   const player = playerIndex >= 0 ? state.players[playerIndex] : null
 
   return (
@@ -55,7 +57,7 @@ export function TicketsBoardDialog({
             <PlayerPlayBox
               playerName={player.name}
               numbers={getPlayerNumberSummary(state, player.id)}
-              colorClass={getPlayerColorClass(playerIndex)}
+              colorClass={getTakenNumberClasses(playerIndex, false, true)}
               linePrice={state.round?.linePrice}
               trailing={
                 player.balance !== 0 && (
