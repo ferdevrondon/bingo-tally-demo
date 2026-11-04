@@ -242,11 +242,14 @@ function PlayersCard({
   const maxAbs = Math.max(1, ...players.map((p) => Math.abs(p.closing)))
   const owed = players.filter((p) => p.closing > 0)
   const owing = players.filter((p) => p.closing < 0)
+  // A transfer of balance is not cash: its column only appears when the game
+  // session had one, so the sum entró + … = terminó still adds up.
+  const hasTransfers = players.some((p) => p.transfers !== 0)
   const sum = (
     list: PlayerReport[],
     key: keyof Pick<
       PlayerReport,
-      "opening" | "played" | "prizes" | "recharges" | "payouts" | "closing"
+      "opening" | "played" | "prizes" | "recharges" | "payouts" | "transfers" | "closing"
     >
   ) => list.reduce((total, p) => total + p[key], 0)
 
@@ -256,7 +259,8 @@ function PlayersCard({
         <div className="flex flex-col gap-1">
           <CardTitle>Jugadores</CardTitle>
           <CardDescription>
-            Entró con + premios + recargas − lo que jugó − pagos = terminó con.
+            Entró con + premios + recargas − lo que jugó − pagos
+            {hasTransfers ? " ± transferencias" : ""} = terminó con.
           </CardDescription>
         </div>
         {players.length > 0 && (
@@ -302,6 +306,9 @@ function PlayersCard({
                 <th className="px-3 py-2.5 text-right font-medium">Premios</th>
                 <th className="px-3 py-2.5 text-right font-medium">Recargas</th>
                 <th className="px-3 py-2.5 text-right font-medium">Pagos</th>
+                {hasTransfers && (
+                  <th className="px-3 py-2.5 text-right font-medium">Transferencias</th>
+                )}
                 <th className="w-56 px-3 py-2.5 text-right font-medium">
                   Terminó con
                 </th>
@@ -351,6 +358,11 @@ function PlayersCard({
                     <td className="px-3 py-2.5 text-right">
                       <Money value={p.payouts} />
                     </td>
+                    {hasTransfers && (
+                      <td className="px-3 py-2.5 text-right">
+                        <Money value={p.transfers} signed />
+                      </td>
+                    )}
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-3">
                         <div
@@ -422,6 +434,11 @@ function PlayersCard({
                 <td className="px-3 py-3 text-right tabular-nums">
                   {formatMoney(sum(players, "payouts"))}
                 </td>
+                {hasTransfers && (
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {signedMoney(sum(players, "transfers"))}
+                  </td>
+                )}
                 <td
                   className={cn(
                     "px-3 py-3 text-right tabular-nums",

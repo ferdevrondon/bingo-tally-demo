@@ -34,7 +34,7 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
     (entry.bank ? ` · ${bankLabel(entry.bank)}` : "")
   const note = entry.note && entry.note !== "unplayed_round_refund" ? ` · ${entry.note}` : ""
 
-  if (entry.correctsId !== null) {
+  if (entry.correctsId !== null && entry.type !== "balance_transfer") {
     // `amount` is what the correction changed in the balance (-$900 for a
     // recharge of 1000 that was 100).
     const kind = entry.type === "payout" ? "del pago a" : "de la recarga de"
@@ -111,6 +111,21 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
       return `${player} queda debiendo${note}`
     case "settlement_closed":
       return "Se cerró la liquidación"
+    case "balance_transfer": {
+      // One row per player: the sender's is negative, the receiver's positive;
+      // a voiding row has the opposite sign of the row it voids.
+      const other =
+        state.players.find((p) => p.id === entry.counterpartyPlayerId)?.name ?? "otro jugador"
+      const gains = (entry.amount ?? 0) > 0
+      if (entry.correctsId !== null) {
+        return gains
+          ? `Se anuló la transferencia a ${other}: ${player} recuperó ${amount}${note}`
+          : `Se anuló la transferencia de ${other}: ${player} devolvió ${amount}${note}`
+      }
+      return gains
+        ? `${player} recibió ${amount} de ${other}${note}`
+        : `${player} transfirió ${amount} a ${other}${note}`
+    }
     case "adjustment":
       return entry.note === "unplayed_round_refund"
         ? `Devolución a ${player}: ${amount} (ronda no jugada)`

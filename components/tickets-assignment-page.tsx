@@ -34,7 +34,7 @@ import { balanceLabel } from "@/lib/round-draft/balance"
 import { getCurrentRoundNumber } from "@/lib/round-draft/prize-rules"
 import { createPlayer } from "@/lib/data/player-actions"
 import type { PlayerInput } from "@/lib/players"
-import { getPlayerColorClass } from "@/lib/round-draft/colors"
+import { getTakenNumberClasses } from "@/lib/round-draft/colors"
 import {
   getActivePlayers,
   canChangeRound,
@@ -177,8 +177,9 @@ export function TicketsAssignmentPage() {
                   </div>
                   <PlayerNumbersSummary
                     numbers={getPlayerNumberSummary(state, player.id)}
-                    colorClass={getPlayerColorClass(
-                      state.players.findIndex((p) => p.id === player.id)
+                    colorClass={getTakenNumberClasses(
+                      state.players.findIndex((p) => p.id === player.id),
+                      false
                     )}
                     linePrice={state.round?.linePrice}
                     trailing={

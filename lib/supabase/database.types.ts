@@ -19,6 +19,7 @@ export type Database = {
           amount: number | null
           bank: string | null
           corrects_id: number | null
+          counterparty_player_id: number | null
           created_at: string
           created_by: string | null
           game_session_id: number | null
@@ -32,12 +33,14 @@ export type Database = {
           round_id: number | null
           settlement_id: number | null
           ticket_id: number | null
+          transfer_id: string | null
           type: string
         }
         Insert: {
           amount?: number | null
           bank?: string | null
           corrects_id?: number | null
+          counterparty_player_id?: number | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -51,12 +54,14 @@ export type Database = {
           round_id?: number | null
           settlement_id?: number | null
           ticket_id?: number | null
+          transfer_id?: string | null
           type: string
         }
         Update: {
           amount?: number | null
           bank?: string | null
           corrects_id?: number | null
+          counterparty_player_id?: number | null
           created_at?: string
           created_by?: string | null
           game_session_id?: number | null
@@ -70,6 +75,7 @@ export type Database = {
           round_id?: number | null
           settlement_id?: number | null
           ticket_id?: number | null
+          transfer_id?: string | null
           type?: string
         }
         Relationships: [
@@ -819,6 +825,24 @@ export type Database = {
           p_movement_id: number
           p_reason: string
           p_request_id: string
+        }
+        Returns: undefined
+      }
+      record_balance_transfer: {
+        Args: {
+          p_amount: number
+          p_from_player_id: number
+          p_note: string
+          p_request_id: string
+          p_to_player_id: number
+        }
+        Returns: undefined
+      }
+      void_balance_transfer: {
+        Args: {
+          p_reason: string
+          p_request_id: string
+          p_transfer_id: string
         }
         Returns: undefined
       }

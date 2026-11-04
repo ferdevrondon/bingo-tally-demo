@@ -67,6 +67,7 @@ export type ActivityEntryType =
   | "credit_payout_pending"
   | "debt_noted"
   | "settlement_closed"
+  | "balance_transfer"
 
 /** One activity_log row: structured data only. The UI builds the sentence
  *  (components/activity-log-card.tsx). */
@@ -86,6 +87,10 @@ export interface ActivityEntry {
   /** A correction of a cash move: the id of the move it corrects. Same type
    *  as that move, `amount` is the difference and `note` the reason. */
   correctsId: number | null
+  /** balance_transfer: the other player (the sender's row has a negative
+   *  `amount`, the receiver's a positive one) and the id shared by both rows. */
+  counterpartyPlayerId: number | null
+  transferId: string | null
 }
 
 /** The open round of the game session (game_session_rounds). */

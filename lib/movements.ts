@@ -98,3 +98,62 @@ export function toCashMoves(rows: LedgerCashRow[], context: CashMoveContext): Ca
 export function correctionDelta(move: Pick<CashMove, "type" | "amount">, amount: number): number {
   return move.type === "recharge" ? amount - move.amount : move.amount - amount
 }
+
+// Transfers of balance between players (migration *_balance_transfers.sql):
+// one ledger row per player, linked by `transfer_id`. They are not cash, so
+// they never mix with the cobros and pagos above; "Últimos movimientos" lists
+// them next to those and offers to void them (void_balance_transfer is the
+// real guard).
+
+export interface LedgerTransferRow extends LedgerCashRow {
+  transfer_id: string | null
+  counterparty_player_id: number | null
+}
+
+export interface TransferMove {
+  /** The player's own ledger row (orders the list). */
+  id: number
+  transferId: string
+  createdAt: string
+  /** "out": the player gave it; "in": they received it. */
+  direction: "out" | "in"
+  /** Positive. */
+  amount: number
+  counterpartyId: number
+  note: string | null
+  /** Set when the transfer was voided, with the reason. */
+  voided: { reason: string } | null
+  /** The money already left where the transfer put it (this player's side). */
+  closed: boolean
+}
+
+/** The player's transfers, newest first, each with its voiding. */
+export function toTransferMoves(rows: LedgerTransferRow[], context: CashMoveContext): TransferMove[] {
+  const voidings = new Map(
+    rows.filter((r) => r.corrects_id !== null).map((r) => [r.corrects_id as number, r])
+  )
+  return rows
+    .filter(
+      (r) =>
+        r.type === "balance_transfer" &&
+        r.corrects_id === null &&
+        r.transfer_id !== null &&
+        r.counterparty_player_id !== null
+    )
+    .sort((a, b) => b.id - a.id)
+    .map((row) => {
+      const recorded = Number(row.amount ?? 0)
+      const voiding = voidings.get(row.id)
+      return {
+        id: row.id,
+        transferId: row.transfer_id as string,
+        createdAt: row.created_at,
+        direction: recorded < 0 ? "out" : "in",
+        amount: Math.abs(recorded),
+        counterpartyId: row.counterparty_player_id as number,
+        note: row.note,
+        voided: voiding ? { reason: voiding.note ?? "" } : null,
+        closed: isClosed(row, context),
+      }
+    })
+}

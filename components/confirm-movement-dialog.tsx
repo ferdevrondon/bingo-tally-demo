@@ -15,10 +15,15 @@ import { isLargeAmount } from "@/lib/movements"
 import { paymentMethodLabel, type PaymentMethod } from "@/lib/payment-methods"
 import { formatMoney } from "@/lib/rounds"
 
-const KIND_LABELS = { recharge: "Recarga", receive: "Cobro", payout: "Pago" } as const
+const KIND_LABELS = {
+  recharge: "Recarga",
+  receive: "Cobro",
+  payout: "Pago",
+  transfer: "Transferencia de saldo",
+} as const
 
 // The last look before any cash move is recorded (recarga in the live game,
-// "Recibir pago", "Registrar pago"): a typo like 1000 for 100 is caught here
+// "Recibir pago", "Registrar pago") or a balance is handed to another player: a typo like 1000 for 100 is caught here
 // instead of needing a correction in "Últimos movimientos" later. Confirming
 // is what records the move.
 export function ConfirmMovementDialog({
@@ -29,6 +34,7 @@ export function ConfirmMovementDialog({
   playerName,
   paymentMethod,
   bank,
+  toPlayerName,
   usual = null,
   onConfirm,
 }: {
@@ -39,6 +45,8 @@ export function ConfirmMovementDialog({
   playerName: string
   paymentMethod: PaymentMethod | null
   bank: Bank | null
+  /** kind "transfer": the player who receives it (`playerName` gives it). */
+  toPlayerName?: string
   /** The player's usual amount, when known (marks a large amount). */
   usual?: number | null
   onConfirm: () => void
@@ -57,9 +65,18 @@ export function ConfirmMovementDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>¿Confirmas esta transacción?</AlertDialogTitle>
           <AlertDialogDescription>
-            Vas a registrar{" "}
+            {kind === "transfer" ? "Vas a transferir" : "Vas a registrar"}{" "}
             <span className="font-semibold text-foreground tabular-nums">{formatMoney(amount)}</span>{" "}
-            para <span className="font-semibold text-foreground">{playerName}</span>.
+            {kind === "transfer" ? (
+              <>
+                de <span className="font-semibold text-foreground">{playerName}</span> a{" "}
+                <span className="font-semibold text-foreground">{toPlayerName}</span>.
+              </>
+            ) : (
+              <>
+                para <span className="font-semibold text-foreground">{playerName}</span>.
+              </>
+            )}
           </AlertDialogDescription>
           <p className="text-sm text-muted-foreground">{details}</p>
           {isLargeAmount(amount, usual) && (
@@ -76,7 +93,7 @@ export function ConfirmMovementDialog({
               onOpenChange(false)
             }}
           >
-            Sí, registrar
+            {kind === "transfer" ? "Sí, transferir" : "Sí, registrar"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
