@@ -30,7 +30,7 @@ import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
 import {
   EDIT_FREE_NUMBER_CLASSES,
   EDIT_FREE_NUMBER_HOVER_CLASSES,
-  getPlayerColorClass,
+  getTakenNumberClasses,
   getEditingNumberClasses,
   getOtherPlayerEditNumberClasses,
 } from "@/lib/round-draft/colors"
@@ -404,7 +404,11 @@ export function PlayerEditNumbersDialog({
             className="mx-6 mt-4"
             playerName={player.name}
             numbers={numberSummary}
-            colorClass={getPlayerColorClass(playerIndexById.get(player.id) ?? -1)}
+            colorClass={getTakenNumberClasses(
+              playerIndexById.get(player.id) ?? -1,
+              false,
+              true
+            )}
             linePrice={state.round?.linePrice}
           />
 

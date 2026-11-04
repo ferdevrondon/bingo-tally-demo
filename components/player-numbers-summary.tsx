@@ -23,7 +23,8 @@ export function PlayerNumbersSummary({
   trailing,
 }: {
   numbers: PlayerNumberSummary[]
-  /** The player's color on the tickets (getPlayerColorClass). */
+  /** Background and text of the chips: the color of the player's numbers on
+   *  the tickets (getTakenNumberClasses). */
   colorClass: string
   /** The open round's line price: adds "Total $X" for the paid plays. */
   linePrice?: number
@@ -60,7 +61,7 @@ export function PlayerNumbersSummary({
                 .filter(Boolean)
                 .join(" · ")}
               className={cn(
-                "inline-flex h-6 items-center gap-1 rounded-full px-2 text-xs font-semibold text-white tabular-nums",
+                "inline-flex h-6 items-center gap-1 rounded-full px-2 text-xs font-semibold tabular-nums",
                 colorClass
               )}
             >
@@ -96,7 +97,8 @@ export function PlayerNumbersSummary({
               <span className="font-semibold text-foreground">
                 Total {formatMoney(plays * linePrice)}
               </span>
-              {gifts > 0 && ` (regalos −${formatMoney(gifts * linePrice)} · cobrado ${formatMoney((plays - gifts) * linePrice)})`}
+              {gifts > 0 &&
+                ` (regalos −${formatMoney(gifts * linePrice)} · cobrado ${formatMoney((plays - gifts) * linePrice)})`}
             </>
           )}
         </span>
@@ -126,7 +128,9 @@ export function PlayerPlayBox({
       <h3 className="text-sm font-semibold">Números de {playerName}</h3>
       <PlayerNumbersSummary {...summary} />
       {summary.numbers.length === 0 && (
-        <p className="text-sm text-muted-foreground">Todavía no tiene números.</p>
+        <p className="text-sm text-muted-foreground">
+          Todavía no tiene números.
+        </p>
       )}
     </section>
   )
