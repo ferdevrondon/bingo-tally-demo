@@ -8,6 +8,8 @@ import type { GameActionResult } from "@/lib/data/game-action-result"
 import { rejectGameAction } from "@/lib/data/reject-game-action"
 import { BANKS } from "@/lib/banks"
 import { PAYMENT_METHODS } from "@/lib/payment-methods"
+import { payoutContact } from "@/lib/payout-contact"
+import { emailSchema, phoneSchema } from "@/lib/players"
 import type { SettlementMark } from "@/lib/settlement"
 import { createClient } from "@/lib/supabase/server"
 
@@ -25,6 +27,8 @@ const movementSchema = z.object({
   bank: z.enum(BANKS).nullable(),
   note: z.string().trim().max(200).nullable(),
   requestId: z.uuid(),
+  contactEmail: emailSchema.optional(),
+  contactPhone: phoneSchema.optional(),
 })
 
 type SettlementMovement = MovementInput & { gameSessionId: number }
@@ -44,6 +48,7 @@ async function move(
     p_note: parsed.data.note as string,
     p_request_id: parsed.data.requestId,
     p_bank: parsed.data.bank as string,
+    ...(fn === "settlement_payout" ? payoutContact(parsed.data) : {}),
   })
   if (error) return rejectGameAction(supabase, error)
   refresh()

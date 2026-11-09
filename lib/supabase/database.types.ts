@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           amount: number | null
           bank: string | null
+          contact_email: string | null
+          contact_phone: string | null
           corrects_id: number | null
           counterparty_player_id: number | null
           created_at: string
@@ -39,6 +41,8 @@ export type Database = {
         Insert: {
           amount?: number | null
           bank?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           corrects_id?: number | null
           counterparty_player_id?: number | null
           created_at?: string
@@ -60,6 +64,8 @@ export type Database = {
         Update: {
           amount?: number | null
           bank?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           corrects_id?: number | null
           counterparty_player_id?: number | null
           created_at?: string
@@ -812,6 +818,8 @@ export type Database = {
         Args: {
           p_amount: number
           p_bank?: string
+          p_contact_email?: string
+          p_contact_phone?: string
           p_note: string
           p_payment_method: string
           p_player_id: number
@@ -947,6 +955,8 @@ export type Database = {
         Args: {
           p_amount: number
           p_bank?: string
+          p_contact_email?: string
+          p_contact_phone?: string
           p_game_session_id: number
           p_note: string
           p_payment_method: string

@@ -176,6 +176,8 @@ function MoneyTab({
           balance: account.balance,
           paymentMethod: player.paymentMethod,
           bank: player.bank,
+          email: player.email,
+          phone: player.phone,
         }}
         onConfirm={(values) => onConfirm(direction, values)}
         onDone={onDone}
