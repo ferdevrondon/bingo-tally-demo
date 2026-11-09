@@ -28,6 +28,7 @@ export type GameActionError =
   | "payment_method_required"
   | "payment_method_retired"
   | "invalid_amount"
+  | "invalid_email"
   | "payout_exceeds_balance"
   | "game_session_has_rounds"
   | "game_session_has_payments"
@@ -91,6 +92,7 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   payment_method_required: "Elige el método de pago.",
   payment_method_retired: "Ese método de pago ya no se usa. Elige otro.",
   invalid_amount: "El monto debe ser mayor a 0.",
+  invalid_email: "El correo no es válido.",
   payout_exceeds_balance: "El pago no puede ser mayor al saldo a favor del jugador.",
   game_session_has_rounds: "La jornada ya tiene rondas; no se puede borrar.",
   game_session_has_payments: "La jornada ya tiene recargas o pagos registrados; no se puede borrar.",

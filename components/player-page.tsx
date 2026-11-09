@@ -66,6 +66,8 @@ import {
   PAYMENT_METHOD_OPTIONS,
   paymentMethodLabel,
 } from "@/lib/payment-methods"
+import { GiftHistoryButton, PlayerGiftsDialog } from "@/components/player-gifts-dialog"
+import type { ActiveGiftedPlayers } from "@/lib/data/gifts"
 import type { Player, PlayerInput } from "@/lib/players"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { cn } from "@/lib/utils"
@@ -174,6 +176,8 @@ function MoneyTab({
           balance: account.balance,
           paymentMethod: player.paymentMethod,
           bank: player.bank,
+          email: player.email,
+          phone: player.phone,
         }}
         onConfirm={(values) => onConfirm(direction, values)}
         onDone={onDone}
@@ -189,12 +193,19 @@ function MoneyTab({
 export default function PlayerPage({
   players,
   accounts,
+  activeGifts = null,
 }: {
   players: Player[]
   accounts: PlayerAccount[]
+  /** Who received gifts in the active game session (lib/data/gifts.ts): they
+   *  show the gift box button. null without an active game session. */
+  activeGifts?: ActiveGiftedPlayers | null
 }) {
   const router = useRouter()
   const isAdmin = useRole() === "admin"
+  const gifted = React.useMemo(() => new Set(activeGifts?.playerIds ?? []), [activeGifts])
+  // The player whose gifts of the active game session are open.
+  const [giftsFor, setGiftsFor] = React.useState<{ id: number; name: string } | null>(null)
   const [isAddPlayerOpen, setIsAddPlayerOpen] = React.useState(false)
   const [editingPlayer, setEditingPlayer] = React.useState<Player | null>(null)
   const [deletingPlayer, setDeletingPlayer] = React.useState<Player | null>(
@@ -230,7 +241,17 @@ export default function PlayerPage({
 
   const columns = React.useMemo<DataTableColumnDef[]>(
     () => [
-      { key: "name", header: "Nombre" },
+      {
+        key: "name",
+        header: "Nombre",
+        renderAfter: (row) =>
+          gifted.has(Number(row.id)) ? (
+            <GiftHistoryButton
+              playerName={String(row.name)}
+              onClick={() => setGiftsFor({ id: Number(row.id), name: String(row.name) })}
+            />
+          ) : null,
+      },
       { key: "nickname", header: "Nickname", hideBelow: "md" },
       { key: "contact", header: "Contacto", type: "lines", hideBelow: "lg" },
       isAdmin
@@ -263,7 +284,7 @@ export default function PlayerPage({
       { key: "balance", header: "Saldo" },
       { key: "status", header: "Estado" },
     ],
-    [isAdmin]
+    [isAdmin, gifted]
   )
 
   function findPlayer(id: DataRow["id"]) {
@@ -451,6 +472,19 @@ export default function PlayerPage({
           />
         </div>
       </div>
+
+      {giftsFor && activeGifts && (
+        <PlayerGiftsDialog
+          gameSessionId={activeGifts.gameSessionId}
+          gameNumber={activeGifts.gameNumber}
+          playerId={giftsFor.id}
+          playerName={giftsFor.name}
+          open
+          onOpenChange={(open) => {
+            if (!open) setGiftsFor(null)
+          }}
+        />
+      )}
 
       <Dialog
         open={editingPlayer !== null}

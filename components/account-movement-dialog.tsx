@@ -24,9 +24,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import type { Bank } from "@/lib/banks"
 import type { PaymentMethod } from "@/lib/payment-methods"
+import { emailSchema } from "@/lib/players"
 import { signedMoney } from "@/lib/round-draft/balance"
 import { formatMoney } from "@/lib/rounds"
 
@@ -39,6 +41,10 @@ export interface MovementValues {
   note: string | null
   /** One per dialog opening: a double click records the move once. */
   requestId: string
+  /** "Registrar pago" only: the email / phone the payout went to ("" = none);
+   *  saved on the move and copied to the player (*_payout_contact.sql). */
+  contactEmail?: string
+  contactPhone?: string
 }
 
 const PRESET_AMOUNTS = [10, 20, 50, 100, 200]
@@ -70,6 +76,9 @@ export function AccountMovementForm({
     balance: number
     paymentMethod: PaymentMethod | null
     bank?: Bank | null
+    /** The player's contact, prefilled in "Registrar pago". */
+    email?: string
+    phone?: string
   }
   /** Draw the balance card; false inside the balance dialog, which has its own. */
   showBalance?: boolean
@@ -85,13 +94,20 @@ export function AccountMovementForm({
     React.useState<PaymentMethod | null>(player.paymentMethod ?? "cash")
   const [bank, setBank] = React.useState<Bank | null>(player.bank ?? null)
   const [note, setNote] = React.useState("")
+  const isPayout = direction === "out"
+  const [contactEmail, setContactEmail] = React.useState(player.email ?? "")
+  const [contactPhone, setContactPhone] = React.useState(player.phone ?? "")
   const [requestId] = React.useState(() => crypto.randomUUID())
   const [isConfirmOpen, setIsConfirmOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
   const parsedAmount = Number.parseFloat(amount)
+  const emailOk = !isPayout || emailSchema.safeParse(contactEmail).success
   const isValid =
-    Number.isFinite(parsedAmount) && parsedAmount > 0 && paymentMethod !== null
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    paymentMethod !== null &&
+    emailOk
   const balanceAfter = isValid
     ? player.balance + (direction === "in" ? parsedAmount : -parsedAmount)
     : player.balance
@@ -106,6 +122,12 @@ export function AccountMovementForm({
         bank,
         note: note.trim() || null,
         requestId,
+        ...(isPayout
+          ? {
+              contactEmail: contactEmail.trim(),
+              contactPhone: contactPhone.trim(),
+            }
+          : {}),
       })
       if (saved) onDone()
     })
@@ -145,6 +167,42 @@ export function AccountMovementForm({
         </SelectField>
       </div>
 
+      {isPayout && (
+        <div className="grid grid-cols-2 gap-3">
+          <SelectField
+            label="Correo (opcional)"
+            htmlFor="movement-contact-email"
+          >
+            <Input
+              id="movement-contact-email"
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              value={contactEmail}
+              maxLength={254}
+              aria-invalid={!emailOk}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="correo@ejemplo.com"
+            />
+          </SelectField>
+          <SelectField
+            label="Teléfono (opcional)"
+            htmlFor="movement-contact-phone"
+          >
+            <Input
+              id="movement-contact-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="off"
+              value={contactPhone}
+              maxLength={30}
+              onChange={(e) => setContactPhone(e.target.value)}
+              placeholder="Ej. 555 123 4567"
+            />
+          </SelectField>
+        </div>
+      )}
+
       <NotesField id="movement-note" value={note} onChange={setNote} />
 
       {isValid ? (
@@ -159,6 +217,8 @@ export function AccountMovementForm({
           ]}
           total={{ label: "Saldo final", value: signedMoney(balanceAfter) }}
         />
+      ) : !emailOk ? (
+        <FormMessage tone="destructive">El correo no es válido.</FormMessage>
       ) : (
         <FormMessage>Ingresa el monto y el método de pago.</FormMessage>
       )}
@@ -186,6 +246,13 @@ export function AccountMovementForm({
           playerName={player.name}
           paymentMethod={paymentMethod}
           bank={bank}
+          contact={
+            isPayout
+              ? [contactEmail.trim().toLowerCase(), contactPhone.trim()]
+                  .filter(Boolean)
+                  .join(" · ") || null
+              : null
+          }
           onConfirm={handleConfirm}
         />
       )}
@@ -208,6 +275,9 @@ export function AccountMovementDialog({
     balance: number
     paymentMethod: PaymentMethod | null
     bank?: Bank | null
+    /** The player's contact, prefilled in "Registrar pago". */
+    email?: string
+    phone?: string
   }
   /** Resolves true when saved; the dialog closes then. */
   onConfirm: (values: MovementValues) => Promise<boolean>

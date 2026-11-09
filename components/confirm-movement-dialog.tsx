@@ -35,6 +35,7 @@ export function ConfirmMovementDialog({
   paymentMethod,
   bank,
   toPlayerName,
+  contact = null,
   usual = null,
   onConfirm,
 }: {
@@ -47,6 +48,8 @@ export function ConfirmMovementDialog({
   bank: Bank | null
   /** kind "transfer": the player who receives it (`playerName` gives it). */
   toPlayerName?: string
+  /** kind "payout": the email / phone it went to, when given. */
+  contact?: string | null
   /** The player's usual amount, when known (marks a large amount). */
   usual?: number | null
   onConfirm: () => void
@@ -55,6 +58,7 @@ export function ConfirmMovementDialog({
     KIND_LABELS[kind],
     paymentMethod ? paymentMethodLabel(paymentMethod) : null,
     bank ? bankLabel(bank) : null,
+    contact,
   ]
     .filter(Boolean)
     .join(" · ")

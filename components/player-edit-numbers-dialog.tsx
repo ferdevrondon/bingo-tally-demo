@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { PlayerPlayBox } from "@/components/player-numbers-summary"
+import { RemovePlayerDialog } from "@/components/remove-player-dialog"
 import { TicketsViewToggle, useTicketsView } from "@/components/tickets-board"
 import { claimFirstFree, ticketsByIndex } from "@/lib/round-draft/assign-ticket"
 import { useRoundDraft, type NumberEdit } from "@/lib/round-draft/context"
@@ -234,6 +235,8 @@ export function PlayerEditNumbersDialog({
   const [view] = useTicketsView()
   const [draft, setDraft] = React.useState<Ticket[]>(() => cloneTickets(state.tickets))
   const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false)
+  // Accepting with no numbers left removes the player (after confirming).
+  const [showRemoveConfirm, setShowRemoveConfirm] = React.useState(false)
   const [pendingSteal, setPendingSteal] = React.useState<{
     ticketId: number
     number: number
@@ -353,6 +356,15 @@ export function PlayerEditNumbersDialog({
   // the owner this screen showed, so a stale screen can't take a number that
   // changed in the meantime.
   function handleAccept() {
+    const holds = (tickets: Ticket[]) =>
+      tickets.some((ticket) => ticket.numbers.some((entry) => entry.playerId === player.id))
+    // Left with no numbers: they leave the game session (remove_player frees
+    // their numbers and gives back what they paid, so no edit is sent).
+    if (holds(state.tickets) && !holds(draft)) {
+      setShowRemoveConfirm(true)
+      return
+    }
+
     const changes: NumberEdit[] = []
     draft.forEach((ticket) => {
       const original = state.tickets.find((t) => t.id === ticket.id)
@@ -477,6 +489,14 @@ export function PlayerEditNumbersDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RemovePlayerDialog
+        player={player}
+        open={showRemoveConfirm}
+        onOpenChange={setShowRemoveConfirm}
+        reason="no-numbers"
+        onConfirmed={() => onOpenChange(false)}
+      />
 
       <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
         <AlertDialogContent>

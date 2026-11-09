@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   correctionDelta,
+  groupMovesBySession,
   isLargeAmount,
   toCashMoves,
   toTransferMoves,
@@ -151,5 +152,79 @@ describe("toTransferMoves", () => {
       inGame: true,
     })
     expect(move.closed).toBe(false)
+  })
+})
+
+describe("groupMovesBySession", () => {
+  const sessions = new Map([
+    [7, { id: 7, number: 7, startedAt: "2026-11-01T20:00:00Z", active: false }],
+    [8, { id: 8, number: 8, startedAt: "2026-11-08T20:00:00Z", active: true }],
+  ])
+  const item = (id: number, sessionId: number | null) => ({ move: { id, sessionId } })
+
+  it("splits by game session, newest first, with account moves apart", () => {
+    const sections = groupMovesBySession(
+      [item(1, 7), item(2, 7), item(3, null), item(4, null), item(5, 8), item(6, 8)],
+      sessions
+    )
+    expect(sections.map((s) => [s.kind, s.items.map((i) => i.move.id)])).toEqual([
+      ["session", [6, 5]],
+      ["outside", [4, 3]],
+      ["session", [2, 1]],
+    ])
+  })
+
+  it("keeps a settlement paid later with its game session", () => {
+    // 10: the settlement of game session 7, after an account move (9).
+    const sections = groupMovesBySession([item(1, 7), item(9, null), item(10, 7)], sessions)
+    expect(sections.map((s) => [s.key, s.items.map((i) => i.move.id)])).toEqual([
+      ["s-7", [10, 1]],
+      ["o-9", [9]],
+    ])
+  })
+
+  it("puts a move of an unknown game session outside", () => {
+    expect(groupMovesBySession([item(1, 99)], sessions).map((s) => s.kind)).toEqual(["outside"])
+  })
+})
+
+describe("contact of a payout", () => {
+  it("carries the email and phone it went to, null when not given", () => {
+    const moves = toCashMoves(
+      [
+        row({ id: 1, type: "payout", amount: -50, contact_email: "ana@mail.com", contact_phone: "555 1234" }),
+        row({ id: 2 }),
+      ],
+      noGames
+    )
+    expect(moves.map((m) => [m.id, m.contactEmail, m.contactPhone])).toEqual([
+      [2, null, null],
+      [1, "ana@mail.com", "555 1234"],
+    ])
+  })
+})
+
+describe("round of a move", () => {
+  it("carries the round it was made in, null outside a game session", () => {
+    const context: CashMoveContext = { latestGameSession: null, openSettlements: new Set(), inGame: false }
+    const base = {
+      created_at: "2026-11-08T20:00:00Z",
+      payment_method: "cash",
+      bank: null,
+      note: null,
+      settlement_id: null,
+      corrects_id: null,
+    }
+    const moves = toCashMoves(
+      [
+        { ...base, id: 1, type: "recharge", amount: 20, game_session_id: 8, round_id: 31 },
+        { ...base, id: 2, type: "payout", amount: -5, game_session_id: null, round_id: null },
+      ],
+      context
+    )
+    expect(moves.map((m) => [m.id, m.roundId])).toEqual([
+      [2, null],
+      [1, 31],
+    ])
   })
 })

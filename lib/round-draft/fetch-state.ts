@@ -2,12 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { isBank } from "@/lib/banks"
 import { toActivityEntry } from "@/lib/game-report/fetch"
+import { assembleGiftHistory, GIFT_ROWS_FILTER } from "@/lib/game-report/player-gifts"
 import { isPaymentMethod } from "@/lib/payment-methods"
 import type { Database } from "@/lib/supabase/database.types"
 
 import {
+  EMPTY_SESSION_TOTALS,
   MAX_ACTIVITY_ENTRIES,
   type DraftPlayer,
+  type PlayerSessionTotals,
   type RoundDraftState,
   type Ticket,
 } from "./types"
@@ -25,7 +28,7 @@ function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number
     supabase
       .from("game_session_players")
       .select(
-        "player_id, balance, checked_in, pending_carryover, removed_at, players(name, payment_method, bank)"
+        "player_id, balance, opening_balance, checked_in, pending_carryover, removed_at, players(name, payment_method, bank)"
       )
       .eq("game_session_id", id),
     supabase
@@ -49,6 +52,24 @@ function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(MAX_ACTIVITY_ENTRIES),
+    // The rows that open or close a gift, for who has gifts this game session.
+    supabase
+      .from("activity_log")
+      .select("round_id, player_id, ticket_id, number, type, amount")
+      .eq("game_session_id", id)
+      .not("player_id", "is", null)
+      .or(GIFT_ROWS_FILTER)
+      .order("created_at")
+      .order("id"),
+    // The rows besides the plays that move a player's balance, over the whole
+    // game session (the activity above is capped), summed per player for the
+    // removal summary.
+    supabase
+      .from("activity_log")
+      .select("player_id, type, amount")
+      .eq("game_session_id", id)
+      .in("type", ["recharge", "prize_won", "payout", "balance_transfer"])
+      .not("player_id", "is", null),
   ])
 }
 
@@ -80,17 +101,38 @@ export async function fetchGameSessionState(
   if (!gameSession) return null
 
   const id = gameSession.id
-  const [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity] =
+  const [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity, giftRows, totalRows] =
     knownRows !== null && knownGameSessionId === id
       ? knownRows
       : await readGameSessionRows(supabase, houseId, id)
-  for (const result of [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity]) {
+  for (const result of [
+    catalog,
+    accounts,
+    sessionPlayers,
+    tickets,
+    numbers,
+    rounds,
+    activity,
+    giftRows,
+    totalRows,
+  ]) {
     if (result.error) throw result.error
   }
 
   // Catalog players (with their account balance, which becomes their opening
   // balance when they join) plus every player of this game session,
   // including ones deactivated in the catalog since.
+  const totalsByPlayer = new Map<number, PlayerSessionTotals>()
+  for (const row of totalRows.data ?? []) {
+    if (row.player_id === null) continue
+    const totals = { ...(totalsByPlayer.get(row.player_id) ?? EMPTY_SESSION_TOTALS) }
+    const amount = Number(row.amount ?? 0)
+    if (row.type === "recharge") totals.recharges += amount
+    else if (row.type === "prize_won") totals.prizes += amount
+    else if (row.type === "payout") totals.payouts += amount
+    else if (row.type === "balance_transfer") totals.transfers += amount
+    totalsByPlayer.set(row.player_id, totals)
+  }
   const accountBalance = new Map(
     (accounts.data ?? []).map((a) => [a.player_id, Number(a.balance)])
   )
@@ -103,6 +145,8 @@ export async function fetchGameSessionState(
         paymentMethod: isPaymentMethod(p.payment_method) ? p.payment_method : null,
         bank: isBank(p.bank) ? p.bank : null,
         balance: accountBalance.get(p.id) ?? 0,
+        openingBalance: accountBalance.get(p.id) ?? 0,
+        totals: EMPTY_SESSION_TOTALS,
         checkedIn: false,
         pendingCarryOverDecision: false,
         inSession: false,
@@ -119,6 +163,8 @@ export async function fetchGameSessionState(
         : null,
       bank: isBank(row.players?.bank) ? row.players.bank : null,
       balance: Number(row.balance),
+      openingBalance: Number(row.opening_balance),
+      totals: totalsByPlayer.get(row.player_id) ?? EMPTY_SESSION_TOTALS,
       checkedIn: row.checked_in,
       pendingCarryOverDecision: row.pending_carryover,
       inSession: true,
@@ -168,6 +214,26 @@ export async function fetchGameSessionState(
       ? prizes.map((_, i) => open.winning_numbers[i] ?? null)
       : [],
     roundsPlayed: roundRows.filter((r) => r.status === "closed").length,
+    giftedPlayerIds: [
+      ...new Set(
+        assembleGiftHistory(
+          giftRows.data ?? [],
+          roundRows.map((r) => ({
+            id: r.id,
+            seq: r.seq,
+            name: r.name,
+            status: r.status,
+            linePrice: Number(r.line_price),
+            winningNumbers: r.winning_numbers,
+            gameSessionId: id,
+            gameNumber: gameSession.number,
+            startedAt: gameSession.started_at,
+          })),
+          [],
+          new Map((tickets.data ?? []).map((t) => [t.id, t.index]))
+        ).map((gift) => gift.playerId)
+      ),
+    ],
     houseBalance: Number(gameSession.house_balance),
     gameStartedAt: Date.parse(gameSession.started_at),
   }

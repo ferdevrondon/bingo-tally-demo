@@ -271,7 +271,7 @@ Notes carried over from the current reducer:
 | `recharge` | +x (with `payment_method`) | +x | — (cash) |
 | `payout` | −x (with `payment_method`) | −x (≤ a positive balance; redesigned in 4d) | — (cash) |
 | `check_in` / `check_in_undone` | none | — (rule A) | — |
-| `player_removed` | 0 | unchanged | — |
+| `player_removed` | the balance the player leaves with (not money: every sum filters by type; `note` = JSON `{opening, recharges, played, prizes, payouts, transfers}` since `*_remove_player_summary.sql`: their `opening_balance` and their ledger in the game session by type, which add up to `amount` (opening + recharges − played + prizes + payouts + transfers; `played` = sales − `adjustment`); `{opening, prizes}` and the opening balance alone were the two earlier formats; rows before `*_remove_player_balances.sql` carry 0 and no note) | unchanged | — |
 
 Each closed round also keeps its margin split (`margin_gifts`, `margin_unsold_losing`, `margin_unsold_winning`) for the summaries.
 
@@ -333,7 +333,7 @@ RLS on every table:
 | `award_prize` | `AWARD_PRIZE` | computes prizes in SQL |
 | `close_round` | `CLOSE_ROUND` | computes and writes `margin_adjustment` in SQL, starts the next round with its template's `line_price`, marks active players `pending_carryover`, clears check-ins |
 | `resolve_carryover` | `RESOLVE_CARRYOVER` | |
-| `remove_player` | `REMOVE_PLAYER` | frees the player's numbers and **voids the paid plays of the open round** (one `number_released` per play, balance credited, so the sale leaves the house result; nothing for a pending carry-over or a closed round); sets `removed_at`; the rest of the balance stays on `game_session_players` |
+| `remove_player` | `REMOVE_PLAYER` | frees the player's numbers and **voids the paid plays of the open round** (one `number_released` per play, balance credited, so the sale leaves the house result; nothing for a pending carry-over or a closed round); sets `removed_at`; the rest of the balance stays on `game_session_players`; the `player_removed` row logs the closing balance (`amount`) and, in `note` as JSON, the opening one and what moved it (recharges, plays, prizes, payouts, transfers). The UI confirms every removal with `components/remove-player-dialog.tsx` (the same summary, adding up to the closing balance, then a toast), from "Retirar jugador", from "Editar jugada" accepted with no numbers left and from tapping the player's last number on the tickets |
 | `end_game_session` | "Terminar jornada" | `status = 'ended'`, nothing is deleted |
 | `discard_game_session` | "Salir y borrar" | see below |
 | `record_payout` | (new; settlement) | allowed on ended game sessions |
@@ -516,6 +516,7 @@ Decided with the product owner after a double charge found in the data (a number
 - **Lock:** while `game_session_players.pending_carryover` is set, the player's play can't change. `private.assert_no_pending_carryover` is called by the four `private.apply_*` helpers (purchase, release, reassign — from or to the player —, gift toggle), so `record_purchase`, `release_number`, `reassign_number`, `toggle_gift` and `edit_player_numbers` raise `pending_carryover`. Only `resolve_carryover` can touch it. The UI mirrors it (`isPendingDecision` in `lib/round-draft/context.tsx`, "Editar jugada" disabled).
 - **Automatic check-in:** `resolve_carryover` sets `checked_in` and logs a `check_in` row with note `auto` when the player still holds at least one number after the decision. Releasing everything leaves them without check-in; buying again brings the regular check-in.
 - Charges already made twice before this change are not corrected.
+- **A recharge also checks in** (2026-11-08, `*_recharge_checks_in.sql`, test `supabase/tests/recharge_checks_in.sql`): `record_recharge` during an open round sets `checked_in` and logs a `check_in` row with note `recharge` (request id `request_id_for(p_request_id, 2)`) when the player isn't checked in and has no pending keep-or-release decision. Correcting the recharge doesn't undo it; cash moves outside the live game don't touch check-in.
 
 ### Fix: adding a new player through the edit dialog (2026-10-06)
 
@@ -604,6 +605,11 @@ Decided with the product owner (2026-10-01) after Phase 6: close the minor gaps 
 Decided with the product owner in QA: "Recibir pago" / "Registrar pago" (`/players`, the settlement) and the recharge in the live game ask for **Banco** ("Entidad bancaria (ingreso)") and **Método** ("Método de pago (salida)"), both prefilled from the player, and both are stored on the ledger row of that move.
 - Migration `20261008120000_movement_bank.sql` (applied by the product owner in the SQL Editor on 2026-10-07; the MCP refuses destructive DDL): `activity_log.bank` (nullable, same check as `players.bank`); the ledger is append-only, so `private.log_activity` and `private.record_cash` take `p_bank` (dropped and recreated); `record_account_recharge`, `record_account_payout`, `settlement_receive`, `settlement_payout` and `record_recharge` take `p_bank text default null` as their last argument (dropped and recreated with the same grants), so callers that don't send it keep working.
 - Verified with read-only SQL: the column, the five public signatures with `p_bank`, and `execute` only for `authenticated` (private helpers for nobody).
+
+### After the plan: the contact of a payout (2026-11-08)
+Asked by the client: the player's email and phone are often unknown when the player is created, and the house writes them down when it pays the player. "Registrar pago" (`/players`, the settlement) gets **Correo** and **Teléfono**, optional, prefilled from the player.
+- Migration `20261108160000_payout_contact.sql`: `activity_log.contact_email` / `contact_phone` (same checks as `players.email` / `players.phone`, only on `payout` rows); `private.log_activity` and `private.record_cash` take them (dropped and recreated); `record_account_payout` and `settlement_payout` take `p_contact_email` / `p_contact_phone text default null` as their last arguments (dropped and recreated with the same grants), normalize them like the players trigger (`private.normalize_payout_contact`, `invalid_email` / `invalid_phone` before anything is written), store them on the row and copy what was given to the player (`private.save_payout_contact`; an empty value never clears the player's contact). Additive: callers that don't send them keep working.
+- SQL test: `supabase/tests/payout_contact.sql`. The app: `components/account-movement-dialog.tsx` (only `direction === "out"`), `lib/payout-contact.ts`, the contact shown in the confirmation and in "Últimos movimientos".
 
 ### Configuración (2026-10-07)
 Decided with the product owner while preparing the demo house: `/settings` stops being a prototype.

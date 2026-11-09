@@ -26,7 +26,12 @@ export interface LedgerCashRow {
   note: string | null
   game_session_id: number | null
   settlement_id: number | null
+  /** The round in play when the move was made; null outside a game session. */
+  round_id?: number | null
   corrects_id: number | null
+  /** A payout's contact ("Registrar pago", *_payout_contact.sql). */
+  contact_email?: string | null
+  contact_phone?: string | null
 }
 
 export interface CashMove {
@@ -42,6 +47,16 @@ export interface CashMove {
   correction: { amount: number; reason: string } | null
   /** The money already left where the move put it: it can't be corrected. */
   closed: boolean
+  /** The game session it belongs to: the one it was made in, or the one
+   *  whose settlement it was; null outside any game session. */
+  sessionId: number | null
+  /** Made in a game session's settlement. */
+  fromSettlement: boolean
+  /** The round in play when it was made; null outside a game session. */
+  roundId: number | null
+  /** A payout's contact: the email and phone it went to, when given. */
+  contactEmail: string | null
+  contactPhone: string | null
 }
 
 export interface CashMoveContext {
@@ -90,6 +105,11 @@ export function toCashMoves(rows: LedgerCashRow[], context: CashMoveContext): Ca
           ? { amount: Math.abs(recorded + Number(fix.amount ?? 0)), reason: fix.note ?? "" }
           : null,
         closed: isClosed(row, context),
+        sessionId: row.game_session_id ?? row.settlement_id,
+        fromSettlement: row.game_session_id === null && row.settlement_id !== null,
+        roundId: row.round_id ?? null,
+        contactEmail: row.contact_email ?? null,
+        contactPhone: row.contact_phone ?? null,
       }
     })
 }
@@ -125,6 +145,10 @@ export interface TransferMove {
   voided: { reason: string } | null
   /** The money already left where the transfer put it (this player's side). */
   closed: boolean
+  /** The game session it was made in; null on the account. */
+  sessionId: number | null
+  /** The round in play when it was made; null on the account. */
+  roundId: number | null
 }
 
 /** The player's transfers, newest first, each with its voiding. */
@@ -154,6 +178,54 @@ export function toTransferMoves(rows: LedgerTransferRow[], context: CashMoveCont
         note: row.note,
         voided: voiding ? { reason: voiding.note ?? "" } : null,
         closed: isClosed(row, context),
+        sessionId: row.game_session_id ?? row.settlement_id,
+        roundId: row.round_id ?? null,
       }
     })
+}
+
+// "Movimientos" by game session: one section per game session (its moves and
+// its settlement's), and "Fuera de jornada" for the runs of moves made on the
+// account outside any game session, newest first.
+
+export interface MoveSessionInfo {
+  id: number
+  number: number
+  startedAt: string
+  /** The game session in play. */
+  active: boolean
+}
+
+export type MoveSection<T> =
+  | { key: string; kind: "session"; session: MoveSessionInfo; items: T[] }
+  | { key: string; kind: "outside"; items: T[] }
+
+/** `items` newest first (by id); each section keeps that order. A game
+ *  session's moves stay in one section even when an account move happened in
+ *  between (a settlement paid days later). */
+export function groupMovesBySession<T extends { move: { id: number; sessionId: number | null } }>(
+  items: T[],
+  sessions: ReadonlyMap<number, MoveSessionInfo>
+): MoveSection<T>[] {
+  const sections: MoveSection<T>[] = []
+  const bySession = new Map<number, MoveSection<T>>()
+  for (const item of [...items].sort((a, b) => b.move.id - a.move.id)) {
+    const sessionId = item.move.sessionId
+    const session = sessionId === null ? undefined : sessions.get(sessionId)
+    if (sessionId !== null && session) {
+      const existing = bySession.get(sessionId)
+      if (existing) {
+        existing.items.push(item)
+        continue
+      }
+      const section: MoveSection<T> = { key: `s-${sessionId}`, kind: "session", session, items: [item] }
+      bySession.set(sessionId, section)
+      sections.push(section)
+      continue
+    }
+    const last = sections.at(-1)
+    if (last?.kind === "outside") last.items.push(item)
+    else sections.push({ key: `o-${item.move.id}`, kind: "outside", items: [item] })
+  }
+  return sections
 }
