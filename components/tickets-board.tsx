@@ -3,6 +3,7 @@
 import * as React from "react"
 import { LayoutGridIcon, ListIcon, PlusIcon } from "lucide-react"
 
+import { RemovePlayerDialog } from "@/components/remove-player-dialog"
 import { TicketCard } from "@/components/ticket-card"
 import { TicketListColumn } from "@/components/ticket-list-column"
 import {
@@ -203,6 +204,27 @@ export function TicketsGrid({
   const [view] = useTicketsView()
   // The ticket waiting for "Retirar cartón" to be confirmed.
   const [removing, setRemoving] = React.useState<{ id: number; index: number } | null>(null)
+  // The player whose last number was tapped: freeing it removes them from the
+  // game session, after confirming.
+  const [leaving, setLeaving] = React.useState<{ id: number; name: string } | null>(null)
+
+  function handleAssign(ticketId: number, number: number) {
+    const player = state.players.find((p) => p.id === state.activePlayerId)
+    const tapped = state.tickets
+      .find((t) => t.id === ticketId)
+      ?.numbers.find((n) => n.number === number)
+    if (player && !readOnly && !player.pendingCarryOverDecision && tapped?.playerId === player.id) {
+      const held = state.tickets.reduce(
+        (count, t) => count + t.numbers.filter((n) => n.playerId === player.id).length,
+        0
+      )
+      if (held === 1) {
+        setLeaving({ id: player.id, name: player.name })
+        return
+      }
+    }
+    assignNumber(ticketId, number)
+  }
 
   function handleAddTicket() {
     startTicketTransition(async () => {
@@ -224,7 +246,7 @@ export function TicketsGrid({
     activePlayerId: state.activePlayerId,
     readOnly,
     highlightNumber,
-    onAssign: (number: number) => assignNumber(ticketId, number),
+    onAssign: (number: number) => handleAssign(ticketId, number),
     onToggleGift: (number: number) => toggleGift(ticketId, number),
     onRemove:
       !readOnly && !isTicketPending && canRemoveTicket(state, ticketId)
@@ -236,23 +258,33 @@ export function TicketsGrid({
   })
 
   const confirmRemove = (
-    <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Retirar el cartón {removing?.index}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            No tiene números jugados. Su historial se conserva y, si agregas un cartón más
-            adelante, vuelve este mismo.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={handleRemoveTicket}>
-            Retirar cartón
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      {leaving && (
+        <RemovePlayerDialog
+          player={leaving}
+          open
+          onOpenChange={(open) => !open && setLeaving(null)}
+          reason="no-numbers"
+        />
+      )}
+      <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Retirar el cartón {removing?.index}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No tiene números jugados. Su historial se conserva y, si agregas un cartón más
+              adelante, vuelve este mismo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleRemoveTicket}>
+              Retirar cartón
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 
   return view === "tickets" ? (

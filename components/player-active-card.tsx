@@ -14,16 +14,6 @@ import {
   type CorrectionValues,
   type VoidTransferValues,
 } from "@/components/recent-movements-panel"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Toggle } from "@/components/ui/toggle"
@@ -31,7 +21,9 @@ import { PlayerEditNumbersDialog } from "@/components/player-edit-numbers-dialog
 import { PlayerBalanceDialog } from "@/components/player-balance-dialog"
 import { PlayerRechargeForm } from "@/components/player-recharge-form"
 import { PlayerReleaseNumbersDialog } from "@/components/player-release-numbers-dialog"
+import { GiftHistoryButton, PlayerGiftsDialog } from "@/components/player-gifts-dialog"
 import { PlayerRoundsDialog } from "@/components/player-rounds-dialog"
+import { RemovePlayerDialog } from "@/components/remove-player-dialog"
 import { useCheckInToggle } from "@/components/check-in-dialog"
 import {
   correctMovement,
@@ -41,11 +33,11 @@ import {
 import { GAME_ACTION_ERROR_MESSAGES } from "@/lib/data/game-action-result"
 import { balanceLabel, signedMoney } from "@/lib/round-draft/balance"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { removalRefund } from "@/lib/round-draft/remove-player"
 import {
   getLastRechargeActivity,
   getPlayerNumberSummary,
   getSlotWinners,
+  hasGiftHistory,
 } from "@/lib/round-draft/selectors"
 import { formatRelativeTime } from "@/lib/format-relative-time"
 import { formatMoney } from "@/lib/rounds"
@@ -59,18 +51,19 @@ export function PlayerActiveCard({
   player: DraftPlayer
   className?: string
 }) {
-  const { state, readOnly, removePlayer, resolveCarryOver } = useRoundDraft()
+  const { state, readOnly, resolveCarryOver } = useRoundDraft()
   const checkInToggle = useCheckInToggle()
   const linePrice = state.round?.linePrice ?? 0
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [isBalanceOpen, setIsBalanceOpen] = React.useState(false)
   const [isRoundsOpen, setIsRoundsOpen] = React.useState(false)
+  const [isGiftsOpen, setIsGiftsOpen] = React.useState(false)
+  const showGifts = hasGiftHistory(state, player.id)
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = React.useState(false)
   const [isReleaseOpen, setIsReleaseOpen] = React.useState(false)
 
   const balance = player.balance
   const lastRecharge = getLastRechargeActivity(state, player.id)
-  const removedPlays = removalRefund(state, player.id)
 
   // A correction from "Últimos movimientos": the game session re-syncs from
   // the new ledger row.
@@ -148,6 +141,13 @@ export function PlayerActiveCard({
           <span className="font-heading truncate text-[13px] font-semibold">
             {player.name}
           </span>
+          {showGifts && (
+            <GiftHistoryButton
+              playerName={player.name}
+              onClick={() => setIsGiftsOpen(true)}
+              className="-my-1 shrink-0 self-center"
+            />
+          )}
           <span
             className={cn(
               "shrink-0 text-base font-bold",
@@ -254,18 +254,17 @@ export function PlayerActiveCard({
           )}
         </div>
         {!readOnly && (
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className="text-muted-foreground">Saldo</span>
-            <Button
-              variant="outline"
-              size="icon-xs"
-              onClick={() => setIsBalanceOpen(true)}
-              title="Recargar, transferir o ver movimientos"
-              aria-label="Saldo: recargar, transferir o ver movimientos"
-            >
-              <WalletIcon />
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 pointer-coarse:h-10 pointer-coarse:px-4"
+            onClick={() => setIsBalanceOpen(true)}
+            title="Recargar, transferir o ver movimientos"
+            aria-label="Saldo: recargar, transferir o ver movimientos"
+          >
+            <WalletIcon data-icon="inline-start" />
+            Saldo
+          </Button>
         )}
       </div>
 
@@ -291,38 +290,45 @@ export function PlayerActiveCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <button
-          type="button"
-          onClick={() => setIsRoundsOpen(true)}
-          className="flex shrink-0 items-center gap-0.5 text-xs whitespace-nowrap text-muted-foreground hover:text-foreground"
-        >
-          <span>Ver rondas</span>
-          <ChevronRightIcon className="size-3.5" />
-        </button>
-        {!readOnly && (
-          <div className="flex flex-1 items-center justify-between gap-1.5 whitespace-nowrap">
-            <Button
-              variant="outline"
-              size="xs"
-              disabled={player.pendingCarryOverDecision}
-              title={
-                player.pendingCarryOverDecision
-                  ? "Primero decide si mantiene o libera su jugada"
-                  : undefined
-              }
-              onClick={() => setIsEditOpen(true)}
-            >
-              Editar jugada
-            </Button>
+      {/* Away from "Saldo" (above, on the right): "Retirar jugador" sits on
+          the left and "Editar jugada" under "Saldo", with a divider and room
+          between them, so a finger on a tablet doesn't hit the wrong one. */}
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t pt-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsRoundsOpen(true)}
+            className="flex shrink-0 items-center gap-0.5 text-xs font-semibold whitespace-nowrap text-primary underline-offset-2 hover:underline pointer-coarse:min-h-9"
+          >
+            <span>Ver rondas</span>
+            <ChevronRightIcon className="size-3.5" />
+          </button>
+          {!readOnly && (
             <Button
               variant="destructive"
               size="xs"
+              className="pointer-coarse:h-9 pointer-coarse:px-3"
               onClick={() => setIsRemoveConfirmOpen(true)}
             >
               Retirar jugador
             </Button>
-          </div>
+          )}
+        </div>
+        {!readOnly && (
+          <Button
+            variant="outline"
+            size="xs"
+            className="pointer-coarse:h-9 pointer-coarse:px-3"
+            disabled={player.pendingCarryOverDecision}
+            title={
+              player.pendingCarryOverDecision
+                ? "Primero decide si mantiene o libera su jugada"
+                : undefined
+            }
+            onClick={() => setIsEditOpen(true)}
+          >
+            Editar jugada
+          </Button>
         )}
       </div>
 
@@ -394,43 +400,25 @@ export function PlayerActiveCard({
         open={isRoundsOpen}
         onOpenChange={setIsRoundsOpen}
       />
+      <PlayerGiftsDialog
+        gameSessionId={state.gameSessionId}
+        gameNumber={state.gameNumber}
+        playerId={player.id}
+        playerName={player.name}
+        open={isGiftsOpen}
+        onOpenChange={setIsGiftsOpen}
+      />
       <PlayerReleaseNumbersDialog
         player={player}
         open={isReleaseOpen}
         onOpenChange={setIsReleaseOpen}
       />
 
-      <AlertDialog
+      <RemovePlayerDialog
+        player={player}
         open={isRemoveConfirmOpen}
         onOpenChange={setIsRemoveConfirmOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              ¿Retirar a {player.name} de la jornada?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Sus números quedarán disponibles de nuevo en los cartones.
-              {removedPlays > 0
-                ? ` Se asume que sus jugadas de esta ronda no se van a pagar: $${removedPlays} no contarán como ganancia de la casa y se descuentan de lo que debe.`
-                : ""}{" "}
-              Su saldo se conserva para la liquidación.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive/10 text-destructive hover:bg-destructive/20"
-              onClick={() => {
-                removePlayer(player.id)
-                setIsRemoveConfirmOpen(false)
-              }}
-            >
-              Retirar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </Card>
   )
 }

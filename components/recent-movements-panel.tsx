@@ -17,9 +17,11 @@ import { bankLabel } from "@/lib/banks"
 import { formatHouseDate, formatHouseTime } from "@/lib/game-report/format"
 import {
   correctionDelta,
+  groupMovesBySession,
   toCashMoves,
   toTransferMoves,
   type CashMove,
+  type MoveSessionInfo,
   type TransferMove,
 } from "@/lib/movements"
 import { paymentMethodLabel } from "@/lib/payment-methods"
@@ -28,7 +30,10 @@ import { formatMoney } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
-const MOVES_SHOWN = 10
+/** Sections ("Jornada #N", "Fuera de jornada") shown at first and added by
+ *  "Ver jornadas anteriores". */
+const SECTIONS_STEP = 3
+const PAGE = 1000
 
 export interface VoidTransferValues {
   transferId: string
@@ -50,19 +55,38 @@ export interface CorrectionValues {
   requestId: string
 }
 
-async function fetchMoves(houseId: number, playerId: number, inGame: boolean) {
+async function fetchMoves(
+  houseId: number,
+  playerId: number,
+  inGame: boolean
+): Promise<{
+  items: MoveItem[]
+  sessions: Map<number, MoveSessionInfo>
+  rounds: Map<number, string>
+}> {
   const supabase = createClient()
+  // Every cobro, pago and transfer of the player (few per game session), so
+  // each correction or voiding finds its move, however old.
+  const readRows = async () => {
+    const all = []
+    for (let from = 0; ; from += PAGE) {
+      const page = await supabase
+        .from("activity_log")
+        .select(
+          "id, created_at, type, amount, payment_method, bank, note, game_session_id, settlement_id, round_id, corrects_id, transfer_id, counterparty_player_id"
+        )
+        .eq("house_id", houseId)
+        .eq("player_id", playerId)
+        .in("type", ["recharge", "payout", "balance_transfer"])
+        .order("id", { ascending: false })
+        .range(from, from + PAGE - 1)
+      if (page.error) return { data: null, error: page.error }
+      all.push(...page.data)
+      if (page.data.length < PAGE) return { data: all, error: null }
+    }
+  }
   const [rows, latest] = await Promise.all([
-    supabase
-      .from("activity_log")
-      .select(
-        "id, created_at, type, amount, payment_method, bank, note, game_session_id, settlement_id, corrects_id, transfer_id, counterparty_player_id"
-      )
-      .eq("house_id", houseId)
-      .eq("player_id", playerId)
-      .in("type", ["recharge", "payout", "balance_transfer"])
-      .order("id", { ascending: false })
-      .limit(MOVES_SHOWN * 3),
+    readRows(),
     supabase
       .from("game_sessions")
       .select("id, status, started_at")
@@ -71,7 +95,7 @@ async function fetchMoves(houseId: number, playerId: number, inGame: boolean) {
       .limit(1)
       .maybeSingle(),
   ])
-  if (rows.error) throw rows.error
+  if (rows.error || rows.data === null) throw rows.error
   if (latest.error) throw latest.error
   const settlementIds = [
     ...new Set(
@@ -122,7 +146,51 @@ async function fetchMoves(houseId: number, playerId: number, inGame: boolean) {
       counterpartyName: nameById.get(move.counterpartyId) ?? "otro jugador",
     })),
   ]
-  return items.sort((a, b) => b.move.id - a.move.id).slice(0, MOVES_SHOWN)
+  // The game sessions the moves belong to, for the section headers.
+  const sessionIds = [
+    ...new Set(
+      items.flatMap((i) =>
+        i.move.sessionId === null ? [] : [i.move.sessionId]
+      )
+    ),
+  ]
+  const sessionRows =
+    sessionIds.length === 0
+      ? { data: [], error: null }
+      : await supabase
+          .from("game_sessions")
+          .select("id, number, started_at, status")
+          .in("id", sessionIds)
+  if (sessionRows.error) throw sessionRows.error
+  const sessions = new Map<number, MoveSessionInfo>(
+    sessionRows.data.map((g) => [
+      g.id,
+      {
+        id: g.id,
+        number: g.number,
+        startedAt: g.started_at,
+        active: g.status === "active",
+      },
+    ])
+  )
+  // The round each move was made in, for its label.
+  const roundIds = [
+    ...new Set(
+      items.flatMap((i) => (i.move.roundId === null ? [] : [i.move.roundId]))
+    ),
+  ]
+  const roundRows =
+    roundIds.length === 0
+      ? { data: [], error: null }
+      : await supabase
+          .from("game_session_rounds")
+          .select("id, seq, name")
+          .in("id", roundIds)
+  if (roundRows.error) throw roundRows.error
+  const rounds = new Map(
+    roundRows.data.map((r) => [r.id, `Ronda ${r.seq} · ${r.name}`])
+  )
+  return { items, sessions, rounds }
 }
 
 function transferTitle(move: TransferMove, counterpartyName: string): string {
@@ -144,7 +212,7 @@ interface MoveRowData {
   tone: keyof typeof ROW_TONES
   icon: React.ComponentType<{ className?: string }>
   title: string
-  /** "Método · Banco · hora". */
+  /** "Método · Banco · Ronda 2 · Regular · hora". */
   subline: string
   /** Extra line: the correction or the voiding. */
   status: string | null
@@ -238,7 +306,13 @@ export function RecentMovementsPanel({
   onDone: () => void
 }) {
   const house = useHouse()
-  const [moves, setMoves] = React.useState<MoveItem[] | null>(null)
+  const [data, setData] = React.useState<{
+    items: MoveItem[]
+    sessions: Map<number, MoveSessionInfo>
+    rounds: Map<number, string>
+  } | null>(null)
+  const moves = data?.items ?? null
+  const [sectionsShown, setSectionsShown] = React.useState(SECTIONS_STEP)
   const [loadFailed, setLoadFailed] = React.useState(false)
   const [selected, setSelected] = React.useState<CashMove | null>(null)
   const [selectedTransfer, setSelectedTransfer] = React.useState<
@@ -254,7 +328,7 @@ export function RecentMovementsPanel({
     if (houseId === null) return
     let cancelled = false
     fetchMoves(houseId, player.id, player.inGame).then(
-      (result) => !cancelled && setMoves(result),
+      (result) => !cancelled && setData(result),
       () => !cancelled && setLoadFailed(true)
     )
     return () => {
@@ -320,10 +394,24 @@ export function RecentMovementsPanel({
 
   const timeZone = house?.timezone ?? "UTC"
 
-  // The list, one day header per house day (newest first).
-  const groups: { day: string; rows: MoveRowData[] }[] = []
-  for (const item of moves ?? []) {
-    const time = formatHouseTime(item.move.createdAt, timeZone)
+  const shortDay = new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "short",
+    timeZone,
+  })
+
+  // "Ronda 2 · Regular": the round in play when the move was made.
+  const roundOf = (move: { roundId: number | null }) =>
+    move.roundId === null ? null : (data?.rounds.get(move.roundId) ?? null)
+
+  // One row of the list. `sectionDay`: the day the section started, so a
+  // move of another day (a settlement paid later) shows its date too.
+  function toRow(item: MoveItem, sectionDay: string | null): MoveRowData {
+    const day = formatHouseDate(item.move.createdAt, timeZone)
+    const time =
+      sectionDay !== null && day !== sectionDay
+        ? `${shortDay.format(new Date(item.move.createdAt))}, ${formatHouseTime(item.move.createdAt, timeZone)}`
+        : formatHouseTime(item.move.createdAt, timeZone)
     let row: MoveRowData
     if (item.kind === "transfer") {
       const move = item.move
@@ -335,7 +423,7 @@ export function RecentMovementsPanel({
         tone: "transfer",
         icon: ArrowLeftRightIcon,
         title: `Transferencia ${out ? "a" : "de"} ${item.counterpartyName}`,
-        subline: ["No es efectivo", move.note, time]
+        subline: ["No es efectivo", move.note, roundOf(move), time]
           .filter(Boolean)
           .join(" · "),
         status: move.voided ? `Anulada · ${move.voided.reason}` : null,
@@ -367,9 +455,11 @@ export function RecentMovementsPanel({
         icon: incoming ? ArrowDownLeftIcon : ArrowUpRightIcon,
         title: incoming ? "Cobro" : "Pago",
         subline: [
+          move.fromSettlement ? "Liquidación" : null,
           move.paymentMethod ? paymentMethodLabel(move.paymentMethod) : null,
           move.bank ? bankLabel(move.bank) : null,
           move.note,
+          roundOf(move),
           time,
         ]
           .filter(Boolean)
@@ -392,11 +482,45 @@ export function RecentMovementsPanel({
             },
       }
     }
-    const day = formatHouseDate(item.move.createdAt, timeZone)
-    const last = groups[groups.length - 1]
-    if (last?.day === day) last.rows.push(row)
-    else groups.push({ day, rows: [row] })
+    return row
   }
+
+  // One section per game session (its moves and its settlement's) and per
+  // run of moves outside any, newest first (groupMovesBySession).
+  const sections = groupMovesBySession(
+    moves ?? [],
+    data?.sessions ?? new Map()
+  ).map((section) => {
+    // Cash only (transfers are not), each move at its corrected amount.
+    const cash = section.items.flatMap((i) =>
+      i.kind === "cash" ? [i.move] : []
+    )
+    const sum = (type: CashMove["type"]) =>
+      cash
+        .filter((m) => m.type === type)
+        .reduce((total, m) => total + (m.correction?.amount ?? m.amount), 0)
+    const sectionDay =
+      section.kind === "session"
+        ? formatHouseDate(section.session.startedAt, timeZone)
+        : null
+    const firstDay = formatHouseDate(
+      section.items[section.items.length - 1].move.createdAt,
+      timeZone
+    )
+    return {
+      key: section.key,
+      title:
+        section.kind === "session"
+          ? `Jornada #${section.session.number} · ${sectionDay}`
+          : `Fuera de jornada · ${firstDay}`,
+      active: section.kind === "session" && section.session.active,
+      recharges: sum("recharge"),
+      payouts: sum("payout"),
+      rows: section.items.map((item) => toRow(item, sectionDay ?? firstDay)),
+    }
+  })
+  const shownSections = sections.slice(0, sectionsShown)
+  const hiddenSections = sections.length - shownSections.length
 
   return (
     <PanelBody>
@@ -420,19 +544,42 @@ export function RecentMovementsPanel({
             {player.name} no tiene cobros, pagos ni transferencias registrados.
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {groups.map((group) => (
-              <section key={group.day}>
-                <h3 className="text-[11px] font-medium text-muted-foreground first-letter:uppercase">
-                  {group.day}
-                </h3>
+          <div className="flex flex-col gap-4">
+            {shownSections.map((section) => (
+              <section key={section.key}>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-2 border-b pb-1">
+                  <h3 className="flex items-center gap-1.5 text-xs font-semibold first-letter:uppercase">
+                    {section.title}
+                    {section.active && (
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                        En curso
+                      </span>
+                    )}
+                  </h3>
+                  {(section.recharges > 0 || section.payouts > 0) && (
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      Cobros {formatMoney(section.recharges)} · Pagos{" "}
+                      {formatMoney(section.payouts)}
+                    </span>
+                  )}
+                </div>
                 <ul className="divide-y">
-                  {group.rows.map((row) => (
+                  {section.rows.map((row) => (
                     <MoveRow key={row.key} row={row} />
                   ))}
                 </ul>
               </section>
             ))}
+            {hiddenSections > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-center"
+                onClick={() => setSectionsShown((n) => n + SECTIONS_STEP)}
+              >
+                Ver jornadas anteriores ({hiddenSections})
+              </Button>
+            )}
           </div>
         )
       ) : selectedTransfer !== null ? (
