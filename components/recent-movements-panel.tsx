@@ -73,7 +73,7 @@ async function fetchMoves(
       const page = await supabase
         .from("activity_log")
         .select(
-          "id, created_at, type, amount, payment_method, bank, note, game_session_id, settlement_id, round_id, corrects_id, transfer_id, counterparty_player_id"
+          "id, created_at, type, amount, payment_method, bank, note, game_session_id, settlement_id, round_id, corrects_id, contact_email, contact_phone, transfer_id, counterparty_player_id"
         )
         .eq("house_id", houseId)
         .eq("player_id", playerId)
@@ -458,6 +458,8 @@ export function RecentMovementsPanel({
           move.fromSettlement ? "Liquidación" : null,
           move.paymentMethod ? paymentMethodLabel(move.paymentMethod) : null,
           move.bank ? bankLabel(move.bank) : null,
+          move.contactEmail,
+          move.contactPhone,
           move.note,
           roundOf(move),
           time,

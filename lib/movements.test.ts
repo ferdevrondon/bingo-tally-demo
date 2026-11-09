@@ -188,6 +188,22 @@ describe("groupMovesBySession", () => {
   })
 })
 
+describe("contact of a payout", () => {
+  it("carries the email and phone it went to, null when not given", () => {
+    const moves = toCashMoves(
+      [
+        row({ id: 1, type: "payout", amount: -50, contact_email: "ana@mail.com", contact_phone: "555 1234" }),
+        row({ id: 2 }),
+      ],
+      noGames
+    )
+    expect(moves.map((m) => [m.id, m.contactEmail, m.contactPhone])).toEqual([
+      [2, null, null],
+      [1, "ana@mail.com", "555 1234"],
+    ])
+  })
+})
+
 describe("round of a move", () => {
   it("carries the round it was made in, null outside a game session", () => {
     const context: CashMoveContext = { latestGameSession: null, openSettlements: new Set(), inGame: false }

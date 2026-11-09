@@ -10,6 +10,8 @@ import { getCurrentHouse } from "@/lib/data/house"
 import { rejectGameAction } from "@/lib/data/reject-game-action"
 import { BANKS, type Bank } from "@/lib/banks"
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/payment-methods"
+import { payoutContact } from "@/lib/payout-contact"
+import { emailSchema, phoneSchema } from "@/lib/players"
 import { createClient } from "@/lib/supabase/server"
 
 // Money in and out of a player's account at any time (/players), and the
@@ -23,6 +25,8 @@ const movementSchema = z.object({
   bank: z.enum(BANKS).nullable(),
   note: z.string().trim().max(200).nullable(),
   requestId: z.uuid(),
+  contactEmail: emailSchema.optional(),
+  contactPhone: phoneSchema.optional(),
 })
 
 export type MovementInput = {
@@ -33,6 +37,9 @@ export type MovementInput = {
   bank: Bank | null
   note: string | null
   requestId: string
+  /** "Registrar pago" only: the contact the payout went to ("" or absent = none). */
+  contactEmail?: string
+  contactPhone?: string
 }
 
 async function move(
@@ -49,6 +56,7 @@ async function move(
     p_note: parsed.data.note as string,
     p_request_id: parsed.data.requestId,
     p_bank: parsed.data.bank as string,
+    ...(fn === "record_account_payout" ? payoutContact(parsed.data) : {}),
   })
   if (error) return rejectGameAction(supabase, error)
   refresh()

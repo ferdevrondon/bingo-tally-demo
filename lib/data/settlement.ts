@@ -72,7 +72,7 @@ export const loadSettlement = cache(async (gameSessionId: number): Promise<Settl
     supabase
       .from("settlement_players")
       .select(
-        "player_id, closing_balance, received, paid, resolution, note, resolved_at, final_balance, players(name, payment_method, bank)"
+        "player_id, closing_balance, received, paid, resolution, note, resolved_at, final_balance, players(name, payment_method, bank, email, phone)"
       )
       .eq("game_session_id", gameSessionId),
     supabase
@@ -99,6 +99,8 @@ export const loadSettlement = cache(async (gameSessionId: number): Promise<Settl
           ? row.players.payment_method
           : null,
         bank: isBank(row.players?.bank) ? row.players.bank : null,
+        email: row.players?.email ?? "",
+        phone: row.players?.phone ?? "",
         openingBalance: opening.get(row.player_id) ?? 0,
         ...t,
         closingBalance: Number(row.closing_balance),

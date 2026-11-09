@@ -35,6 +35,9 @@ export interface SettlementPlayer {
   name: string
   paymentMethod: PaymentMethod | null
   bank: Bank | null
+  /** The player's contact ("" when unknown), prefilled in "Registrar pago". */
+  email: string
+  phone: string
   /** How the game session went for the player. */
   openingBalance: number
   /** Numbers bought, net of refunds (negative). */

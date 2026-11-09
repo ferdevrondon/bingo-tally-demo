@@ -29,6 +29,9 @@ export interface LedgerCashRow {
   /** The round in play when the move was made; null outside a game session. */
   round_id?: number | null
   corrects_id: number | null
+  /** A payout's contact ("Registrar pago", *_payout_contact.sql). */
+  contact_email?: string | null
+  contact_phone?: string | null
 }
 
 export interface CashMove {
@@ -51,6 +54,9 @@ export interface CashMove {
   fromSettlement: boolean
   /** The round in play when it was made; null outside a game session. */
   roundId: number | null
+  /** A payout's contact: the email and phone it went to, when given. */
+  contactEmail: string | null
+  contactPhone: string | null
 }
 
 export interface CashMoveContext {
@@ -102,6 +108,8 @@ export function toCashMoves(rows: LedgerCashRow[], context: CashMoveContext): Ca
         sessionId: row.game_session_id ?? row.settlement_id,
         fromSettlement: row.game_session_id === null && row.settlement_id !== null,
         roundId: row.round_id ?? null,
+        contactEmail: row.contact_email ?? null,
+        contactPhone: row.contact_phone ?? null,
       }
     })
 }
