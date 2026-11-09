@@ -196,12 +196,16 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
     case "RECHARGE_BALANCE": {
       const { playerId, amount } = action.payload
       if (amount <= 0) return state
-      // Cash: the player's balance only, not the house result.
+      // Cash: the player's balance only, not the house result. During a
+      // round it also checks them in (record_recharge), unless they still
+      // have to keep or release their numbers.
       return {
         ...state,
         players: updatePlayer(state.players, playerId, (p) => ({
           ...p,
+          checkedIn: p.checkedIn || (state.round !== null && !p.pendingCarryOverDecision),
           balance: p.balance + amount,
+          totals: { ...p.totals, recharges: p.totals.recharges + amount },
           inSession: true,
           removed: false,
         })),
@@ -241,7 +245,15 @@ function reducer(state: RoundDraftState, action: Action): RoundDraftState {
       // One prize per ticket: the slot's prize, or prize - P for a gifted one.
       for (const winner of getWinnersForNumber(state, number)) {
         for (const entry of winner.entries) {
-          next = creditPlayer(next, winner.playerId, ticketPrize(slotPrize, entry.isGift, price))
+          const prize = ticketPrize(slotPrize, entry.isGift, price)
+          next = creditPlayer(next, winner.playerId, prize)
+          next = {
+            ...next,
+            players: updatePlayer(next.players, winner.playerId, (p) => ({
+              ...p,
+              totals: { ...p.totals, prizes: p.totals.prizes + prize },
+            })),
+          }
         }
       }
       return next

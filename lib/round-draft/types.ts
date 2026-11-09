@@ -1,5 +1,8 @@
 import type { Bank } from "@/lib/banks"
-import type { PaymentMethod, RecordedPaymentMethod } from "@/lib/payment-methods"
+import type {
+  PaymentMethod,
+  RecordedPaymentMethod,
+} from "@/lib/payment-methods"
 
 /** A player as seen by the live game: catalog data plus their balance in
  *  this game session (game_session_players), or their account balance when
@@ -14,6 +17,13 @@ export interface DraftPlayer {
   /** Signed (business rule B): negative = owes the house, positive = the
    *  house owes them. */
   balance: number
+  /** The balance they opened this game session with
+   *  (game_session_players.opening_balance); the account balance until they
+   *  join. Shown when they are removed. */
+  openingBalance: number
+  /** What moved their balance in this game session besides their plays
+   *  (sums of their ledger rows by type); shown when they are removed. */
+  totals: PlayerSessionTotals
   /** In the open round (rule A). Cleared when a round closes. */
   checkedIn: boolean
   pendingCarryOverDecision: boolean
@@ -21,6 +31,24 @@ export interface DraftPlayer {
   inSession: boolean
   /** Removed from this game session (remove_player); its open-round plays are voided. */
   removed: boolean
+}
+
+/** A player's ledger in the game session, by type, without the plays: with
+ *  the opening balance and what they played they add up to their balance. */
+export interface PlayerSessionTotals {
+  recharges: number
+  prizes: number
+  /** Negative: what the house paid them. */
+  payouts: number
+  /** Signed: received minus given. */
+  transfers: number
+}
+
+export const EMPTY_SESSION_TOTALS: PlayerSessionTotals = {
+  recharges: 0,
+  prizes: 0,
+  payouts: 0,
+  transfers: 0,
 }
 
 export interface NumberAssignment {
@@ -134,6 +162,10 @@ export interface RoundDraftState {
   winningNumbers: (number | null)[]
   /** Closed rounds of this game session. */
   roundsPlayed: number
+  /** Players with an effective gift in this game session (a played or the
+   *  open round; lib/game-report/player-gifts.ts), read with the state.
+   *  hasGiftHistory also counts the gifts on the tickets now. */
+  giftedPlayerIds: number[]
   /** House result so far: sales - prizes + the margin of closed rounds. */
   houseBalance: number
   gameStartedAt: number

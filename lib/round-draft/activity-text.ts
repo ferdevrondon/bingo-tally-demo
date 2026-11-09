@@ -3,6 +3,7 @@ import { paymentMethodLabel } from "@/lib/payment-methods"
 import { formatMoney } from "@/lib/rounds"
 
 import { signedMoney } from "./balance"
+import { removalSummaryParts } from "./remove-player"
 import type { ActivityEntry, RoundDraftState } from "./types"
 
 // activity_log rows carry structured data only (BACKEND_PLAN.md §3); the
@@ -17,6 +18,50 @@ export type ActivityContext = {
   /** Removed tickets, still named by the rows that point to them. */
   removedTickets?: RoundDraftState["removedTickets"]
   rounds: RoundDraftState["rounds"]
+}
+
+/** The summary in the note of a player_removed row. Since
+ *  *_remove_player_summary.sql it is JSON with every line; the earlier
+ *  formats had {opening, prizes} (*_remove_player_prizes.sql) or the opening
+ *  balance alone (*_remove_player_balances.sql), whose missing lines read as 0
+ *  (`complete` false: the sentence then leaves out what it doesn't know).
+ *  null on rows written before the removal summary. */
+export function parseRemovalNote(note: string | null): {
+  opening: number
+  recharges: number
+  played: number
+  prizes: number
+  payouts: number
+  transfers: number
+  complete: boolean
+} | null {
+  if (note === null || note.trim() === "") return null
+  const empty = { recharges: 0, played: 0, prizes: 0, payouts: 0, transfers: 0 }
+  const plain = Number(note)
+  if (Number.isFinite(plain)) return { opening: plain, ...empty, complete: false }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(note)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== "object" || parsed === null) return null
+  const fields = parsed as Record<string, unknown>
+  const opening = Number(fields.opening)
+  if (!Number.isFinite(opening)) return null
+  const read = (key: string) => {
+    const value = Number(fields[key] ?? 0)
+    return Number.isFinite(value) ? value : 0
+  }
+  return {
+    opening,
+    recharges: read("recharges"),
+    played: read("played"),
+    prizes: read("prizes"),
+    payouts: read("payouts"),
+    transfers: read("transfers"),
+    complete: "played" in fields,
+  }
 }
 
 export function describeActivity(entry: ActivityEntry, state: ActivityContext): string {
@@ -48,8 +93,21 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
       return "Terminó la jornada"
     case "player_added":
       return `${player} entró a la jornada`
-    case "player_removed":
-      return `${player} fue retirado de la jornada`
+    case "player_removed": {
+      // amount = the balance they leave with; the note has the rest of the
+      // summary (parseRemovalNote).
+      const summary = parseRemovalNote(entry.note)
+      if (!summary) return `${player} fue retirado de la jornada`
+      const closing = entry.amount ?? 0
+      const parts = summary.complete
+        ? removalSummaryParts({ ...summary, closing })
+        : [
+            `entró con ${signedMoney(summary.opening)}`,
+            ...(summary.prizes > 0 ? [`ganó ${formatMoney(summary.prizes)} en premios`] : []),
+            `sale con ${signedMoney(closing)}`,
+          ]
+      return [`${player} se retiró de la jornada`, ...parts].join(" · ")
+    }
     case "ticket_added":
       return `Se agregó el cartón ${ticketIndex ?? ""}`.trim()
     case "ticket_restored":
@@ -76,9 +134,11 @@ export function describeActivity(entry: ActivityEntry, state: ActivityContext): 
     case "recharge":
       return `${player} recargó ${amount}${method}${note}`
     case "check_in":
-      return entry.note === "auto"
-        ? `${player} quedó en la ronda al decidir su jugada (check-in automático)`
-        : `${player} hizo check-in (está en la ronda)`
+      if (entry.note === "auto")
+        return `${player} quedó en la ronda al decidir su jugada (check-in automático)`
+      if (entry.note === "recharge")
+        return `${player} quedó en la ronda al recargar (check-in automático)`
+      return `${player} hizo check-in (está en la ronda)`
     case "check_in_undone":
       return `Se deshizo el check-in de ${player}`
     case "round_started":

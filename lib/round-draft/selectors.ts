@@ -301,3 +301,18 @@ export function canChangeRound(state: RoundDraftState): boolean {
     (a) => a.roundId !== round.roundId || SWAPPABLE_ACTIVITY.has(a.type)
   )
 }
+
+/** Whether the player shows the gift box button ("Regalos de NAME"): an
+ *  effective gift earlier in this game session (`giftedPlayerIds`, read with
+ *  the state) or a gifted number on the tickets now. */
+export function hasGiftHistory(
+  state: Pick<RoundDraftState, "tickets" | "giftedPlayerIds">,
+  playerId: number
+): boolean {
+  return (
+    state.giftedPlayerIds.includes(playerId) ||
+    state.tickets.some((ticket) =>
+      ticket.numbers.some((entry) => entry.playerId === playerId && entry.isGift)
+    )
+  )
+}

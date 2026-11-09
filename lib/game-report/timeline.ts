@@ -33,7 +33,7 @@ const CATEGORY_BY_TYPE: Record<ActivityEntryType, TimelineCategory> = {
   adjustment: "balances",
   balance_transfer: "balances",
   player_added: "other",
-  player_removed: "other",
+  player_removed: "balances",
   ticket_added: "other",
   ticket_removed: "other",
   ticket_restored: "other",

@@ -127,6 +127,8 @@ export interface DataTableColumnDef {
   textSize?: "sm" | "base" | "lg" | "xl" | "2xl"
   /** oculta la columna en pantallas más angostas que este breakpoint (prioridad de columnas) */
   hideBelow?: "md" | "lg" | "xl"
+  /** algo que se dibuja a la derecha del valor de la celda (ej. un ícono con acción); null para nada */
+  renderAfter?: (row: DataRow) => React.ReactNode
 }
 
 const hideBelowClasses: Record<NonNullable<DataTableColumnDef["hideBelow"]>, string> = {
@@ -444,8 +446,89 @@ export function DataTable({
             }),
           ]
         : []),
-      ...columnDefs.map((col) =>
-        columnHelper.accessor((row) => row[col.key], {
+      ...columnDefs.map((col) => {
+        function renderCellValue(row: Row<typeof features, DataRow>): React.ReactNode {
+          const value = row.original[col.key]
+
+          // La columna "título" abre el drawer de detalle
+          if (col.key === resolvedTitleKey) {
+            return (
+              <RowDetailDrawer item={row.original} columns={columnDefs} titleKey={resolvedTitleKey} />
+            )
+          }
+
+          // Columna tipo "lines": varias líneas cortas apiladas (separadas por "\n"), ej. contacto
+          if (col.type === "lines") {
+            return (
+              <div className="flex flex-col text-xs leading-snug text-muted-foreground">
+                {String(value ?? "")
+                  .split("\n")
+                  .map((line, i) => (
+                    <span key={i} className={cn("max-w-56 truncate", i === 0 && "text-foreground")}>
+                      {line}
+                    </span>
+                  ))}
+              </div>
+            )
+          }
+
+          // Columna tipo "select": dropdown de shadcn con las opciones dadas
+          if (col.type === "select") {
+            const options = col.options ?? []
+            return (
+              <Select
+                value={String(value ?? "")}
+                onValueChange={(next) => handleCellChange(row.original.id, col.key, next ?? "")}
+                items={options}
+              >
+                <SelectTrigger
+                  className="w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
+                  size="sm"
+                >
+                  <SelectValue placeholder={col.placeholder ?? "Seleccionar"} />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectGroup>
+                    {options.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )
+          }
+
+          if (col.editable) {
+            return (
+              <Input
+                className={cn(
+                  "h-8 w-full border-transparent bg-transparent shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30",
+                  col.color && columnTextColorClasses[col.color],
+                  col.textSize && columnTextSizeClasses[col.textSize]
+                )}
+                defaultValue={String(value ?? "")}
+                style={{ textAlign: col.align === "right" ? "right" : "left" }}
+                onBlur={(e) => handleCellChange(row.original.id, col.key, e.target.value)}
+              />
+            )
+          }
+
+          return (
+            <Badge
+              variant="outline"
+              className={cn(
+                "h-auto max-w-64 px-1.5 text-left whitespace-normal",
+                col.color ? columnBadgeColorClasses[col.color] : "text-muted-foreground",
+                col.textSize && columnTextSizeClasses[col.textSize]
+              )}
+            >
+              {String(value ?? "")}
+            </Badge>
+          )
+        }
+        return columnHelper.accessor((row) => row[col.key], {
           id: col.key,
           header: () =>
             col.align === "right" ? (
@@ -454,88 +537,19 @@ export function DataTable({
               col.header
             ),
           cell: ({ row }) => {
-            const value = row.original[col.key]
-
-            // La columna "título" abre el drawer de detalle
-            if (col.key === resolvedTitleKey) {
-              return (
-                <RowDetailDrawer item={row.original} columns={columnDefs} titleKey={resolvedTitleKey} />
-              )
-            }
-
-            // Columna tipo "lines": varias líneas cortas apiladas (separadas por "\n"), ej. contacto
-            if (col.type === "lines") {
-              return (
-                <div className="flex flex-col text-xs leading-snug text-muted-foreground">
-                  {String(value ?? "")
-                    .split("\n")
-                    .map((line, i) => (
-                      <span key={i} className={cn("max-w-56 truncate", i === 0 && "text-foreground")}>
-                        {line}
-                      </span>
-                    ))}
-                </div>
-              )
-            }
-
-            // Columna tipo "select": dropdown de shadcn con las opciones dadas
-            if (col.type === "select") {
-              const options = col.options ?? []
-              return (
-                <Select
-                  value={String(value ?? "")}
-                  onValueChange={(next) => handleCellChange(row.original.id, col.key, next ?? "")}
-                  items={options}
-                >
-                  <SelectTrigger
-                    className="w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-                    size="sm"
-                  >
-                    <SelectValue placeholder={col.placeholder ?? "Seleccionar"} />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectGroup>
-                      {options.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              )
-            }
-
-            if (col.editable) {
-              return (
-                <Input
-                  className={cn(
-                    "h-8 w-full border-transparent bg-transparent shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30",
-                    col.color && columnTextColorClasses[col.color],
-                    col.textSize && columnTextSizeClasses[col.textSize]
-                  )}
-                  defaultValue={String(value ?? "")}
-                  style={{ textAlign: col.align === "right" ? "right" : "left" }}
-                  onBlur={(e) => handleCellChange(row.original.id, col.key, e.target.value)}
-                />
-              )
-            }
-
-            return (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "h-auto max-w-64 px-1.5 text-left whitespace-normal",
-                  col.color ? columnBadgeColorClasses[col.color] : "text-muted-foreground",
-                  col.textSize && columnTextSizeClasses[col.textSize]
-                )}
-              >
-                {String(value ?? "")}
-              </Badge>
+            const content = renderCellValue(row)
+            const after = col.renderAfter?.(row.original)
+            return after ? (
+              <div className="flex items-center gap-1">
+                {content}
+                {after}
+              </div>
+            ) : (
+              content
             )
           },
         })
-      ),
+      }),
       ...(hasRowActions
         ? [
             columnHelper.display({
