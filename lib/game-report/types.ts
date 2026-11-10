@@ -1,4 +1,5 @@
 import type { RecordedPaymentMethod } from "@/lib/payment-methods"
+import type { BalanceMovement } from "./balance-flow"
 import type { ActivityContext } from "@/lib/round-draft/activity-text"
 import type { ActivityEntry } from "@/lib/round-draft/types"
 import type { Settlement } from "@/lib/settlement"
@@ -167,6 +168,23 @@ export interface PlayerRoundReport {
   wins: (NumberPosition & { prize: number })[]
   recharges: number
   payouts: number
+  /** Prizes won in the round. */
+  wonAmount: number
+  /** Balance transfers in the round, signed: + received, − sent. */
+  transferredAmount: number
+  /** Balance before the round's first movement (negative = owes the house). */
+  enteredBalance: number
+  /** Balance after the round's last movement so far. */
+  exitBalance: number
+  /** The round is still open: exitBalance is the balance so far. */
+  open: boolean
+  /** Every money movement of the round, in the order it happened. */
+  movements: PlayerRoundMovement[]
+}
+
+export interface PlayerRoundMovement extends BalanceMovement {
+  /** Name of the other player in a balance transfer. */
+  counterpartyName: string | null
 }
 
 /** Reportes → Rondas: the rounds played on one day of the house. */

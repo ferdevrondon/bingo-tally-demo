@@ -7,6 +7,7 @@ import { bankLabel } from "@/lib/banks"
 import type { DebtRow } from "@/lib/data/debts"
 import { paymentMethodLabel } from "@/lib/payment-methods"
 import { signedMoney } from "@/lib/round-draft/balance"
+import { sortPlayersByName } from "@/lib/round-draft/selectors"
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 
@@ -112,7 +113,7 @@ export function DebtsReport({ rows }: { rows: DebtRow[] }) {
       )}
 
       {GROUPS.map((group) => {
-        const groupRows = rows.filter(group.match)
+        const groupRows = sortPlayersByName(rows.filter(group.match))
         if (groupRows.length === 0) return null
         const total = groupRows.reduce((sum, r) => sum + r.balance, 0)
         return (

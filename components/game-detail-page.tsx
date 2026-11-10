@@ -236,9 +236,8 @@ function PlayersCard({
   players: PlayerReport[]
 }) {
   const [roundsOf, setRoundsOf] = React.useState<PlayerReport | null>(null)
-  // Colors follow the order players joined, like in the live game.
+  // Colors follow the alphabetical order, the one every list of the session uses.
   const colorOf = new Map(players.map((p, i) => [p.id, getPlayerChartColorClass(i)]))
-  const sorted = [...players].sort((a, b) => b.closing - a.closing)
   const maxAbs = Math.max(1, ...players.map((p) => Math.abs(p.closing)))
   const owed = players.filter((p) => p.closing > 0)
   const owing = players.filter((p) => p.closing < 0)
@@ -318,7 +317,7 @@ function PlayersCard({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((p) => {
+              {players.map((p) => {
                 const width = (Math.abs(p.closing) / maxAbs) * 50
                 return (
                   <tr

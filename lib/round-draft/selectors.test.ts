@@ -255,6 +255,22 @@ describe("sortPlayersByName", () => {
     ])
   })
 
+  it("gives the round's gifted players in alphabetical order, whatever the ticket order", () => {
+    const state = {
+      ...makeState({
+        1: [[3, 2, true]],
+        2: [[4, 1, true]],
+      }),
+      round: { linePrice: 10 },
+      players: [
+        { id: 1, name: "ZOE" },
+        { id: 2, name: "ANA" },
+      ],
+      winningNumbers: [null, null],
+    } as unknown as RoundDraftState
+    expect(getRoundGifts(state).players.map((p) => p.playerName)).toEqual(["ANA", "ZOE"])
+  })
+
   it("returns a copy and leaves the input untouched", () => {
     const players = [{ name: "B" }, { name: "A" }]
     const sorted = sortPlayersByName(players)
