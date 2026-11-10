@@ -57,7 +57,7 @@ Styling is Tailwind v4 with CSS-variable theming in `app/globals.css` (OKLCH col
 
 ### `components/data-table.tsx`
 
-A shared, feature-rich table (drag-to-reorder rows via `@dnd-kit`, sorting/filtering/pagination via `@tanstack/react-table`, a row-detail `Drawer`, `rowActions` dropdown) used by the players and rounds list pages. Column config supports a `type: "select"` editable column and `color`/`textSize` display hints. The row-detail drawer is read-only (editing goes through `rowActions`), and the table re-syncs when its `data` prop changes, so pass memoized rows. Reuse this component for any new tabular list rather than building a bespoke table.
+A shared, feature-rich table (drag-to-reorder rows via `@dnd-kit`, sorting/filtering/pagination via `@tanstack/react-table`, a row-detail `Drawer`, `rowActions` dropdown) used by the players and rounds list pages. Column config supports a `type: "select"` editable column and `color`/`textSize` display hints. The row-detail drawer is read-only (editing goes through `rowActions`), and the table re-syncs when its `data` prop changes, so pass memoized rows. The row checks can be controlled by the page with `selectedIds` / `onSelectedIdsChange` (the ids are the rows' `getRowId`, the data id as text): `/players` uses them for its "Eliminar" button in the top row, left of "Agregar jugador", always visible and disabled until a player is checked (no count on it; the count shows in the confirmation, `ConfirmDeleteDialog`), which deletes the checked players at once (`deactivatePlayers`, one all-or-nothing soft delete) and unchecks them. Reuse this component for any new tabular list rather than building a bespoke table.
 
 ### Multi-step flows with cross-route state: `lib/round-draft/`
 

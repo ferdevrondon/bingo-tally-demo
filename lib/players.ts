@@ -42,3 +42,21 @@ export const playerInputSchema = z.object({
   email: emailSchema,
   isVip: z.boolean(),
 })
+
+/** Lowercase and without accents, so "maria" finds "MARÍA". */
+export function normalizeSearchText(value: string): string {
+  return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim()
+}
+
+/** Whether a player matches the search text in the name, nickname, phone or
+ *  email. An empty search matches everyone. */
+export function playerMatchesQuery(
+  player: Pick<Player, "name" | "nickname" | "phone" | "email">,
+  query: string
+): boolean {
+  const needle = normalizeSearchText(query)
+  if (needle === "") return true
+  return [player.name, player.nickname, player.phone, player.email].some((field) =>
+    normalizeSearchText(field).includes(needle)
+  )
+}
