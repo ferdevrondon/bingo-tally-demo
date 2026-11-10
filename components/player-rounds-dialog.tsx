@@ -1,17 +1,9 @@
 "use client"
 
 import * as React from "react"
-import {
-  ArrowDownUpIcon,
-  BanknoteIcon,
-  ChevronDownIcon,
-  GiftIcon,
-  RotateCcwIcon,
-  TicketIcon,
-  TrophyIcon,
-  Undo2Icon,
-} from "lucide-react"
+import { ArrowDownUpIcon, ChevronDownIcon, TrophyIcon } from "lucide-react"
 
+import { useHouse } from "@/components/house-provider"
 import {
   Dialog,
   DialogContent,
@@ -20,103 +12,96 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { formatHouseTime } from "@/lib/game-report/format"
 import { fetchPlayerRounds } from "@/lib/game-report/fetch"
-import { groupByNumber, type NumberCount } from "@/lib/game-report/group-by-number"
-import type { PlayerRoundReport } from "@/lib/game-report/types"
+import type { PlayerRoundMovement, PlayerRoundReport } from "@/lib/game-report/types"
 import { formatMoney } from "@/lib/rounds"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 const money = formatMoney
 
-function NumberChips({
-  numbers,
-  winning,
-  tone = "default",
-  struck,
-}: {
-  numbers: NumberCount[]
-  /** Plays of a number that were given back (released): shown crossed out. */
-  struck?: Map<number, number>
-  /** Numbers the player won with: highlighted. */
-  winning: Set<number>
-  tone?: "default" | "gift"
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {numbers.map(({ number, count, tickets }) => {
-        const returned = struck?.get(number) ?? 0
-        const gone = returned >= count
-        const won = winning.has(number) && !gone
-        return (
-          <span
-            key={number}
-            title={tickets.map((t) => `Cartón ${t}`).join(", ")}
-            className={cn(
-              "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-sm font-semibold tabular-nums",
-              gone && "text-muted-foreground line-through opacity-60",
-              won
-                ? "bg-amber-400 font-extrabold text-amber-950 shadow-sm ring-1 ring-amber-500"
-                : tone === "gift"
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-muted text-foreground"
-            )}
-          >
-            {won && <TrophyIcon className="size-3.5" aria-hidden="true" />}
-            {number}
-            {count > 1 && <span className="text-xs font-medium opacity-70">×{count}</span>}
-          </span>
-        )
-      })}
-    </div>
-  )
+// A balance: negative when the player owes the house.
+function balanceText(value: number): string {
+  return value < 0 ? `−${money(-value)}` : money(value)
 }
 
-// A line of the round: what it is, the numbers involved and what it adds or
-// takes from the play, at the right.
-function MoneyRow({
-  icon,
-  label,
-  amount,
-  detail,
-  tone,
-  children,
+// A movement's effect on the balance, with its sign.
+function effectText(value: number): string {
+  return value < 0 ? `−${money(-value)}` : `+${money(value)}`
+}
+
+function toneOf(value: number): string {
+  return value < 0 ? "text-destructive" : value > 0 ? "text-success" : "text-foreground"
+}
+
+// What the movement is, in the words the player sees.
+function movementLabel(m: PlayerRoundMovement, linePrice: number): string {
+  switch (m.type) {
+    case "number_purchased":
+      return `Jugada · #${m.number}`
+    case "number_reassigned":
+      return m.effect < 0 ? `Jugada · #${m.number}` : `Liberó #${m.number}`
+    case "carryover_kept": {
+      const count = linePrice > 0 ? Math.round(-m.effect / linePrice) : 0
+      return `Mantuvo ${count} número${count === 1 ? "" : "s"} de la ronda anterior`
+    }
+    case "number_gifted":
+      return `Regaló #${m.number}`
+    case "number_ungifted":
+      return `Quitó el regalo #${m.number}`
+    case "number_released":
+      return `Liberó #${m.number}`
+    case "recharge":
+      return "Recarga"
+    case "prize_won":
+      return `Premio · #${m.number}`
+    case "payout":
+      return "Pago"
+    case "balance_transfer":
+      return m.counterpartyName
+        ? `${m.effect < 0 ? "Transferencia a" : "Transferencia de"} ${m.counterpartyName}`
+        : "Transferencia"
+    case "adjustment":
+      return "Ajuste por ronda sin jugar"
+    default:
+      return m.type
+  }
+}
+
+// One movement: what it was, the time, what it moved the balance by, and the
+// balance right after it, so each line reads from the one above.
+function MovementLine({
+  movement,
+  linePrice,
+  timeZone,
 }: {
-  icon: React.ReactNode
-  label: string
-  amount?: string
-  /** Small text before the amount, e.g. "5 × $10". */
-  detail?: string
-  tone?: "red" | "green"
-  children?: React.ReactNode
+  movement: PlayerRoundMovement
+  linePrice: number
+  timeZone: string
 }) {
+  const isPrize = movement.type === "prize_won"
   return (
-    <div
+    <li
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-md px-2.5 py-1.5",
-        tone === "red" ? "bg-destructive/5" : tone === "green" ? "bg-success/10" : "bg-muted/60"
+        "grid grid-cols-[1fr_auto] items-center gap-x-3 rounded-md px-2.5 py-1.5",
+        isPrize ? "bg-success/10" : "bg-muted/50"
       )}
     >
-      {icon}
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      {children}
-      {(amount || detail) && (
-        <span className="ml-auto flex items-baseline gap-1.5 tabular-nums">
-          {detail && <span className="text-xs text-muted-foreground">{detail} =</span>}
-          {amount && (
-            <span
-              className={cn(
-                "text-sm font-bold",
-                tone === "red" && "text-destructive",
-                tone === "green" && "text-success"
-              )}
-            >
-              {amount}
-            </span>
-          )}
-        </span>
-      )}
-    </div>
+      <div className="min-w-0">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          {isPrize && <TrophyIcon className="size-3.5 text-warning" aria-hidden="true" />}
+          <span className="truncate">{movementLabel(movement, linePrice)}</span>
+        </p>
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {formatHouseTime(movement.createdAt, timeZone)}
+        </p>
+      </div>
+      <div className="text-right tabular-nums">
+        <p className={cn("text-sm font-bold", toneOf(movement.effect))}>{effectText(movement.effect)}</p>
+        <p className="text-xs text-muted-foreground">saldo {balanceText(movement.balanceAfter)}</p>
+      </div>
+    </li>
   )
 }
 
@@ -124,8 +109,9 @@ function roundKey(round: PlayerRoundReport): number {
   return round.roundId ?? 0
 }
 
-// One row per round (name, winning number, what was played and won); the
-// detail opens under it.
+// One row per round (name, winning numbers, where the balance closed); the
+// movements open under it, from the balance it entered with to the one it
+// closed with.
 function RoundEntry({
   round,
   index,
@@ -137,15 +123,13 @@ function RoundEntry({
   expanded: boolean
   onToggle: () => void
 }) {
+  const house = useHouse()
+  const timeZone = house?.timezone ?? "UTC"
   const roundWinning = round.winningNumbers.filter((n): n is number => n !== null)
   const won = new Set(round.wins.map((w) => w.number))
-  const allBought = groupByNumber(round.bought)
-  const released = groupByNumber(round.released)
-  const releasedCount = new Map(released.map((r) => [r.number, r.count]))
-  const gifted = groupByNumber(round.gifted)
-  const winTotal = round.wins.reduce((total, w) => total + w.prize, 0)
   const hasWon = round.wins.length > 0
   const detailId = `round-detail-${roundKey(round)}`
+  const closeLabel = round.open ? "Saldo hasta ahora" : "Cerró con"
 
   return (
     <div
@@ -187,16 +171,10 @@ function RoundEntry({
             {n}
           </span>
         ))}
-        {round.played > 0 && (
-          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-            Jugó {money(round.played)}
-          </span>
-        )}
-        {winTotal > 0 && (
-          <span className="shrink-0 text-sm font-bold text-success tabular-nums">
-            +{money(winTotal)}
-          </span>
-        )}
+        <span className="shrink-0 text-xs text-muted-foreground">{closeLabel}</span>
+        <span className={cn("shrink-0 text-sm font-bold tabular-nums", toneOf(round.exitBalance))}>
+          {balanceText(round.exitBalance)}
+        </span>
       </button>
 
       <div
@@ -208,91 +186,32 @@ function RoundEntry({
       >
         <div className="overflow-hidden">
           <div className="flex flex-col gap-2 px-3 pb-3">
-            {round.purchasedAmount > 0 && (
-              <MoneyRow
-                icon={<TicketIcon className="size-4 text-muted-foreground" aria-hidden="true" />}
-                label="Jugada"
-                amount={`+${money(round.purchasedAmount)}`}
-                detail={`${round.bought.length} × ${money(round.linePrice)}`}
-              >
-                <NumberChips numbers={allBought} winning={won} struck={releasedCount} />
-              </MoneyRow>
-            )}
-
-            {gifted.length > 0 && (
-              <MoneyRow
-                tone="red"
-                icon={<GiftIcon className="size-4 text-destructive" aria-hidden="true" />}
-                label="Regalados"
-                amount={round.giftedAmount > 0 ? `−${money(round.giftedAmount)}` : undefined}
-              >
-                <NumberChips numbers={gifted} winning={won} tone="gift" />
-              </MoneyRow>
-            )}
-
-            {released.length > 0 && (
-              <MoneyRow
-                icon={<Undo2Icon className="size-4 text-muted-foreground" aria-hidden="true" />}
-                label="Devueltos"
-                amount={round.releasedAmount > 0 ? `−${money(round.releasedAmount)}` : undefined}
-              >
-                <NumberChips numbers={released} winning={won} struck={releasedCount} />
-              </MoneyRow>
-            )}
-
-            {round.keptAmount > 0 && (
-              <MoneyRow
-                icon={<RotateCcwIcon className="size-4 text-muted-foreground" aria-hidden="true" />}
-                label="Mantenidos de la ronda anterior"
-                amount={`+${money(round.keptAmount)}`}
-                detail={`${round.keptCount} × ${money(round.linePrice)}`}
-              >
-                <NumberChips
-                  numbers={groupByNumber(round.keptNumbers.map((number) => ({ ticketIndex: 0, number })))}
-                  winning={won}
-                />
-              </MoneyRow>
-            )}
-
-            {round.otherAmount !== 0 && (
-              <MoneyRow
-                icon={<RotateCcwIcon className="size-4 text-muted-foreground" aria-hidden="true" />}
-                label="Otros ajustes"
-                amount={`${round.otherAmount > 0 ? "+" : "−"}${money(Math.abs(round.otherAmount))}`}
-              />
-            )}
-
-            {round.wins.map((w, i) => (
-              <div
-                key={`${w.ticketIndex}-${w.number}-${i}`}
-                className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-2.5 py-1.5 text-success"
-              >
-                <TrophyIcon className="size-4 text-warning" aria-hidden="true" />
-                <span className="text-sm font-extrabold tabular-nums">Ganó {money(w.prize)}</span>
-                <span className="text-xs font-semibold">con el #{w.number}</span>
-              </div>
-            ))}
-
-            <div className="flex items-center justify-between border-t pt-2 text-sm font-bold tabular-nums">
-              <span>{round.played < 0 ? "Se le devolvió" : "Total jugado"}</span>
-              <span>{money(Math.abs(round.played))}</span>
+            <div className="flex items-center justify-between rounded-md border px-2.5 py-1.5 text-sm">
+              <span className="text-muted-foreground">Saldo al entrar</span>
+              <span className={cn("font-bold tabular-nums", toneOf(round.enteredBalance))}>
+                {balanceText(round.enteredBalance)}
+              </span>
             </div>
 
-            {round.recharges > 0 && (
-              <MoneyRow
-                tone="green"
-                icon={<BanknoteIcon className="size-4 text-success" aria-hidden="true" />}
-                label="Recargó (dinero aparte de la jugada)"
-                amount={`+${money(round.recharges)}`}
-              />
+            {round.movements.length > 0 ? (
+              <ol className="flex flex-col gap-1.5">
+                {round.movements.map((m) => (
+                  <MovementLine
+                    key={m.id}
+                    movement={m}
+                    linePrice={round.linePrice}
+                    timeZone={timeZone}
+                  />
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sin movimientos de dinero.</p>
             )}
-            {round.payouts > 0 && (
-              <MoneyRow
-                icon={<BanknoteIcon className="size-4 text-muted-foreground" aria-hidden="true" />}
-                label="Se le pagó (dinero aparte de la jugada)"
-                amount={`−${money(round.payouts)}`}
-              />
-            )}
+
+            <div className="flex items-center justify-between border-t pt-2 text-sm font-bold tabular-nums">
+              <span>{round.open ? "Saldo hasta ahora (ronda en curso)" : "Saldo al cerrar"}</span>
+              <span className={toneOf(round.exitBalance)}>{balanceText(round.exitBalance)}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -361,7 +280,9 @@ export function PlayerRoundsDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Rondas de {playerName}</DialogTitle>
-          <DialogDescription>Lo que jugó, ganó y recargó en cada ronda de la jornada.</DialogDescription>
+          <DialogDescription>
+            Cada ronda empieza con el saldo con el que entró y termina con el que cerró. Negativo = debe a la casa.
+          </DialogDescription>
         </DialogHeader>
 
         {sorted.length > 0 && (
