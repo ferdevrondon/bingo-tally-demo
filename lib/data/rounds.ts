@@ -1,20 +1,21 @@
 import { cache } from "react"
 
 import { getCurrentHouse } from "@/lib/data/house"
-import type { Round } from "@/lib/rounds"
+import { toRoundKind, type Round } from "@/lib/rounds"
 import type { Database } from "@/lib/supabase/database.types"
 import { createClient } from "@/lib/supabase/server"
 
 type RoundTemplateRow = Database["public"]["Tables"]["round_templates"]["Row"]
 
-export const ROUND_TEMPLATE_COLUMNS = "id, name, line_price, prizes"
+export const ROUND_TEMPLATE_COLUMNS = "id, name, kind, line_price, prizes"
 
 export function toRound(
-  row: Pick<RoundTemplateRow, "id" | "name" | "line_price" | "prizes">
+  row: Pick<RoundTemplateRow, "id" | "name" | "kind" | "line_price" | "prizes">
 ): Round {
   return {
     id: row.id,
     name: row.name,
+    kind: toRoundKind(row.kind),
     linePrice: Number(row.line_price),
     prizes: row.prizes.map(Number),
   }

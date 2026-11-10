@@ -26,11 +26,12 @@ import {
   deactivateRoundTemplate,
   updateRoundTemplate,
 } from "@/lib/data/round-actions"
-import { formatMoney, type Round, type RoundInput } from "@/lib/rounds"
+import { formatMoney, ROUND_KIND_LABELS, type Round, type RoundInput } from "@/lib/rounds"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 const columns: DataTableColumnDef[] = [
   { key: "name", header: "Nombre" },
+  { key: "kind", header: "Tipo" },
   { key: "winnerCount", header: "Números ganadores", hideBelow: "md" },
   { key: "linePrice", header: "Precio de línea" },
   { key: "prizes", header: "Premios" },
@@ -49,6 +50,7 @@ export default function Rounds({ rounds }: { rounds: Round[] }) {
       rounds.map((round) => ({
         id: round.id,
         name: round.name,
+        kind: ROUND_KIND_LABELS[round.kind],
         winnerCount: round.prizes.length,
         linePrice: formatMoney(round.linePrice),
         prizes: round.prizes.map(formatMoney).join(" · "),

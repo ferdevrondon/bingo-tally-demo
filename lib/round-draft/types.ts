@@ -1,4 +1,5 @@
 import type { Bank } from "@/lib/banks"
+import type { PatternBlock, RoundMode } from "@/lib/round-pattern"
 import type {
   PaymentMethod,
   RecordedPaymentMethod,
@@ -169,6 +170,11 @@ export interface RoundDraftState {
   /** House result so far: sales - prizes + the margin of closed rounds. */
   houseBalance: number
   gameStartedAt: number
+  /** game_sessions.round_mode, fixed when the game session starts. */
+  roundMode: RoundMode
+  /** The cycle of an automatic game session, in play order (empty in
+   *  manual). lib/round-pattern.ts proposes the next round from it. */
+  pattern: PatternBlock[]
 }
 
 export const MAX_ACTIVITY_ENTRIES = 50

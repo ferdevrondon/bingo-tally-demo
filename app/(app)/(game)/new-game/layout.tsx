@@ -22,11 +22,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { hasRounds } from "@/lib/round-draft/selectors"
+import { canDiscardGameSession } from "@/lib/round-draft/selectors"
 
-// Leaving /new-game keeps the game session. While it has no rounds it can
-// also be discarded ("Salir y borrar", discard_game_session); once a round
-// exists it can only be ended from /active-round. An observer just goes
+// Leaving /new-game keeps the game session. While it has no rounds (or, in
+// an automatic game session, only the untouched round opened at the start)
+// it can also be discarded ("Salir y borrar", discard_game_session); after
+// that it can only be ended from /active-round. An observer just goes
 // back home.
 function BackToStartCrumb() {
   const router = useRouter()
@@ -34,7 +35,7 @@ function BackToStartCrumb() {
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
-  const canDiscard = !readOnly && !hasRounds(state)
+  const canDiscard = !readOnly && canDiscardGameSession(state)
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault()
@@ -70,8 +71,10 @@ function BackToStartCrumb() {
           <DialogHeader>
             <DialogTitle>¿Salir de la jornada?</DialogTitle>
             <DialogDescription>
-              La jornada todavía no tiene rondas. Puedes dejarla para continuar después, o
-              borrarla junto con sus cartones.
+              {state.roundMode === "auto"
+                ? "La jornada todavía no tiene jugadas. "
+                : "La jornada todavía no tiene rondas. "}
+              Puedes dejarla para continuar después, o borrarla junto con sus cartones.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

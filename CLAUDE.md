@@ -75,6 +75,8 @@ Most pages are single-route and don't need shared state. The live game flow (`/n
 - "La casa" (`components/page-heading.tsx`, admin only, in `/active-round`): a tab pinned to the right edge of the screen, below the app header (`fixed`), with the lucide `BadgeDollarSign` icon; tapping it slides it out to the left and shows the house result so far, `state.houseBalance`. "Terminar jornada" stays next to the title. It starts closed on each visit.
 - `activity-text.ts` — builds the Spanish timeline sentence from each structured `activity_log` row ("Cartón N · #X").
 
+- Automatic game sessions (`*_round_pattern.sql`, BACKEND_PLAN.md "Automatic game sessions: a round pattern"): `game_sessions.round_mode` (`manual` | `auto`, fixed at the start) and, in auto, the cycle of blocks `template × count` in `game_session_round_pattern`, given to `start_game_session(…, p_round_mode, p_pattern)`, which also opens the first block's round. The pattern only proposes: `lib/round-pattern.ts` (pure, tested) computes the step from the rounds the game session has (`index mod cycle length`, a round picked by hand counts as played), `getNextPatternStep` / `getCurrentPatternStep` in `selectors.ts` read it from the state (`state.roundMode`, `state.pattern`), and `close_round` still gets the template the host confirms. `round_templates.kind` (`regular` | `special`, `Round.kind`) is only for labels, colors and shortcuts. An auto game session can still be discarded while its only round is untouched (`canDiscardGameSession`).
+
 Follow this same shape for any future multi-step/cross-route feature instead of introducing a new state management library.
 
 ### Data model notes
