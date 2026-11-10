@@ -37,3 +37,28 @@ export const listRoundTemplates = cache(async (): Promise<Round[]> => {
   if (error) throw error
   return data.map(toRound)
 })
+
+// Templates in the pattern of the house's active automatic game session, so
+// /rounds can warn before deactivating one (it could no longer be played).
+export const listActivePatternTemplateIds = cache(async (): Promise<number[]> => {
+  const house = await getCurrentHouse()
+  if (!house) return []
+
+  const supabase = await createClient()
+  const { data: session, error } = await supabase
+    .from("game_sessions")
+    .select("id")
+    .eq("house_id", house.houseId)
+    .eq("status", "active")
+    .eq("round_mode", "auto")
+    .maybeSingle()
+  if (error) throw error
+  if (!session) return []
+
+  const { data, error: patternError } = await supabase
+    .from("game_session_round_pattern")
+    .select("round_template_id")
+    .eq("game_session_id", session.id)
+  if (patternError) throw patternError
+  return [...new Set(data.map((row) => row.round_template_id))]
+})
