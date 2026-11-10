@@ -30,12 +30,17 @@ export function getActivePlayers(state: RoundDraftState): DraftPlayer[] {
 // localeCompare slow on long lists.
 const playerNameCollator = new Intl.Collator("es", { sensitivity: "base" })
 
-/** A sorted copy, alphabetical by name rather than by order of arrival
- *  (accents and ñ sort as in Spanish). */
+/** Alphabetical order of two player names, as in Spanish (accents and ñ
+ *  sort as in Spanish). Every player list in the app uses this one order. */
+export function comparePlayerNames(a: string, b: string): number {
+  return playerNameCollator.compare(a, b)
+}
+
+/** A sorted copy, alphabetical by name rather than by order of arrival. */
 export function sortPlayersByName<T extends { name: string }>(
   players: readonly T[]
 ): T[] {
-  return [...players].sort((a, b) => playerNameCollator.compare(a.name, b.name))
+  return [...players].sort((a, b) => comparePlayerNames(a.name, b.name))
 }
 
 export interface NumberWinnerEntry {
@@ -221,10 +226,12 @@ export function getRoundGifts(state: RoundDraftState): RoundGifts {
       byPlayer.set(entry.playerId, current)
     })
   })
-  const players = [...byPlayer.values()].map((p) => ({
-    ...p,
-    numbers: [...p.numbers].sort((a, b) => a.number - b.number),
-  }))
+  const players = [...byPlayer.values()]
+    .map((p) => ({
+      ...p,
+      numbers: [...p.numbers].sort((a, b) => a.number - b.number),
+    }))
+    .sort((a, b) => comparePlayerNames(a.playerName, b.playerName))
   return {
     players,
     giftCount,

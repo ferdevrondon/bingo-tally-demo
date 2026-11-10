@@ -9,6 +9,7 @@ import { formatHouseDateTime, houseDayRange } from "./format"
 import { roundBalanceFlow } from "./balance-flow"
 import { buildRoundGifts } from "./gifts"
 import { houseResult, saleAmount } from "./ledger"
+import { comparePlayerNames } from "@/lib/round-draft/selectors"
 import type {
   CashLine,
   GameSessionListItem,
@@ -293,7 +294,7 @@ export async function fetchGameSessionReport(
       ...(totals.get(p.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0, transfers: 0 }),
       closing: Number(p.balance),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .sort((a, b) => comparePlayerNames(a.name, b.name))
 
   const settlementPlayers = settlement.data?.settlement_players ?? []
   const endedAt = g.ended_at ? Date.parse(g.ended_at) : Date.now()

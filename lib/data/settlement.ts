@@ -5,6 +5,7 @@ import { accountFor, listPlayerAccounts } from "@/lib/data/accounts"
 import { getCurrentHouse } from "@/lib/data/house"
 import { SALE_TYPES } from "@/lib/game-report/ledger"
 import { isPaymentMethod } from "@/lib/payment-methods"
+import { comparePlayerNames } from "@/lib/round-draft/selectors"
 import {
   isSettlementResolution,
   type Settlement,
@@ -114,7 +115,7 @@ export const loadSettlement = cache(async (gameSessionId: number): Promise<Settl
         inGame: account.inGame,
       }
     })
-    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .sort((a, b) => comparePlayerNames(a.name, b.name))
 
   return {
     gameSessionId,

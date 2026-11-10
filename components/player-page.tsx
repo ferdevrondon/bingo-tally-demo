@@ -70,6 +70,7 @@ import { GiftHistoryButton, PlayerGiftsDialog } from "@/components/player-gifts-
 import type { ActiveGiftedPlayers } from "@/lib/data/gifts"
 import type { Player, PlayerInput } from "@/lib/players"
 import { signedMoney } from "@/lib/round-draft/balance"
+import { sortPlayersByName } from "@/lib/round-draft/selectors"
 import { cn } from "@/lib/utils"
 import { writeSucceeded } from "@/lib/write-feedback"
 
@@ -219,7 +220,7 @@ export default function PlayerPage({
 
   const rows = React.useMemo<DataRow[]>(
     () =>
-      players.map((player) => ({
+      sortPlayersByName(players).map((player) => ({
         id: player.id,
         name: player.name,
         nickname: player.nickname,
