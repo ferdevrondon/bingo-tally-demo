@@ -21,12 +21,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MAX_PRIZES, type RoundInput } from "@/lib/rounds"
+import {
+  MAX_PRIZES,
+  ROUND_KIND_LABELS,
+  ROUND_KINDS,
+  type RoundInput,
+  type RoundKind,
+} from "@/lib/rounds"
 
 // Estado del formulario: los premios se editan como texto y se convierten a
 // números al enviar. El tipo de dominio es `Round` (lib/rounds.ts).
 interface RoundFormState {
   name: string
+  kind: RoundKind
   linePrice: number
   prizes: string[]
 }
@@ -39,6 +46,7 @@ function parseMoney(value: string): number {
 function toFormState(round: RoundInput): RoundFormState {
   return {
     name: round.name,
+    kind: round.kind,
     linePrice: round.linePrice,
     prizes: round.prizes.length > 0 ? round.prizes.map(String) : [""],
   }
@@ -55,8 +63,11 @@ function prizeLabel(index: number) {
   return `${prizeOrdinals[index] ?? `#${index + 1}`} premio`
 }
 
+const kindOptions = ROUND_KINDS.map((kind) => ({ value: kind, label: ROUND_KIND_LABELS[kind] }))
+
 const emptyRound: RoundInput = {
   name: "",
+  kind: "regular",
   linePrice: 10,
   prizes: [],
 }
@@ -110,6 +121,7 @@ export function RoundForm({
     startTransition(async () => {
       await onSubmit({
         name: round.name,
+        kind: round.kind,
         linePrice: round.linePrice,
         prizes: round.prizes.map(parseMoney),
       })
@@ -145,6 +157,32 @@ export function RoundForm({
               placeholder="10"
               required
             />
+          </Field>
+          <Field className="col-span-2">
+            <FieldLabel htmlFor="round-kind">Tipo</FieldLabel>
+            <Select
+              value={round.kind}
+              onValueChange={(value) =>
+                setRound((prev) => ({ ...prev, kind: value === "special" ? "special" : "regular" }))
+              }
+              items={kindOptions}
+            >
+              <SelectTrigger id="round-kind" className="w-full">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {kindOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              Sirve para identificarla en el patrón de una jornada automática.
+            </FieldDescription>
           </Field>
           <Field className="col-span-2">
             <FieldLabel htmlFor="round-prize-count">Número de premios</FieldLabel>

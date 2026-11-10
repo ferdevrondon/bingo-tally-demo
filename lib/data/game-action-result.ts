@@ -18,6 +18,7 @@ export type GameActionError =
   | "player_not_in_session"
   | "player_not_found"
   | "round_in_progress"
+  | "invalid_round_pattern"
   | "round_not_open"
   | "round_template_not_found"
   | "slot_already_awarded"
@@ -83,6 +84,8 @@ export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
   round_in_progress:
     "La ronda está en curso: termina de registrar sus números ganadores antes de continuar.",
   round_not_open: "Esa ronda ya no está abierta.",
+  invalid_round_pattern:
+    "El patrón de rondas no es válido: agrega al menos una ronda, cada una de 1 a 20 veces.",
   round_template_not_found: "Esa ronda ya no existe. Elige otra.",
   slot_already_awarded: "Ese número ganador ya fue registrado.",
   number_already_won: "Ese número ya salió en esta ronda.",

@@ -26,11 +26,12 @@ import {
   deactivateRoundTemplate,
   updateRoundTemplate,
 } from "@/lib/data/round-actions"
-import { formatMoney, type Round, type RoundInput } from "@/lib/rounds"
+import { formatMoney, ROUND_KIND_LABELS, type Round, type RoundInput } from "@/lib/rounds"
 import { writeSucceeded } from "@/lib/write-feedback"
 
 const columns: DataTableColumnDef[] = [
   { key: "name", header: "Nombre" },
+  { key: "kind", header: "Tipo" },
   { key: "winnerCount", header: "Números ganadores", hideBelow: "md" },
   { key: "linePrice", header: "Precio de línea" },
   { key: "prizes", header: "Premios" },
@@ -38,7 +39,14 @@ const columns: DataTableColumnDef[] = [
 
 // /rounds: plantillas de ronda de la casa. El precio de línea y los premios se
 // copian a la ronda cuando empieza, así que editarlos no cambia una ronda en curso.
-export default function Rounds({ rounds }: { rounds: Round[] }) {
+export default function Rounds({
+  rounds,
+  patternTemplateIds = [],
+}: {
+  rounds: Round[]
+  /** Templates in the pattern of the active automatic game session. */
+  patternTemplateIds?: number[]
+}) {
   const isAdmin = useRole() === "admin"
   const [isAddRoundOpen, setIsAddRoundOpen] = React.useState(false)
   const [editingRound, setEditingRound] = React.useState<Round | null>(null)
@@ -49,6 +57,7 @@ export default function Rounds({ rounds }: { rounds: Round[] }) {
       rounds.map((round) => ({
         id: round.id,
         name: round.name,
+        kind: ROUND_KIND_LABELS[round.kind],
         winnerCount: round.prizes.length,
         linePrice: formatMoney(round.linePrice),
         prizes: round.prizes.map(formatMoney).join(" · "),
@@ -173,7 +182,11 @@ export default function Rounds({ rounds }: { rounds: Round[] }) {
           if (!open) setDeletingRound(null)
         }}
         title={`¿Eliminar la ronda ${deletingRound?.name ?? ""}?`}
-        description="Dejará de aparecer al elegir la siguiente ronda. Las rondas ya jugadas se conservan."
+        description={
+          deletingRound && patternTemplateIds.includes(deletingRound.id)
+            ? "Esta ronda está en el patrón de la jornada automática en curso: cuando le toque, habrá que elegir otra. Dejará de aparecer al elegir la siguiente ronda. Las rondas ya jugadas se conservan."
+            : "Dejará de aparecer al elegir la siguiente ronda. Las rondas ya jugadas se conservan."
+        }
         onConfirm={handleDeleteRound}
       />
     </div>

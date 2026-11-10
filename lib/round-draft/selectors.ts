@@ -1,3 +1,10 @@
+import {
+  nextPatternStep,
+  patternStep,
+  type PatternBlock,
+  type PatternStep,
+} from "@/lib/round-pattern"
+
 import type { ActivityEntry, DraftPlayer, RoundDraftState } from "./types"
 
 /** The game session has at least one round (open or closed): it can no
@@ -321,5 +328,37 @@ export function hasGiftHistory(
     state.tickets.some((ticket) =>
       ticket.numbers.some((entry) => entry.playerId === playerId && entry.isGift)
     )
+  )
+}
+
+/** The pattern step the open round plays in an automatic game session (its
+ *  seq − 1 in the cycle), or null in manual or with no open round. */
+export function getCurrentPatternStep(
+  state: Pick<RoundDraftState, "roundMode" | "pattern" | "round">
+): PatternStep<PatternBlock> | null {
+  if (state.roundMode !== "auto" || !state.round) return null
+  return patternStep(state.pattern, state.round.seq - 1)
+}
+
+/** The step proposed for the round that follows, in an automatic game
+ *  session: the rounds it has so far (the open one included) mod the cycle
+ *  length. A round picked by hand counts as played. Null in manual. */
+export function getNextPatternStep(
+  state: Pick<RoundDraftState, "roundMode" | "pattern" | "rounds">
+): PatternStep<PatternBlock> | null {
+  if (state.roundMode !== "auto") return null
+  return nextPatternStep(state.pattern, state.rounds.length)
+}
+
+/** Whether the game session can still be discarded ("Salir y borrar"). Manual:
+ *  only with no rounds. Automatic: also while its only round is the untouched
+ *  one opened at the start. Mirrors discard_game_session. */
+export function canDiscardGameSession(state: RoundDraftState): boolean {
+  if (!hasRounds(state)) return true
+  return (
+    state.roundMode === "auto" &&
+    state.rounds.length === 1 &&
+    state.roundsPlayed === 0 &&
+    canChangeRound(state)
   )
 }

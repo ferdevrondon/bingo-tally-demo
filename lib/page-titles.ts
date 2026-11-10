@@ -3,6 +3,7 @@
 
 const TITLES: [pattern: RegExp, title: string][] = [
   [/^\/$/, "Inicio"],
+  [/^\/start-game$/, "Iniciar jornada"],
   [/^\/new-game$/, "Cartones y jugadores"],
   [/^\/active-round$/, "Ronda activa"],
   [/^\/players$/, "Jugadores"],
