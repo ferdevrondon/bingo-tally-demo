@@ -9,8 +9,37 @@ export const MAX_PRIZES = 5
 export interface Round {
   id: number
   name: string
+  /** Only for labels, colors and the pattern shortcuts; never drives the
+   *  automatic advance (BACKEND_PLAN.md "Automatic game sessions"). */
+  kind: RoundKind
   linePrice: number
   prizes: number[]
+}
+
+/** round_templates.kind. */
+export const ROUND_KINDS = ["regular", "special"] as const
+export type RoundKind = (typeof ROUND_KINDS)[number]
+
+export const ROUND_KIND_LABELS: Record<RoundKind, string> = {
+  regular: "Regular",
+  special: "Especial",
+}
+
+/** Plural, for the pattern summary ("4 Especiales y 1 Regular"). */
+export const ROUND_KIND_PLURALS: Record<RoundKind, string> = {
+  regular: "Regulares",
+  special: "Especiales",
+}
+
+/** One letter, for the pattern preview strip ("E E E E R"). */
+export const ROUND_KIND_SHORT: Record<RoundKind, string> = {
+  regular: "R",
+  special: "E",
+}
+
+/** A value read from the database; anything unknown counts as regular. */
+export function toRoundKind(value: string | null | undefined): RoundKind {
+  return value === "special" ? "special" : "regular"
 }
 
 export type RoundInput = Omit<Round, "id">
@@ -18,6 +47,7 @@ export type RoundInput = Omit<Round, "id">
 // Shared by the form and the Server Actions (lib/data/round-actions.ts).
 export const roundInputSchema = z.object({
   name: z.string().trim().min(1, "Ingresa un nombre"),
+  kind: z.enum(ROUND_KINDS),
   linePrice: z.number().positive("El precio de línea debe ser mayor a 0"),
   prizes: z
     .array(z.number().positive("Cada premio debe ser mayor a 0"))

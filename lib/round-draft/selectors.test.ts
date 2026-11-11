@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   canChangeRound,
+  canDiscardGameSession,
+  getCurrentPatternStep,
+  getNextPatternStep,
   canRemoveTicket,
   getHouseWin,
   getActivePlayers,
@@ -255,6 +258,22 @@ describe("sortPlayersByName", () => {
     ])
   })
 
+  it("gives the round's gifted players in alphabetical order, whatever the ticket order", () => {
+    const state = {
+      ...makeState({
+        1: [[3, 2, true]],
+        2: [[4, 1, true]],
+      }),
+      round: { linePrice: 10 },
+      players: [
+        { id: 1, name: "ZOE" },
+        { id: 2, name: "ANA" },
+      ],
+      winningNumbers: [null, null],
+    } as unknown as RoundDraftState
+    expect(getRoundGifts(state).players.map((p) => p.playerName)).toEqual(["ANA", "ZOE"])
+  })
+
   it("returns a copy and leaves the input untouched", () => {
     const players = [{ name: "B" }, { name: "A" }]
     const sorted = sortPlayersByName(players)
@@ -287,5 +306,57 @@ describe("canRemoveTicket", () => {
   it("refuses once the open round has a winning number", () => {
     const state = withWinners(makeState({ 1: [], 2: [] }), [5, null])
     expect(canRemoveTicket(state, 102)).toBe(false)
+  })
+})
+
+describe("automatic game sessions", () => {
+  const pattern = [
+    { roundTemplateId: 2, repeatCount: 2, name: "Especial", kind: "special" as const, active: true },
+    { roundTemplateId: 1, repeatCount: 1, name: "Regular", kind: "regular" as const, active: true },
+  ]
+  const rounds = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i + 1, seq: i + 1, name: "R" }))
+
+  it("proposes the next round from the rounds the game session has", () => {
+    expect(getNextPatternStep({ roundMode: "auto", pattern, rounds: rounds(1) })?.block.name).toBe("Especial")
+    expect(getNextPatternStep({ roundMode: "auto", pattern, rounds: rounds(2) })?.block.name).toBe("Regular")
+    expect(getNextPatternStep({ roundMode: "auto", pattern, rounds: rounds(3) })).toMatchObject({
+      occurrence: 1,
+      cycle: 2,
+    })
+  })
+
+  it("proposes nothing in manual", () => {
+    expect(getNextPatternStep({ roundMode: "manual", pattern: [], rounds: rounds(1) })).toBeNull()
+  })
+
+  it("names the open round's step by its seq", () => {
+    const round = { roundId: 9, templateId: 1, seq: 3, name: "Regular", linePrice: 10, prizes: [100] }
+    expect(getCurrentPatternStep({ roundMode: "auto", pattern, round })).toMatchObject({
+      cyclePosition: 3,
+      cycleLength: 3,
+    })
+    expect(getCurrentPatternStep({ roundMode: "manual", pattern, round })).toBeNull()
+  })
+
+  it("can discard an automatic game session while its first round is untouched", () => {
+    const base = {
+      round: { roundId: 7, seq: 1 },
+      rounds: rounds(1),
+      roundsPlayed: 0,
+      winningNumbers: [null],
+      activity: [{ type: "round_started", roundId: 7 }],
+    }
+    expect(canDiscardGameSession({ ...base, roundMode: "auto" } as unknown as RoundDraftState)).toBe(true)
+    expect(canDiscardGameSession({ ...base, roundMode: "manual" } as unknown as RoundDraftState)).toBe(false)
+    expect(
+      canDiscardGameSession({
+        ...base,
+        roundMode: "auto",
+        activity: [{ type: "number_purchased", roundId: 7 }],
+      } as unknown as RoundDraftState)
+    ).toBe(false)
+    expect(
+      canDiscardGameSession({ round: null, rounds: [], roundMode: "manual" } as unknown as RoundDraftState)
+    ).toBe(true)
   })
 })

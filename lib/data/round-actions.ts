@@ -20,6 +20,7 @@ const idSchema = z.number().int().positive()
 function toRow(input: z.infer<typeof roundInputSchema>) {
   return {
     name: input.name,
+    kind: input.kind,
     line_price: input.linePrice,
     prizes: input.prizes,
   }

@@ -6,8 +6,10 @@ import type { Database } from "@/lib/supabase/database.types"
 import type { ActivityEntry, ActivityEntryType } from "@/lib/round-draft/types"
 
 import { formatHouseDateTime, houseDayRange } from "./format"
+import { roundBalanceFlow } from "./balance-flow"
 import { buildRoundGifts } from "./gifts"
 import { houseResult, saleAmount } from "./ledger"
+import { comparePlayerNames } from "@/lib/round-draft/selectors"
 import type {
   CashLine,
   GameSessionListItem,
@@ -292,7 +294,7 @@ export async function fetchGameSessionReport(
       ...(totals.get(p.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0, transfers: 0 }),
       closing: Number(p.balance),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .sort((a, b) => comparePlayerNames(a.name, b.name))
 
   const settlementPlayers = settlement.data?.settlement_players ?? []
   const endedAt = g.ended_at ? Date.parse(g.ended_at) : Date.now()
@@ -391,17 +393,24 @@ export async function fetchPlayerRounds(
   gameSessionId: number,
   playerId: number
 ): Promise<PlayerRoundReport[]> {
-  const [rounds, tickets, ledger] = await Promise.all([
+  const [rounds, tickets, ledger, session] = await Promise.all([
     supabase
       .from("game_session_rounds")
-      .select("id, seq, name, line_price, prizes, winning_numbers")
+      .select("id, seq, name, line_price, prizes, winning_numbers, status")
       .eq("game_session_id", gameSessionId)
       .order("seq"),
     supabase.from("tickets").select("id, index").eq("game_session_id", gameSessionId),
     readLedger(supabase, gameSessionId, playerId),
+    supabase
+      .from("game_session_players")
+      .select("opening_balance")
+      .eq("game_session_id", gameSessionId)
+      .eq("player_id", playerId)
+      .maybeSingle(),
   ])
   if (rounds.error) throw rounds.error
   if (tickets.error) throw tickets.error
+  if (session.error) throw session.error
 
   const ticketIndex = new Map(tickets.data.map((t) => [t.id, t.index]))
   const position = (row: LedgerRow): NumberPosition => ({
@@ -434,6 +443,12 @@ export async function fetchPlayerRounds(
       wins: [],
       recharges: 0,
       payouts: 0,
+      wonAmount: 0,
+      transferredAmount: 0,
+      enteredBalance: 0,
+      exitBalance: 0,
+      open: round ? round.status !== "closed" : false,
+      movements: [],
     }
     byRound.set(roundId, entry)
     return entry
@@ -443,7 +458,8 @@ export async function fetchPlayerRounds(
     const amount = Number(row.amount ?? 0)
     const sale = saleAmount(row.type, row.amount)
     const touches =
-      sale !== 0 || ["prize_won", "recharge", "payout", "number_gifted"].includes(row.type)
+      sale !== 0 ||
+      ["prize_won", "recharge", "payout", "number_gifted", "balance_transfer"].includes(row.type)
     if (!touches) continue
     const entry = entryFor(row.round_id)
     entry.played += sale
@@ -504,6 +520,49 @@ export async function fetchPlayerRounds(
     entry.otherAmount =
       entry.played -
       (entry.purchasedAmount - entry.giftedAmount - entry.releasedAmount + entry.keptAmount)
+  }
+
+  // Balance by round: every money row of the player, in ledger order, not only
+  // the rounds with a play (a transfer or a payout can be the only movement).
+  const flows = roundBalanceFlow(
+    Number(session.data?.opening_balance ?? 0),
+    ledger.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      type: row.type,
+      amount: row.amount,
+      roundId: row.round_id,
+      number: row.number,
+      counterpartyPlayerId: row.counterparty_player_id,
+    }))
+  )
+
+  // The other player of each balance transfer, by name.
+  const counterpartyIds = [
+    ...new Set(
+      [...flows.values()].flatMap((f) =>
+        f.movements.flatMap((m) => (m.counterpartyPlayerId !== null ? [m.counterpartyPlayerId] : []))
+      )
+    ),
+  ]
+  const names = new Map<number, string>()
+  if (counterpartyIds.length > 0) {
+    const { data, error } = await supabase.from("players").select("id, name").in("id", counterpartyIds)
+    if (error) throw error
+    for (const p of data) names.set(p.id, p.name)
+  }
+
+  for (const [roundId, flow] of flows) {
+    const entry = entryFor(roundId)
+    entry.enteredBalance = flow.enteredBalance
+    entry.exitBalance = flow.exitBalance
+    entry.wonAmount = flow.won
+    entry.transferredAmount = flow.transferred
+    entry.movements = flow.movements.map((m) => ({
+      ...m,
+      counterpartyName:
+        m.counterpartyPlayerId !== null ? (names.get(m.counterpartyPlayerId) ?? null) : null,
+    }))
   }
 
   return [...byRound.values()].sort((a, b) => b.seq - a.seq)

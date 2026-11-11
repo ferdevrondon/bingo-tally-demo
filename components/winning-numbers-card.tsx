@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { RepeatIcon } from "lucide-react"
 
 import { ChangeRoundDialog } from "@/components/change-round-dialog"
 import { CloseRoundDialog } from "@/components/close-round-dialog"
@@ -14,7 +15,14 @@ import { buildAwardSummary, type AwardSummary } from "@/lib/round-draft/award-su
 import { formatMoney } from "@/lib/rounds"
 import { cn } from "@/lib/utils"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { canChangeRound, getActivePlayers, getHouseWin, getSlotWinners } from "@/lib/round-draft/selectors"
+import {
+  canChangeRound,
+  getActivePlayers,
+  getCurrentPatternStep,
+  getHouseWin,
+  getSlotWinners,
+} from "@/lib/round-draft/selectors"
+import { cyclePositionLabel } from "@/lib/round-pattern"
 
 export function WinningNumbersCard() {
   const { state, readOnly, awardPrize } = useRoundDraft()
@@ -70,6 +78,7 @@ export function WinningNumbersCard() {
   const usedNumbers = new Set(
     state.winningNumbers.filter((n): n is number => n !== null)
   )
+  const patternStep = getCurrentPatternStep(state)
   const allSlotsFilled =
     state.winningNumbers.length > 0 && state.winningNumbers.every((n) => n !== null)
 
@@ -91,6 +100,15 @@ export function WinningNumbersCard() {
           <span className="text-sm text-muted-foreground">
             Línea {formatMoney(state.round.linePrice)}
           </span>
+          {patternStep && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+              title="Jornada automática: lugar de esta ronda en el patrón"
+            >
+              <RepeatIcon className="size-3" aria-hidden="true" />
+              Ronda {state.round.seq} · {cyclePositionLabel(patternStep)}
+            </span>
+          )}
           {!readOnly && canChangeRound(state) && (
             <Button variant="outline" size="sm" onClick={() => setIsChangeOpen(true)}>
               Cambiar ronda

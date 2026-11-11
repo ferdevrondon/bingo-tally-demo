@@ -3,16 +3,10 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { ArrowLeftIcon } from "lucide-react"
 
+import { GameSetupStepper } from "@/components/game-setup-stepper"
 import { Button } from "@/components/ui/button"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import {
   Dialog,
   DialogContent,
@@ -22,19 +16,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useRoundDraft } from "@/lib/round-draft/context"
-import { hasRounds } from "@/lib/round-draft/selectors"
+import { canDiscardGameSession } from "@/lib/round-draft/selectors"
 
-// Leaving /new-game keeps the game session. While it has no rounds it can
-// also be discarded ("Salir y borrar", discard_game_session); once a round
-// exists it can only be ended from /active-round. An observer just goes
+// Leaving /new-game keeps the game session. While it has no rounds (or, in
+// an automatic game session, only the untouched round opened at the start)
+// it can also be discarded ("Salir y borrar", discard_game_session); after
+// that it can only be ended from /active-round. An observer just goes
 // back home.
-function BackToStartCrumb() {
+function ExitButton() {
   const router = useRouter()
   const { state, readOnly, discardGameSession } = useRoundDraft()
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
-  const canDiscard = !readOnly && !hasRounds(state)
+  const canDiscard = !readOnly && canDiscardGameSession(state)
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault()
@@ -56,22 +51,26 @@ function BackToStartCrumb() {
 
   return (
     <>
-      <BreadcrumbItem>
-        <BreadcrumbLink
-          className="inline-flex min-h-6 items-center max-lg:min-h-11"
-          render={<Link href="/" onClick={handleClick} />}
-        >
-          {readOnly ? "Inicio" : "Iniciar jornada"}
-        </BreadcrumbLink>
-      </BreadcrumbItem>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-muted-foreground max-lg:min-h-11"
+        nativeButton={false}
+        render={<Link href="/" onClick={handleClick} />}
+      >
+        <ArrowLeftIcon className="size-4" aria-hidden="true" />
+        {readOnly ? "Inicio" : "Salir"}
+      </Button>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>¿Salir de la jornada?</DialogTitle>
             <DialogDescription>
-              La jornada todavía no tiene rondas. Puedes dejarla para continuar después, o
-              borrarla junto con sus cartones.
+              {state.roundMode === "auto"
+                ? "La jornada todavía no tiene jugadas. "
+                : "La jornada todavía no tiene rondas. "}
+              Puedes dejarla para continuar después, o borrarla junto con sus cartones.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -91,18 +90,15 @@ function BackToStartCrumb() {
   )
 }
 
-function StepBreadcrumb() {
+// The last step of "Iniciar jornada" (components/game-setup-stepper.tsx):
+// the earlier ones show as done, since the mode is fixed once the game
+// session exists.
+function StepHeader() {
+  const { state } = useRoundDraft()
   return (
-    <div className="border-b px-4 py-3 lg:px-6">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BackToStartCrumb />
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Cartones y jugadores</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3 lg:px-6">
+      <ExitButton />
+      <GameSetupStepper mode={state.roundMode} current="tickets" />
     </div>
   )
 }
@@ -110,7 +106,7 @@ function StepBreadcrumb() {
 export default function NewGameLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1 flex-col">
-      <StepBreadcrumb />
+      <StepHeader />
       {children}
     </div>
   )

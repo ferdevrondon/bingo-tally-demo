@@ -4,6 +4,7 @@ import { isBank } from "@/lib/banks"
 import { toActivityEntry } from "@/lib/game-report/fetch"
 import { assembleGiftHistory, GIFT_ROWS_FILTER } from "@/lib/game-report/player-gifts"
 import { isPaymentMethod } from "@/lib/payment-methods"
+import { toRoundKind } from "@/lib/rounds"
 import type { Database } from "@/lib/supabase/database.types"
 
 import {
@@ -70,6 +71,12 @@ function readGameSessionRows(supabase: SupabaseClient<Database>, houseId: number
       .eq("game_session_id", id)
       .in("type", ["recharge", "prize_won", "payout", "balance_transfer"])
       .not("player_id", "is", null),
+    // The cycle of an automatic game session (none in manual).
+    supabase
+      .from("game_session_round_pattern")
+      .select("position, round_template_id, repeat_count, round_templates(name, kind, active)")
+      .eq("game_session_id", id)
+      .order("position"),
   ])
 }
 
@@ -89,7 +96,7 @@ export async function fetchGameSessionState(
   const [{ data: gameSession, error }, knownRows] = await Promise.all([
     supabase
       .from("game_sessions")
-      .select("id, number, house_balance, started_at")
+      .select("id, number, house_balance, started_at, round_mode")
       .eq("house_id", houseId)
       .eq("status", "active")
       .maybeSingle(),
@@ -101,7 +108,18 @@ export async function fetchGameSessionState(
   if (!gameSession) return null
 
   const id = gameSession.id
-  const [catalog, accounts, sessionPlayers, tickets, numbers, rounds, activity, giftRows, totalRows] =
+  const [
+    catalog,
+    accounts,
+    sessionPlayers,
+    tickets,
+    numbers,
+    rounds,
+    activity,
+    giftRows,
+    totalRows,
+    patternRows,
+  ] =
     knownRows !== null && knownGameSessionId === id
       ? knownRows
       : await readGameSessionRows(supabase, houseId, id)
@@ -115,6 +133,7 @@ export async function fetchGameSessionState(
     activity,
     giftRows,
     totalRows,
+    patternRows,
   ]) {
     if (result.error) throw result.error
   }
@@ -236,5 +255,13 @@ export async function fetchGameSessionState(
     ],
     houseBalance: Number(gameSession.house_balance),
     gameStartedAt: Date.parse(gameSession.started_at),
+    roundMode: gameSession.round_mode === "auto" ? "auto" : "manual",
+    pattern: (patternRows.data ?? []).map((row) => ({
+      roundTemplateId: row.round_template_id,
+      repeatCount: row.repeat_count,
+      name: row.round_templates?.name ?? "Ronda",
+      kind: toRoundKind(row.round_templates?.kind),
+      active: row.round_templates?.active ?? false,
+    })),
   }
 }

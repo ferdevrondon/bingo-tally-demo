@@ -204,6 +204,45 @@ export type Database = {
           },
         ]
       }
+      game_session_round_pattern: {
+        Row: {
+          game_session_id: number
+          house_id: number
+          position: number
+          repeat_count: number
+          round_template_id: number
+        }
+        Insert: {
+          game_session_id: number
+          house_id: number
+          position: number
+          repeat_count: number
+          round_template_id: number
+        }
+        Update: {
+          game_session_id?: number
+          house_id?: number
+          position?: number
+          repeat_count?: number
+          round_template_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_session_round_pattern_game_session_id_house_id_fkey"
+            columns: ["game_session_id", "house_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id", "house_id"]
+          },
+          {
+            foreignKeyName: "game_session_round_pattern_round_template_id_fkey"
+            columns: ["round_template_id"]
+            isOneToOne: false
+            referencedRelation: "round_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_session_rounds: {
         Row: {
           closed_at: string | null
@@ -288,6 +327,7 @@ export type Database = {
           house_id: number
           id: number
           number: number
+          round_mode: string
           started_at: string
           status: string
         }
@@ -299,6 +339,7 @@ export type Database = {
           house_id: number
           id?: never
           number: number
+          round_mode?: string
           started_at?: string
           status?: string
         }
@@ -310,6 +351,7 @@ export type Database = {
           house_id?: number
           id?: never
           number?: number
+          round_mode?: string
           started_at?: string
           status?: string
         }
@@ -473,6 +515,7 @@ export type Database = {
           created_at: string
           house_id: number
           id: number
+          kind: string
           line_price: number
           name: string
           prizes: number[]
@@ -482,6 +525,7 @@ export type Database = {
           created_at?: string
           house_id: number
           id?: never
+          kind?: string
           line_price: number
           name: string
           prizes?: number[]
@@ -491,6 +535,7 @@ export type Database = {
           created_at?: string
           house_id?: number
           id?: never
+          kind?: string
           line_price?: number
           name?: string
           prizes?: number[]
@@ -978,7 +1023,12 @@ export type Database = {
         Returns: undefined
       }
       start_game_session: {
-        Args: { p_house_id: number; p_request_id: string }
+        Args: {
+          p_house_id: number
+          p_pattern?: Json
+          p_request_id: string
+          p_round_mode?: string
+        }
         Returns: number
       }
       start_round: {

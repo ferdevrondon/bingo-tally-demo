@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, SearchIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -30,6 +30,7 @@ import {
 import { useRole } from "@/components/house-provider"
 import { PlayerForm } from "@/components/player-form"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,7 @@ import {
 import {
   createPlayer,
   deactivatePlayer,
+  deactivatePlayers,
   updatePlayer,
 } from "@/lib/data/player-actions"
 import { BANK_OPTIONS_WITH_NONE, bankLabel, isBank, NO_BANK } from "@/lib/banks"
@@ -68,8 +70,9 @@ import {
 } from "@/lib/payment-methods"
 import { GiftHistoryButton, PlayerGiftsDialog } from "@/components/player-gifts-dialog"
 import type { ActiveGiftedPlayers } from "@/lib/data/gifts"
-import type { Player, PlayerInput } from "@/lib/players"
+import { playerMatchesQuery, type Player, type PlayerInput } from "@/lib/players"
 import { signedMoney } from "@/lib/round-draft/balance"
+import { sortPlayersByName } from "@/lib/round-draft/selectors"
 import { cn } from "@/lib/utils"
 import { writeSucceeded } from "@/lib/write-feedback"
 
@@ -211,6 +214,12 @@ export default function PlayerPage({
   const [deletingPlayer, setDeletingPlayer] = React.useState<Player | null>(
     null
   )
+  // The players checked in the table (ids of the rows) and the confirmation
+  // of deleting them, opened by the "Eliminar" button of the top row.
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([])
+  // Search over name, nickname, phone and email; the selection is kept while filtering.
+  const [query, setQuery] = React.useState("")
+  const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
   const [accountDialog, setAccountDialog] = React.useState<AccountDialog>(null)
   const accountById = React.useMemo(
     () => new Map(accounts.map((a) => [a.playerId, a])),
@@ -219,7 +228,7 @@ export default function PlayerPage({
 
   const rows = React.useMemo<DataRow[]>(
     () =>
-      players.map((player) => ({
+      sortPlayersByName(players.filter((p) => playerMatchesQuery(p, query))).map((player) => ({
         id: player.id,
         name: player.name,
         nickname: player.nickname,
@@ -236,7 +245,7 @@ export default function PlayerPage({
           ? `${accountStatusText(accountFrom(accountById, player.id))} · En jornada`
           : accountStatusText(accountFrom(accountById, player.id)),
       })),
-    [players, isAdmin, accountById]
+    [players, isAdmin, accountById, query]
   )
 
   const columns = React.useMemo<DataTableColumnDef[]>(
@@ -377,6 +386,24 @@ export default function PlayerPage({
     }
   }
 
+  // Checked players that still exist (a refresh may have removed some).
+  const selectedPlayers = selectedIds
+    .map((id) => findPlayer(id))
+    .filter((p): p is Player => p !== null)
+
+  async function handleDeletePlayers() {
+    if (selectedPlayers.length === 0) return
+    if (writeSucceeded(await deactivatePlayers(selectedPlayers.map((p) => p.id)))) {
+      toast.success(
+        selectedPlayers.length === 1
+          ? `${selectedPlayers[0].name} eliminado`
+          : `${selectedPlayers.length} jugadores eliminados`
+      )
+      setSelectedIds([])
+      setIsDeleteOpen(false)
+    }
+  }
+
   async function handleCellChange(
     rowId: DataRow["id"],
     key: string,
@@ -410,66 +437,103 @@ export default function PlayerPage({
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          {isAdmin && (
-            <div className="flex justify-end px-4 lg:px-6">
-              <Dialog open={isAddPlayerOpen} onOpenChange={setIsAddPlayerOpen}>
-                <DialogTrigger render={<Button />}>
-                  <PlusIcon />
-                  Agregar jugador
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Nuevo jugador</DialogTitle>
-                    <DialogDescription>
-                      Completa los datos para agregar un jugador.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="overflow-y-auto p-6">
-                    <PlayerForm
-                      variant="plain"
-                      onSubmit={handleAddPlayer}
-                      onCancel={() => setIsAddPlayerOpen(false)}
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 lg:px-6">
+            {isAdmin ? (
+              <Button
+                variant="destructive"
+                className="pointer-coarse:h-10"
+                disabled={selectedPlayers.length === 0}
+                onClick={() => setIsDeleteOpen(true)}
+              >
+                <Trash2Icon />
+                Eliminar
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <SearchIcon
+                  className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Buscar jugador…"
+                  aria-label="Buscar jugador"
+                  className="w-56 pl-8"
+                />
+              </div>
+              {isAdmin && (
+                <Dialog open={isAddPlayerOpen} onOpenChange={setIsAddPlayerOpen}>
+                  <DialogTrigger render={<Button />}>
+                    <PlusIcon />
+                    Agregar jugador
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nuevo jugador</DialogTitle>
+                      <DialogDescription>
+                        Completa los datos para agregar un jugador.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="overflow-y-auto p-6">
+                      <PlayerForm
+                        variant="plain"
+                        onSubmit={handleAddPlayer}
+                        onCancel={() => setIsAddPlayerOpen(false)}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
+          </div>
+          {query.trim() !== "" && rows.length === 0 ? (
+            <p className="px-4 text-sm text-muted-foreground lg:px-6">
+              Sin coincidencias para «{query.trim()}».
+            </p>
+          ) : (
+            <DataTable
+              data={rows}
+              columns={columns}
+              enableRowSelection={isAdmin}
+              selectedIds={selectedIds}
+              onSelectedIdsChange={setSelectedIds}
+              onCellChange={isAdmin ? handleCellChange : undefined}
+              rowActions={
+                isAdmin
+                  ? [
+                      {
+                        key: "balance",
+                        label: "Gestionar saldo",
+                        onSelect: (row) => openAccountDialog("balance", row.id),
+                      },
+                      {
+                        key: "status",
+                        label: "Estado del saldo",
+                        onSelect: (row) => openAccountDialog("status", row.id),
+                      },
+                      {
+                        key: "edit",
+                        label: "Editar",
+                        separatorBefore: true,
+                        onSelect: (row) => setEditingPlayer(findPlayer(row.id)),
+                      },
+                      {
+                        key: "delete",
+                        label: "Eliminar",
+                        variant: "destructive",
+                        separatorBefore: true,
+                        onSelect: (row) => setDeletingPlayer(findPlayer(row.id)),
+                      },
+                    ]
+                  : undefined
+              }
+            />
           )}
-          <DataTable
-            data={rows}
-            columns={columns}
-            enableRowSelection={isAdmin}
-            onCellChange={isAdmin ? handleCellChange : undefined}
-            rowActions={
-              isAdmin
-                ? [
-                    {
-                      key: "balance",
-                      label: "Gestionar saldo",
-                      onSelect: (row) => openAccountDialog("balance", row.id),
-                    },
-                    {
-                      key: "status",
-                      label: "Estado del saldo",
-                      onSelect: (row) => openAccountDialog("status", row.id),
-                    },
-                    {
-                      key: "edit",
-                      label: "Editar",
-                      separatorBefore: true,
-                      onSelect: (row) => setEditingPlayer(findPlayer(row.id)),
-                    },
-                    {
-                      key: "delete",
-                      label: "Eliminar",
-                      variant: "destructive",
-                      separatorBefore: true,
-                      onSelect: (row) => setDeletingPlayer(findPlayer(row.id)),
-                    },
-                  ]
-                : undefined
-            }
-          />
         </div>
       </div>
 
@@ -599,6 +663,27 @@ export default function PlayerPage({
         description="Dejará de aparecer en la lista y al iniciar jornadas. Su historial en jornadas anteriores se conserva."
         onConfirm={handleDeletePlayer}
       />
+
+      <ConfirmDeleteDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title={
+          selectedPlayers.length === 1
+            ? `¿Eliminar a ${selectedPlayers[0].name}?`
+            : selectedPlayers.length > 1
+              ? `¿Eliminar a ${selectedPlayers.length} jugadores?`
+              : "¿Eliminar jugadores?"
+        }
+        description={`${namesSummary(selectedPlayers)} Dejarán de aparecer en la lista y al iniciar jornadas. Su historial en jornadas anteriores se conserva.`}
+        onConfirm={handleDeletePlayers}
+      />
     </div>
   )
+}
+
+// "ANA, LUIS y 3 más." — up to 5 names so the confirmation stays short.
+function namesSummary(players: Player[]) {
+  const names = players.slice(0, 5).map((p) => p.name)
+  const more = players.length - names.length
+  return more > 0 ? `${names.join(", ")} y ${more} más.` : `${names.join(", ")}.`
 }

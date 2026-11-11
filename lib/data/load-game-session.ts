@@ -12,3 +12,19 @@ export const loadActiveGameSession = cache(async (): Promise<RoundDraftState | n
   if (!house) return null
   return fetchGameSessionState(await createClient(), house.houseId)
 })
+
+// Whether the house has an active game session, without reading it (the
+// start screen sends it to /new-game instead).
+export const hasActiveGameSession = cache(async (): Promise<boolean> => {
+  const house = await getCurrentHouse()
+  if (!house) return false
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("game_sessions")
+    .select("id")
+    .eq("house_id", house.houseId)
+    .eq("status", "active")
+    .maybeSingle()
+  if (error) throw error
+  return data !== null
+})

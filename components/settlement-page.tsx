@@ -115,8 +115,6 @@ export function SettlementPage({ settlement }: { settlement: Settlement }) {
 
   const groups: Record<SettlementGroup, SettlementPlayer[]> = { collect: [], pay: [], done: [] }
   for (const player of settlement.players) groups[settlementGroup(player)].push(player)
-  // Resolved players go last, in the order they were resolved.
-  groups.done.sort((a, b) => (a.resolvedAt ?? "").localeCompare(b.resolvedAt ?? ""))
 
   const unresolved = groups.collect.length + groups.pay.length
   const sum = (players: SettlementPlayer[]) =>
