@@ -35,8 +35,10 @@ import {
   useTable,
   type ColumnFiltersState,
   type ColumnVisibilityState,
+  type RowSelectionState,
   type Row,
   type SortingState,
+  type Updater,
 } from "@tanstack/react-table"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -315,6 +317,15 @@ export interface DataTableProps {
    */
   rowActions?: DataTableRowAction[]
   /**
+   * ids de las filas marcadas con los checks (los de `getRowId`: el id del
+   * dato en texto). Si se pasa junto a `onSelectedIdsChange`, la página
+   * controla la selección (ej. para un botón "Eliminar" fuera de la tabla y
+   * para limpiar los checks al terminar). Si no, la tabla la maneja sola.
+   */
+  selectedIds?: string[]
+  /** se llama cada vez que cambian los checks, con los ids marcados */
+  onSelectedIdsChange?: (ids: string[]) => void
+  /**
    * callback que se dispara cuando se edita una celda (input o select).
    * Útil para persistir cambios fuera del componente.
    */
@@ -334,6 +345,8 @@ export function DataTable({
   titleKey,
   enableRowSelection = true,
   rowActions,
+  selectedIds,
+  onSelectedIdsChange,
   onCellChange,
 }: DataTableProps) {
   const [data, setData] = React.useState(() => initialData)
@@ -345,7 +358,26 @@ export function DataTable({
     setPrevInitialData(initialData)
     setData(initialData)
   }
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [ownRowSelection, setOwnRowSelection] = React.useState<RowSelectionState>({})
+  const isSelectionControlled = selectedIds !== undefined && onSelectedIdsChange !== undefined
+  const rowSelection = React.useMemo<RowSelectionState>(
+    () =>
+      isSelectionControlled
+        ? Object.fromEntries(selectedIds.map((id) => [id, true as const]))
+        : ownRowSelection,
+    [isSelectionControlled, selectedIds, ownRowSelection]
+  )
+  const setRowSelection = React.useCallback(
+    (updater: Updater<RowSelectionState>) => {
+      const next = typeof updater === "function" ? updater(rowSelection) : updater
+      if (isSelectionControlled) {
+        onSelectedIdsChange(Object.keys(next))
+      } else {
+        setOwnRowSelection(next)
+      }
+    },
+    [rowSelection, isSelectionControlled, onSelectedIdsChange]
+  )
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])

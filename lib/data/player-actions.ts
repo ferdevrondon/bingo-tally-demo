@@ -94,3 +94,32 @@ export async function deactivatePlayer(
   refresh()
   return { ok: true, data: { id: data.id } }
 }
+
+const idsSchema = z.array(idSchema).min(1).max(200)
+
+// Soft delete of several players at once (the checks of /players). One
+// update, so it is all or nothing: RLS turns a forbidden update into fewer
+// rows, which is reported as a failure and never as a success.
+export async function deactivatePlayers(
+  ids: number[]
+): Promise<WriteResult<{ count: number }>> {
+  const parsed = idsSchema.safeParse(ids)
+  if (!parsed.success) return { ok: false, error: "invalid" }
+  const unique = [...new Set(parsed.data)]
+  const house = await getCurrentHouse()
+  if (!house) return { ok: false, error: "read_only" }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("players")
+    .update({ active: false })
+    .in("id", unique)
+    .eq("house_id", house.houseId)
+    .select("id")
+  if (error || !data || data.length !== unique.length) {
+    return rejectWrite(supabase, error)
+  }
+
+  refresh()
+  return { ok: true, data: { count: data.length } }
+}

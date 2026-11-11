@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { playerInputSchema } from "./players"
+import { playerInputSchema, playerMatchesQuery } from "./players"
 
 const base = { nickname: "", paymentMethod: null, bank: null, phone: "", email: "", isVip: false }
 
@@ -23,5 +23,25 @@ describe("playerInputSchema", () => {
   it("rejects a malformed email or a long phone", () => {
     expect(playerInputSchema.safeParse({ ...base, name: "ana", email: "ana@" }).success).toBe(false)
     expect(playerInputSchema.safeParse({ ...base, name: "ana", phone: "1".repeat(31) }).success).toBe(false)
+  })
+})
+
+describe("playerMatchesQuery", () => {
+  const ana = { name: "MARÍA JOSÉ", nickname: "PEPA", phone: "555-0101", email: "maria@example.com" }
+
+  it("ignores case and accents", () => {
+    expect(playerMatchesQuery(ana, "maria")).toBe(true)
+    expect(playerMatchesQuery(ana, "JOSE")).toBe(true)
+  })
+
+  it("matches the nickname, phone and email too", () => {
+    expect(playerMatchesQuery(ana, "pepa")).toBe(true)
+    expect(playerMatchesQuery(ana, "0101")).toBe(true)
+    expect(playerMatchesQuery(ana, "example.com")).toBe(true)
+  })
+
+  it("matches everyone on an empty search and nobody on a miss", () => {
+    expect(playerMatchesQuery(ana, "   ")).toBe(true)
+    expect(playerMatchesQuery(ana, "zoe")).toBe(false)
   })
 })
