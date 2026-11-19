@@ -1,0 +1,569 @@
+import type { SupabaseClient } from "@supabase/supabase-js"
+
+import { isBank } from "@/lib/banks"
+import { isRecordedPaymentMethod, type RecordedPaymentMethod } from "@/lib/payment-methods"
+import type { Database } from "@/lib/supabase/database.types"
+import type { ActivityEntry, ActivityEntryType } from "@/lib/round-draft/types"
+
+import { formatHouseDateTime, houseDayRange } from "./format"
+import { roundBalanceFlow } from "./balance-flow"
+import { buildRoundGifts } from "./gifts"
+import { houseResult, saleAmount } from "./ledger"
+import { comparePlayerNames } from "@/lib/round-draft/selectors"
+import type {
+  CashLine,
+  GameSessionListItem,
+  GameSessionReport,
+  GameSessionStatus,
+  NumberPosition,
+  PlayerReport,
+  PlayerRoundReport,
+  RoundReport,
+  RoundWinnerReport,
+  RoundsOfDay,
+} from "./types"
+
+// Reads for the game session report (BACKEND_PLAN.md Phase 6a). They take
+// the Supabase client, like lib/round-draft/fetch-state.ts, so the same code
+// runs on the server (the /reports pages) and in the browser (the live game's
+// round history and "Ver rondas"). RLS limits every row to the user's house.
+
+type Client = SupabaseClient<Database>
+
+const PAGE_SIZE = 1000
+
+const LEDGER_COLUMNS =
+  "id, created_at, type, player_id, round_id, ticket_id, number, amount, payment_method, note, bank, corrects_id, counterparty_player_id, transfer_id"
+
+type LedgerRow = Pick<
+  Database["public"]["Tables"]["activity_log"]["Row"],
+  | "id"
+  | "created_at"
+  | "type"
+  | "player_id"
+  | "round_id"
+  | "ticket_id"
+  | "number"
+  | "amount"
+  | "payment_method"
+  | "note"
+  | "bank"
+  | "corrects_id"
+  | "counterparty_player_id"
+  | "transfer_id"
+>
+
+export function toActivityEntry(row: LedgerRow): ActivityEntry {
+  return {
+    id: row.id,
+    timestamp: Date.parse(row.created_at),
+    type: row.type as ActivityEntryType,
+    playerId: row.player_id,
+    roundId: row.round_id,
+    ticketId: row.ticket_id,
+    number: row.number,
+    amount: row.amount === null ? null : Number(row.amount),
+    paymentMethod: isRecordedPaymentMethod(row.payment_method) ? row.payment_method : null,
+    bank: isBank(row.bank) ? row.bank : null,
+    note: row.note,
+    correctsId: row.corrects_id,
+    counterpartyPlayerId: row.counterparty_player_id,
+    transferId: row.transfer_id,
+  }
+}
+
+// The API returns at most 1000 rows per request: read the ledger page by page.
+async function readLedger(
+  supabase: Client,
+  gameSessionId: number,
+  playerId: number | null = null
+): Promise<LedgerRow[]> {
+  const rows: LedgerRow[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = supabase.from("activity_log").select(LEDGER_COLUMNS).eq("game_session_id", gameSessionId)
+    if (playerId !== null) query = query.eq("player_id", playerId)
+    const { data, error } = await query.order("id").range(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    rows.push(...data)
+    if (data.length < PAGE_SIZE) return rows
+  }
+}
+
+function toStatus(value: string): GameSessionStatus {
+  return value === "active" ? "active" : "ended"
+}
+
+/** A round closed without winning numbers was never played (unplayed round refund). */
+function wasPlayed(round: { status: string; winning_numbers: (number | null)[] }) {
+  return round.status === "closed" && round.winning_numbers.some((n) => n !== null)
+}
+
+/** Every game session of the house, newest first. */
+export async function fetchGameSessionList(
+  supabase: Client,
+  houseId: number,
+  timeZone: string
+): Promise<GameSessionListItem[]> {
+  const { data, error } = await supabase
+    .from("game_sessions")
+    .select(
+      "id, number, status, started_at, house_balance, game_session_rounds(status, winning_numbers), game_session_players(removed_at), tickets(count), settlements(status, settlement_players(resolution))"
+    )
+    .eq("house_id", houseId)
+    .order("number", { ascending: false })
+  if (error) throw error
+
+  return data.map((g) => {
+    // One settlement per ended game session; the generated types see a list.
+    const settlement = [g.settlements].flat()[0] ?? null
+    return {
+      id: g.id,
+      number: g.number,
+      status: toStatus(g.status),
+      startedAtLabel: formatHouseDateTime(g.started_at, timeZone),
+      roundsPlayed: g.game_session_rounds.filter(wasPlayed).length,
+      playersCount: g.game_session_players.filter((p) => p.removed_at === null).length,
+      ticketsCount: g.tickets[0]?.count ?? 0,
+      houseTotal: Number(g.house_balance),
+      settlement: settlement
+        ? {
+            status: settlement.status === "closed" ? "closed" : "open",
+            unresolved: settlement.settlement_players.filter((p) => p.resolution === null).length,
+          }
+        : null,
+    }
+  })
+}
+
+/** Everything that happened in one game session, or null if it doesn't exist. */
+export async function fetchGameSessionReport(
+  supabase: Client,
+  gameSessionId: number,
+  timeZone: string
+): Promise<GameSessionReport | null> {
+  const [session, rounds, winners, sessionPlayers, tickets, settlement, ledger] = await Promise.all([
+    supabase
+      .from("game_sessions")
+      .select("id, number, status, started_at, ended_at, house_balance")
+      .eq("id", gameSessionId)
+      .maybeSingle(),
+    supabase
+      .from("game_session_rounds")
+      .select(
+        "id, seq, name, status, closed_at, line_price, prizes, winning_numbers, tickets_count, margin_gifts, margin_unsold_losing, margin_unsold_winning"
+      )
+      .eq("game_session_id", gameSessionId)
+      .order("seq"),
+    supabase
+      .from("round_winners")
+      .select("round_id, player_id, ticket_id, number, slot, prize")
+      .eq("game_session_id", gameSessionId)
+      .order("slot")
+      .order("id"),
+    supabase
+      .from("game_session_players")
+      .select("player_id, opening_balance, balance, removed_at, players(name)")
+      .eq("game_session_id", gameSessionId),
+    supabase
+      .from("tickets")
+      .select("id, index, created_at, removed_at")
+      .eq("game_session_id", gameSessionId),
+    supabase
+      .from("settlements")
+      .select("status, settlement_players(resolution, received, paid)")
+      .eq("game_session_id", gameSessionId)
+      .maybeSingle(),
+    readLedger(supabase, gameSessionId),
+  ])
+  for (const result of [session, rounds, winners, sessionPlayers, tickets, settlement]) {
+    if (result.error) throw result.error
+  }
+  if (!session.data) return null
+  const g = session.data
+
+  const playerNames = new Map(
+    (sessionPlayers.data ?? []).map((p) => [p.player_id, p.players?.name ?? "Jugador"])
+  )
+  const ticketIndex = new Map((tickets.data ?? []).map((t) => [t.id, t.index]))
+
+  // Per player and per round, what the ledger moved.
+  const totals = new Map<number, Omit<PlayerReport, "id" | "name" | "removed" | "opening" | "closing">>()
+  const salesByRound = new Map<number, number>()
+  const cash = new Map<RecordedPaymentMethod | null, CashLine>()
+  for (const row of ledger) {
+    const sale = saleAmount(row.type, row.amount)
+    if (row.round_id !== null && sale !== 0) {
+      salesByRound.set(row.round_id, (salesByRound.get(row.round_id) ?? 0) + sale)
+    }
+    if (row.type === "recharge" || row.type === "payout") {
+      const method = isRecordedPaymentMethod(row.payment_method) ? row.payment_method : null
+      const line = cash.get(method) ?? { method, recharges: 0, payouts: 0 }
+      if (row.type === "recharge") line.recharges += Number(row.amount ?? 0)
+      else line.payouts += -Number(row.amount ?? 0)
+      cash.set(method, line)
+    }
+    if (row.player_id === null) continue
+    const t = totals.get(row.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0, transfers: 0 }
+    t.played += sale
+    if (row.type === "prize_won") t.prizes += Number(row.amount ?? 0)
+    else if (row.type === "recharge") t.recharges += Number(row.amount ?? 0)
+    else if (row.type === "payout") t.payouts += -Number(row.amount ?? 0)
+    else if (row.type === "balance_transfer") t.transfers += Number(row.amount ?? 0)
+    totals.set(row.player_id, t)
+  }
+
+  const winnersByRound = new Map<number, RoundWinnerReport[]>()
+  for (const w of winners.data ?? []) {
+    const list = winnersByRound.get(w.round_id) ?? []
+    list.push({
+      playerId: w.player_id,
+      playerName: playerNames.get(w.player_id) ?? "Jugador",
+      ticketIndex: ticketIndex.get(w.ticket_id) ?? 0,
+      number: w.number,
+      slot: w.slot,
+      prize: Number(w.prize),
+    })
+    winnersByRound.set(w.round_id, list)
+  }
+
+  const giftRowsByRound = new Map<number, LedgerRow[]>()
+  for (const row of ledger) {
+    if (row.round_id === null) continue
+    if (!["number_gifted", "number_ungifted", "number_released", "number_reassigned"].includes(row.type)) continue
+    const list = giftRowsByRound.get(row.round_id) ?? []
+    list.push(row)
+    giftRowsByRound.set(row.round_id, list)
+  }
+
+  const roundReports: RoundReport[] = (rounds.data ?? []).map((r) => {
+    const roundWinners = winnersByRound.get(r.id) ?? []
+    const played = wasPlayed(r)
+    const isOpen = r.status === "open"
+    return {
+      id: r.id,
+      seq: r.seq,
+      name: r.name,
+      status: r.status === "open" ? "open" : "closed",
+      played,
+      closedAtLabel: r.closed_at ? formatHouseDateTime(r.closed_at, timeZone) : null,
+      linePrice: Number(r.line_price),
+      prizes: r.prizes.map(Number),
+      winningNumbers: r.prizes.map((_, i) => r.winning_numbers[i] ?? null),
+      // Snapshot taken when the round closed (*_remove_ticket.sql); the open
+      // round counts its active tickets, and rounds closed before the
+      // snapshot existed the tickets created by then.
+      ticketsCount:
+        r.tickets_count ??
+        (tickets.data ?? []).filter((t) =>
+          r.closed_at === null
+            ? t.removed_at === null
+            : Date.parse(t.created_at) <= Date.parse(r.closed_at)
+        ).length,
+      winners: roundWinners,
+      // A round closed without winning numbers was never played: its gifts
+      // were refunded with everything else.
+      gifts:
+        played || isOpen
+          ? buildRoundGifts(
+              giftRowsByRound.get(r.id) ?? [],
+              { linePrice: Number(r.line_price) },
+              roundWinners,
+              playerNames,
+              ticketIndex
+            )
+          : [],
+      house: houseResult({
+        sales: salesByRound.get(r.id) ?? 0,
+        prizes: roundWinners.reduce((sum, w) => sum + w.prize, 0),
+        gifts: Number(r.margin_gifts ?? 0),
+        unsoldLosing: Number(r.margin_unsold_losing ?? 0),
+        unsoldWinning: Number(r.margin_unsold_winning ?? 0),
+      }),
+    }
+  })
+
+  const sumOf = (pick: (h: RoundReport["house"]) => number) =>
+    roundReports.reduce((sum, r) => sum + pick(r.house), 0)
+
+  const players: PlayerReport[] = (sessionPlayers.data ?? [])
+    .map((p) => ({
+      id: p.player_id,
+      name: playerNames.get(p.player_id) ?? "Jugador",
+      removed: p.removed_at !== null,
+      opening: Number(p.opening_balance),
+      ...(totals.get(p.player_id) ?? { played: 0, prizes: 0, recharges: 0, payouts: 0, transfers: 0 }),
+      closing: Number(p.balance),
+    }))
+    .sort((a, b) => comparePlayerNames(a.name, b.name))
+
+  const settlementPlayers = settlement.data?.settlement_players ?? []
+  const endedAt = g.ended_at ? Date.parse(g.ended_at) : Date.now()
+
+  return {
+    id: g.id,
+    number: g.number,
+    status: toStatus(g.status),
+    startedAtLabel: formatHouseDateTime(g.started_at, timeZone),
+    endedAtLabel: g.ended_at ? formatHouseDateTime(g.ended_at, timeZone) : null,
+    durationMs: endedAt - Date.parse(g.started_at),
+    // Summed from the rounds; it equals game_sessions.house_balance (checked
+    // in the Phase 6a acceptance).
+    house: houseResult({
+      sales: sumOf((h) => h.sales),
+      prizes: sumOf((h) => h.prizes),
+      gifts: sumOf((h) => h.gifts),
+      unsoldLosing: sumOf((h) => h.unsoldLosing),
+      unsoldWinning: sumOf((h) => h.unsoldWinning),
+    }),
+    roundsPlayed: roundReports.filter((r) => r.played).length,
+    ticketsCount: tickets.data?.length ?? 0,
+    rounds: roundReports,
+    players,
+    cash: [...cash.values()],
+    settlement: settlement.data
+      ? {
+          status: settlement.data.status === "closed" ? "closed" : "open",
+          total: settlementPlayers.length,
+          unresolved: settlementPlayers.filter((p) => p.resolution === null).length,
+          received: settlementPlayers.reduce((sum, p) => sum + Number(p.received), 0),
+          paid: settlementPlayers.reduce((sum, p) => sum + Number(p.paid), 0),
+        }
+      : null,
+    activity: ledger.map(toActivityEntry).reverse(),
+    labels: {
+      players: [...playerNames].map(([id, name]) => ({ id, name })),
+      tickets: (tickets.data ?? []).map((t) => ({ id: t.id, index: t.index })),
+      rounds: roundReports.map((r) => ({ id: r.id, seq: r.seq, name: r.name })),
+    },
+  }
+}
+
+/** Closed rounds of a game session, newest first (the live game's history). */
+export async function fetchClosedRounds(
+  supabase: Client,
+  gameSessionId: number,
+  timeZone: string
+): Promise<RoundReport[]> {
+  const report = await fetchGameSessionReport(supabase, gameSessionId, timeZone)
+  return (report?.rounds ?? []).filter((r) => r.status === "closed").reverse()
+}
+
+/** The rounds played on a day of the house (Reportes → Rondas), grouped by
+ *  the game sessions that started that day. */
+export async function fetchRoundsOfDay(
+  supabase: Client,
+  houseId: number,
+  day: string,
+  timeZone: string
+): Promise<RoundsOfDay> {
+  const { start, end } = houseDayRange(day, timeZone)
+  const { data, error } = await supabase
+    .from("game_sessions")
+    .select("id")
+    .eq("house_id", houseId)
+    .gte("started_at", start)
+    .lt("started_at", end)
+    .order("number")
+  if (error) throw error
+
+  const reports = await Promise.all(
+    data.map((g) => fetchGameSessionReport(supabase, g.id, timeZone))
+  )
+  const gameSessions = reports
+    .filter((r): r is GameSessionReport => r !== null)
+    .map((r) => ({
+      id: r.id,
+      number: r.number,
+      rounds: r.rounds.filter((round) => round.played).reverse(),
+    }))
+    .filter((g) => g.rounds.length > 0)
+  return {
+    day,
+    gameSessions,
+    houseTotal: gameSessions.reduce(
+      (sum, g) => sum + g.rounds.reduce((s2, r) => s2 + r.house.total, 0),
+      0
+    ),
+  }
+}
+
+/** What one player did in each round of a game session ("Ver rondas"). */
+export async function fetchPlayerRounds(
+  supabase: Client,
+  gameSessionId: number,
+  playerId: number
+): Promise<PlayerRoundReport[]> {
+  const [rounds, tickets, ledger, session] = await Promise.all([
+    supabase
+      .from("game_session_rounds")
+      .select("id, seq, name, line_price, prizes, winning_numbers, status")
+      .eq("game_session_id", gameSessionId)
+      .order("seq"),
+    supabase.from("tickets").select("id, index").eq("game_session_id", gameSessionId),
+    readLedger(supabase, gameSessionId, playerId),
+    supabase
+      .from("game_session_players")
+      .select("opening_balance")
+      .eq("game_session_id", gameSessionId)
+      .eq("player_id", playerId)
+      .maybeSingle(),
+  ])
+  if (rounds.error) throw rounds.error
+  if (tickets.error) throw tickets.error
+  if (session.error) throw session.error
+
+  const ticketIndex = new Map(tickets.data.map((t) => [t.id, t.index]))
+  const position = (row: LedgerRow): NumberPosition => ({
+    ticketIndex: row.ticket_id !== null ? (ticketIndex.get(row.ticket_id) ?? 0) : 0,
+    number: row.number ?? 0,
+  })
+
+  const byRound = new Map<number | null, PlayerRoundReport>()
+  const entryFor = (roundId: number | null): PlayerRoundReport => {
+    const existing = byRound.get(roundId)
+    if (existing) return existing
+    const round = rounds.data.find((r) => r.id === roundId)
+    const entry: PlayerRoundReport = {
+      roundId,
+      seq: round?.seq ?? 0,
+      name: round?.name ?? "Fuera de ronda",
+      linePrice: Number(round?.line_price ?? 0),
+      winningNumbers: round ? round.prizes.map((_, i) => round.winning_numbers[i] ?? null) : [],
+      played: 0,
+      bought: [],
+      gifted: [],
+      released: [],
+      purchasedAmount: 0,
+      giftedAmount: 0,
+      releasedAmount: 0,
+      keptAmount: 0,
+      otherAmount: 0,
+      keptNumbers: [],
+      keptCount: 0,
+      wins: [],
+      recharges: 0,
+      payouts: 0,
+      wonAmount: 0,
+      transferredAmount: 0,
+      enteredBalance: 0,
+      exitBalance: 0,
+      open: round ? round.status !== "closed" : false,
+      movements: [],
+    }
+    byRound.set(roundId, entry)
+    return entry
+  }
+
+  for (const row of ledger) {
+    const amount = Number(row.amount ?? 0)
+    const sale = saleAmount(row.type, row.amount)
+    const touches =
+      sale !== 0 ||
+      ["prize_won", "recharge", "payout", "number_gifted", "balance_transfer"].includes(row.type)
+    if (!touches) continue
+    const entry = entryFor(row.round_id)
+    entry.played += sale
+    if (row.type === "number_purchased" || (row.type === "number_reassigned" && amount > 0)) {
+      entry.bought.push(position(row))
+    } else if (row.type === "number_gifted") {
+      entry.gifted.push(position(row))
+    } else if (row.type === "number_released") {
+      entry.released.push(position(row))
+    } else if (row.type === "carryover_kept") {
+      const linePrice = Number(rounds.data.find((r) => r.id === row.round_id)?.line_price ?? 0)
+      if (linePrice > 0) entry.keptCount += Math.round(amount / linePrice)
+    } else if (row.type === "prize_won") {
+      entry.wins.push({ ...position(row), prize: amount })
+    } else if (row.type === "recharge") {
+      entry.recharges += amount
+    } else if (row.type === "payout") {
+      entry.payouts += -amount
+    }
+  }
+
+  // Split what the round moved into purchases, gifts and releases; the rest
+  // (kept numbers, un-gifts, reassignments, unplayed refunds) is "other".
+  for (const row of ledger) {
+    const entry = byRound.get(row.round_id)
+    if (!entry) continue
+    const amount = Number(row.amount ?? 0)
+    if (row.type === "number_purchased") entry.purchasedAmount += amount
+    else if (row.type === "number_gifted") entry.giftedAmount += -amount
+    else if (row.type === "number_released") entry.releasedAmount += -amount
+    else if (row.type === "carryover_kept") entry.keptAmount += amount
+  }
+
+  // The keep is logged as one amount, so the kept numbers are what the player
+  // held when it happened: purchases minus releases, reassignments and the
+  // numbers released at the decision (carryover_released).
+  const held: number[] = []
+  const drop = (number: number | null) => {
+    const i = held.indexOf(number ?? 0)
+    if (i >= 0) held.splice(i, 1)
+  }
+  for (const row of ledger) {
+    const amount = Number(row.amount ?? 0)
+    if (row.type === "number_purchased" || (row.type === "number_reassigned" && amount > 0)) {
+      held.push(row.number ?? 0)
+    } else if (
+      row.type === "number_released" ||
+      row.type === "carryover_released" ||
+      (row.type === "number_reassigned" && amount < 0)
+    ) {
+      drop(row.number)
+    } else if (row.type === "carryover_kept") {
+      const entry = byRound.get(row.round_id)
+      if (entry) entry.keptNumbers = [...held].sort((a, b) => a - b)
+    }
+  }
+  for (const entry of byRound.values()) {
+    entry.otherAmount =
+      entry.played -
+      (entry.purchasedAmount - entry.giftedAmount - entry.releasedAmount + entry.keptAmount)
+  }
+
+  // Balance by round: every money row of the player, in ledger order, not only
+  // the rounds with a play (a transfer or a payout can be the only movement).
+  const flows = roundBalanceFlow(
+    Number(session.data?.opening_balance ?? 0),
+    ledger.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      type: row.type,
+      amount: row.amount,
+      roundId: row.round_id,
+      number: row.number,
+      counterpartyPlayerId: row.counterparty_player_id,
+    }))
+  )
+
+  // The other player of each balance transfer, by name.
+  const counterpartyIds = [
+    ...new Set(
+      [...flows.values()].flatMap((f) =>
+        f.movements.flatMap((m) => (m.counterpartyPlayerId !== null ? [m.counterpartyPlayerId] : []))
+      )
+    ),
+  ]
+  const names = new Map<number, string>()
+  if (counterpartyIds.length > 0) {
+    const { data, error } = await supabase.from("players").select("id, name").in("id", counterpartyIds)
+    if (error) throw error
+    for (const p of data) names.set(p.id, p.name)
+  }
+
+  for (const [roundId, flow] of flows) {
+    const entry = entryFor(roundId)
+    entry.enteredBalance = flow.enteredBalance
+    entry.exitBalance = flow.exitBalance
+    entry.wonAmount = flow.won
+    entry.transferredAmount = flow.transferred
+    entry.movements = flow.movements.map((m) => ({
+      ...m,
+      counterpartyName:
+        m.counterpartyPlayerId !== null ? (names.get(m.counterpartyPlayerId) ?? null) : null,
+    }))
+  }
+
+  return [...byRound.values()].sort((a, b) => b.seq - a.seq)
+}

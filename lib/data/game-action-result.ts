@@ -1,0 +1,141 @@
+// Result of a game session action (lib/round-draft/game-api.ts). The
+// error is the code raised by the SQL function (the game session, game rules
+// v2, player accounts and settlements migrations), or a generic one. Plain data so Client Components can import it.
+
+export type GameActionError =
+  | "read_only"
+  | "session_replaced"
+  | "session_expired"
+  | "invalid"
+  | "failed"
+  | "game_session_not_active"
+  | "no_open_round"
+  | "number_taken"
+  | "no_free_ticket"
+  | "invalid_number"
+  | "number_not_owned"
+  | "number_owner_changed"
+  | "player_not_in_session"
+  | "player_not_found"
+  | "round_in_progress"
+  | "invalid_round_pattern"
+  | "round_not_open"
+  | "round_template_not_found"
+  | "slot_already_awarded"
+  | "number_already_won"
+  | "no_pending_carryover"
+  | "pending_carryover"
+  | "check_in_pending"
+  | "payment_method_required"
+  | "payment_method_retired"
+  | "invalid_amount"
+  | "invalid_email"
+  | "invalid_recipient"
+  | "payout_exceeds_balance"
+  | "game_session_has_rounds"
+  | "game_session_has_payments"
+  | "no_credit_balance"
+  | "no_debt_balance"
+  | "invalid_status"
+  | "note_required"
+  | "settlement_closed"
+  | "settlement_not_found"
+  | "player_not_in_settlement"
+  | "invalid_name"
+  | "invalid_identifier"
+  | "identifier_taken"
+  | "invalid_timezone"
+  | "invalid_phone"
+  | "invalid_logo_path"
+  | "movement_not_found"
+  | "movement_not_correctable"
+  | "movement_already_corrected"
+  | "movement_closed"
+  | "amount_unchanged"
+  | "reason_required"
+  | "ticket_not_found"
+  | "ticket_not_empty"
+  | "last_ticket"
+  | "round_has_winners"
+  | "transfer_same_player"
+  | "insufficient_balance"
+  | "transfer_not_found"
+  | "transfer_closed"
+  | "transfer_already_voided"
+
+export type GameActionResult<T = undefined> =
+  | { ok: true; data: T }
+  | { ok: false; error: GameActionError }
+
+export const GAME_ACTION_ERROR_MESSAGES: Record<GameActionError, string> = {
+  read_only: "Solo lectura: no tienes permiso para hacer cambios.",
+  session_replaced: "Tu sesión se cerró porque se inició sesión en otro dispositivo.",
+  session_expired: "Tu sesión expiró, vuelve a iniciar sesión.",
+  invalid: "Datos no válidos. Revisa e inténtalo de nuevo.",
+  failed: "No se pudo guardar. Inténtalo de nuevo.",
+  game_session_not_active: "La jornada ya no está activa.",
+  no_open_round: "Primero elige la ronda.",
+  number_taken: "Ese número ya fue asignado.",
+  no_free_ticket: "Ese número está ocupado en todos los cartones. Agrega un cartón para seguir.",
+  invalid_number: "El número debe estar entre 1 y 15.",
+  number_not_owned: "Ese número ya no es de este jugador.",
+  number_owner_changed: "Ese número cambió de dueño. Revisa el cartón e inténtalo de nuevo.",
+  player_not_in_session: "Ese jugador no está en la jornada.",
+  player_not_found: "Ese jugador ya no existe en la lista de jugadores.",
+  round_in_progress:
+    "La ronda está en curso: termina de registrar sus números ganadores antes de continuar.",
+  round_not_open: "Esa ronda ya no está abierta.",
+  invalid_round_pattern:
+    "El patrón de rondas no es válido: agrega al menos una ronda, cada una de 1 a 20 veces.",
+  round_template_not_found: "Esa ronda ya no existe. Elige otra.",
+  slot_already_awarded: "Ese número ganador ya fue registrado.",
+  number_already_won: "Ese número ya salió en esta ronda.",
+  no_pending_carryover: "Ese jugador ya decidió su jugada.",
+  pending_carryover: "Primero decide si el jugador mantiene o libera su jugada.",
+  check_in_pending: "Todos los jugadores con números deben hacer check-in antes de anotar ganadores.",
+  payment_method_required: "Elige el método de pago.",
+  payment_method_retired: "Ese método de pago ya no se usa. Elige otro.",
+  invalid_amount: "El monto debe ser mayor a 0.",
+  invalid_email: "El correo no es válido.",
+  invalid_recipient: "El nombre puede tener hasta 100 caracteres y el nickname hasta 50.",
+  payout_exceeds_balance: "El pago no puede ser mayor al saldo a favor del jugador.",
+  game_session_has_rounds: "La jornada ya tiene rondas; no se puede borrar.",
+  game_session_has_payments: "La jornada ya tiene recargas o pagos registrados; no se puede borrar.",
+  no_credit_balance: "El jugador no tiene saldo a favor.",
+  no_debt_balance: "El jugador no tiene deuda.",
+  invalid_status: "Elige un estado válido.",
+  note_required: "Agrega una nota (por ejemplo, por qué no se pudo pagar).",
+  settlement_closed: "Esta liquidación ya está cerrada.",
+  settlement_not_found: "No se encontró la liquidación de esta jornada.",
+  player_not_in_settlement: "Ese jugador no está en esta liquidación.",
+  invalid_name: "El nombre de la casa debe tener entre 1 y 60 caracteres.",
+  invalid_identifier: "El ID debe tener de 3 a 30 letras, números o guiones.",
+  identifier_taken: "Ese ID ya lo usa otra casa. Elige otro.",
+  invalid_timezone: "Elige una zona horaria de la lista.",
+  invalid_phone: "El teléfono puede tener hasta 30 caracteres.",
+  invalid_logo_path: "No se pudo guardar el logo. Súbelo de nuevo.",
+  movement_not_found: "Ese movimiento ya no existe.",
+  movement_not_correctable: "Solo se pueden corregir cobros y pagos.",
+  movement_already_corrected: "Ese movimiento ya fue corregido.",
+  movement_closed:
+    "Ese dinero ya pasó a otra jornada o a una liquidación cerrada: no se puede corregir.",
+  amount_unchanged: "El monto correcto es igual al registrado.",
+  reason_required: "Escribe el motivo de la corrección.",
+  ticket_not_found: "Ese cartón ya fue retirado.",
+  ticket_not_empty: "Solo se puede retirar un cartón sin números jugados.",
+  last_ticket: "La jornada necesita al menos un cartón.",
+  round_has_winners:
+    "La ronda ya tiene números ganadores: retira el cartón cuando empiece la siguiente.",
+  transfer_same_player: "Elige otro jugador: no se puede transferir a sí mismo.",
+  insufficient_balance: "No alcanza el saldo a favor para esa transferencia.",
+  transfer_not_found: "Esa transferencia ya no existe.",
+  transfer_closed:
+    "Ese saldo ya pasó a otra jornada o cuenta: no se puede anular la transferencia.",
+  transfer_already_voided: "Esa transferencia ya fue anulada.",
+}
+
+const KNOWN_CODES = new Set<string>(Object.keys(GAME_ACTION_ERROR_MESSAGES))
+
+export function toGameActionError(code: string | undefined): GameActionError {
+  return code && KNOWN_CODES.has(code) ? (code as GameActionError) : "failed"
+}

@@ -1,0 +1,147 @@
+"use client"
+
+import * as React from "react"
+
+import { useHouse } from "@/components/house-provider"
+import { NavMain } from "@/components/nav-main"
+import { NavSecondary } from "@/components/nav-secondary"
+import { NavUser } from "@/components/nav-user"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar"
+import {
+  Settings2Icon,
+  Users,
+  Target,
+  ActivityIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  FileChartColumn,
+  WalletIcon,
+  HomeIcon,
+} from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+
+import { AppVersion } from "@/components/app-version"
+import { titleFont } from "@/lib/fonts"
+
+const data = {
+  navMain: [
+    // The home of both roles; the admin starts a game session from there.
+    {
+      title: "Inicio",
+      url: "/",
+      icon: <HomeIcon />,
+    },
+    {
+      title: "Ronda activa",
+      url: "/active-round",
+      icon: <ActivityIcon />,
+    },
+    {
+      title: "Rondas",
+      url: "/rounds",
+      icon: <Target />,
+    },
+    {
+      title: "Jugadores",
+      url: "/players",
+      icon: <Users />,
+    },
+    {
+      title: "Liquidación",
+      url: "/settlement",
+      icon: <WalletIcon />,
+    },
+    {
+      title: "Reportes",
+      url: "/reports",
+      icon: <FileChartColumn />,
+    },
+  ],
+  navSecondary: [
+    {
+      title: "Configuración",
+      url: "/settings",
+      icon: <Settings2Icon />,
+    },
+  ],
+}
+
+function SidebarCollapseToggle() {
+  const { state, toggleSidebar } = useSidebar()
+  return (
+    <button
+      type="button"
+      onClick={toggleSidebar}
+      title={state === "collapsed" ? "Expandir sidebar" : "Colapsar sidebar"}
+      className="absolute top-6 -right-3 z-30 flex size-6 items-center justify-center rounded-full border bg-background bg-primary/25 text-foreground shadow-sm transition-colors hover:bg-accent"
+    >
+      {state === "collapsed" ? (
+        <ChevronRightIcon className="size-3.5" />
+      ) : (
+        <ChevronLeftIcon className="size-3.5" />
+      )}
+      <span className="sr-only">Alternar sidebar</span>
+    </button>
+  )
+}
+
+export function AppSidebar({
+  user,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  user: { name: string; email: string; avatar: string }
+}) {
+  const house = useHouse()
+  return (
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarCollapseToggle />
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1.5! data-[slot=sidebar-menu-button]:p-1.5!"
+              render={<Link href="/" />}
+            >
+              <div className="flex size-6 shrink-0 items-center justify-center">
+                <Image
+                  src={"/assets/img/logo.svg"}
+                  alt={""}
+                  width={24}
+                  height={24}
+                  className="size-6"
+                />
+              </div>
+              <span
+                className={
+                  "text text-xl font-semibold group-data-[collapsible=icon]:hidden " +
+                  titleFont.className
+                }
+              >
+                {" "}
+                Tally.
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <NavMain items={data.navMain} />
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser user={user} houseLogoUrl={house?.logoUrl ?? null} />
+        <AppVersion />
+      </SidebarFooter>
+    </Sidebar>
+  )
+}

@@ -1,0 +1,199 @@
+"use client"
+
+import { GiftIcon, Trash2Icon } from "lucide-react"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { FREE_NUMBER_CLASSES, FREE_NUMBER_HOVER_CLASSES, getTakenNumberClasses } from "@/lib/round-draft/colors"
+import type {
+  DraftPlayer,
+  NumberAssignment,
+  Ticket,
+} from "@/lib/round-draft/types"
+import { cn } from "@/lib/utils"
+
+/** What a click on one number of a ticket does, shared by the Cartones and
+ *  Lista views of /new-game: a free number goes to the active player, and the
+ *  active player's own number is released. */
+export function ticketNumberState(
+  entry: NumberAssignment,
+  activePlayerId: number | null,
+  readOnly: boolean
+) {
+  const canRelease =
+    entry.playerId !== null && entry.playerId === activePlayerId && !readOnly
+  const canAssign =
+    entry.playerId === null && activePlayerId !== null && !readOnly
+  return {
+    canAssign,
+    canRelease,
+    clickable: canAssign || canRelease,
+    title:
+      entry.playerId === null && activePlayerId === null && !readOnly
+        ? "Selecciona un jugador activo primero"
+        : undefined,
+  }
+}
+
+/** The gift mark of a sold number: a toggle for the admin, a badge for an
+ *  observer (only when it is a gift). */
+export function GiftToggle({
+  entry,
+  readOnly,
+  onToggle,
+  className,
+}: {
+  entry: NumberAssignment
+  readOnly: boolean
+  onToggle: () => void
+  className?: string
+}) {
+  const base =
+    "flex size-5 items-center justify-center rounded-full border bg-background shadow-sm"
+  if (readOnly) {
+    return entry.isGift ? (
+      <span
+        title="Regalo"
+        className={cn(base, "border-destructive/60 text-destructive", className)}
+      >
+        <GiftIcon className="size-3" />
+      </span>
+    ) : null
+  }
+  if (entry.playerId === null) return null
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={entry.isGift ? "Quitar regalo" : "Marcar como regalo"}
+      className={cn(
+        base,
+        "relative transition-colors after:absolute after:-inset-1 after:content-['']",
+        entry.isGift
+          ? "border-destructive/60 text-destructive"
+          : "border-border text-muted-foreground hover:text-foreground",
+        className
+      )}
+    >
+      <GiftIcon className="size-3" />
+    </button>
+  )
+}
+
+export interface TicketCardProps {
+  ticket: Ticket
+  players: DraftPlayer[]
+  activePlayerId: number | null
+  /** An observer: numbers and gifts are shown, not clickable. */
+  readOnly?: boolean
+  onAssign: (number: number) => void
+  onToggleGift: (number: number) => void
+  /** A number to point out where it is still free ("Números disponibles"). */
+  highlightNumber?: number | null
+  /** Set when the ticket can be removed: shows "Retirar cartón". */
+  onRemove?: () => void
+}
+
+/** "Retirar cartón": the trash button in a ticket's header (both views). */
+export function RemoveTicketButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Retirar cartón"
+      aria-label="Retirar cartón"
+      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+    >
+      <Trash2Icon className="size-4" />
+    </button>
+  )
+}
+
+export function TicketCard({
+  ticket,
+  players,
+  activePlayerId,
+  readOnly = false,
+  onAssign,
+  onToggleGift,
+  highlightNumber = null,
+  onRemove,
+}: TicketCardProps) {
+  const assignedCount = ticket.numbers.filter((n) => n.playerId !== null).length
+  const playerIndexById = new Map(players.map((p, i) => [p.id, i]))
+  const playerById = new Map(players.map((p) => [p.id, p]))
+
+  return (
+    <Card className="w-full max-w-80">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Cartón #{ticket.index}</CardTitle>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">
+            {assignedCount}/15
+          </span>
+          {onRemove && !readOnly && <RemoveTicketButton onClick={onRemove} />}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-5 gap-1.5">
+          {ticket.numbers.map((entry) => {
+            const owner =
+              entry.playerId !== null
+                ? playerById.get(entry.playerId)
+                : undefined
+            const { canAssign, canRelease, clickable, title } =
+              ticketNumberState(entry, activePlayerId, readOnly)
+            return (
+              <div key={entry.number} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (clickable) onAssign(entry.number)
+                  }}
+                  disabled={readOnly || (entry.playerId === null && !canAssign)}
+                  title={owner?.name ?? title}
+                  aria-pressed={entry.playerId !== null}
+                  className={cn(
+                    "aspect-square w-full rounded-lg border text-sm font-medium transition-colors",
+                    "flex flex-col items-center justify-center gap-0.5 px-0.5",
+                    entry.playerId !== null
+                      ? cn(
+                          getTakenNumberClasses(
+                            playerIndexById.get(entry.playerId) ?? -1,
+                            entry.isGift,
+                            entry.playerId === activePlayerId
+                          ),
+                          canRelease ? "cursor-pointer" : "cursor-default"
+                        )
+                      : cn(
+                          FREE_NUMBER_CLASSES,
+                          entry.number === highlightNumber &&
+                            "ring-2 ring-amber-500 ring-offset-2 ring-offset-background",
+                          readOnly
+                            ? "cursor-default"
+                            : canAssign
+                              ? `cursor-pointer ${FREE_NUMBER_HOVER_CLASSES}`
+                              : "cursor-not-allowed opacity-60"
+                        )
+                  )}
+                >
+                  <span>{entry.number}</span>
+                  {owner && (
+                    <span className="max-w-full truncate text-[10px] leading-none opacity-90">
+                      {owner.name.split(" ")[0]}
+                    </span>
+                  )}
+                </button>
+                <GiftToggle
+                  entry={entry}
+                  readOnly={readOnly}
+                  onToggle={() => onToggleGift(entry.number)}
+                  className="absolute -top-1.5 -right-1.5"
+                />
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}

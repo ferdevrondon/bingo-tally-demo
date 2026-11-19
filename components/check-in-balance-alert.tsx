@@ -1,0 +1,95 @@
+"use client"
+
+import { TriangleAlertIcon,} from "lucide-react"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { useRoundDraft } from "@/lib/round-draft/context"
+import { getActivePlayers } from "@/lib/round-draft/selectors"
+import { formatMoney } from "@/lib/rounds"
+
+export function CheckInBalanceAlert() {
+  const { state } = useRoundDraft()
+  const activePlayers = getActivePlayers(state)
+
+  // Players still deciding their play for the new round aren't asked for a
+  // check-in yet: they first keep or release their numbers.
+  const pendingDecision = activePlayers.filter((p) => p.pendingCarryOverDecision)
+  const pendingCheckIn = activePlayers.filter(
+    (p) => !p.checkedIn && !p.pendingCarryOverDecision
+  )
+
+  const owing = activePlayers.filter((p) => p.balance < 0)
+
+  if (
+    pendingCheckIn.length === 0 &&
+    pendingDecision.length === 0 &&
+    owing.length === 0
+  ) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {pendingCheckIn.length > 0 && (
+        <Alert className="border-none bg-destructive/10 text-destructive w-fit">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {pendingCheckIn.length} jugador
+            {pendingCheckIn.length === 1 ? "" : "es"} pendiente
+            {pendingCheckIn.length === 1 ? "" : "s"} de check-in
+          </AlertTitle>
+          <AlertDescription>
+            No puedes registrar números ganadores hasta que todos confirmen su
+            check-in.
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {pendingCheckIn.map((p) => (
+                <Badge key={p.id} className="bg-red-600 text-white">
+                  {p.name}
+                </Badge>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+      {owing.length > 0 && (
+        <Alert className="w-fit border-none bg-destructive/10 text-destructive">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {owing.length} jugador{owing.length === 1 ? "" : "es"} con saldo
+            negativo
+          </AlertTitle>
+          <AlertDescription>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {owing.map((p) => (
+                <Badge key={p.id} className="bg-red-600 text-white">
+                  {p.name} · {formatMoney(Math.abs(p.balance))}
+                </Badge>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+      {pendingDecision.length > 0 && (
+        <Alert className="w-fit border-none bg-warning/10 text-warning">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {pendingDecision.length} jugador{pendingDecision.length === 1 ? "" : "es"}{" "}
+            {pendingDecision.length === 1 ? "debe" : "deben"} decidir si mantiene
+            {pendingDecision.length === 1 ? "" : "n"} o libera
+            {pendingDecision.length === 1 ? "" : "n"} su jugada
+          </AlertTitle>
+          <AlertDescription>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {pendingDecision.map((p) => (
+                <Badge key={p.id} className="bg-warning/20 text-warning">
+                  {p.name}
+                </Badge>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
+  )
+}
